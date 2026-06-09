@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Hygiena+",
+    "slug": "hygiena-plus",
+    "scheme": "hygienaplus",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FF5C8A"
+    },
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.hygiena.plus" },
+    "android": { "package": "com.hygiena.plus" },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": { "typedRoutes": true }
+  }
+}
