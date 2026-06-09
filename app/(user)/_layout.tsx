@@ -50,6 +50,7 @@ export default function UserLayout() {
           <Tabs.Screen name="marketplace/[id]" options={{ href: null }} />
           <Tabs.Screen name="marketplace/cart" options={{ href: null }} />
           <Tabs.Screen name="marketplace/checkout" options={{ href: null }} />
+          <Tabs.Screen name="marketplace/orders" options={{ href: null }} />
         </Tabs>
       </CartProvider>
     </RoleGuard>

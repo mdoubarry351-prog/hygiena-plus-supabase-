@@ -49,6 +49,17 @@ export const marketplaceService = {
     return data;
   },
 
+  // Historique des commandes de l'utilisateur, les plus récentes en premier.
+  async getOrders(userId: string): Promise<MarketplaceOrder[]> {
+    const { data, error } = await supabase
+      .from("marketplace_orders")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
+
   // Crée une commande dans marketplace_orders.
   async createOrder(input: OrderInput): Promise<MarketplaceOrder> {
     const payload: TablesInsert<"marketplace_orders"> = {

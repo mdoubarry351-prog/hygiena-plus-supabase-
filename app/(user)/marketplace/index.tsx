@@ -32,14 +32,19 @@ export default function MarketplaceHome() {
     <Screen>
       <View style={styles.topBar}>
         <Text style={typography.h2}>Boutique</Text>
-        <Pressable onPress={() => router.push("/(user)/marketplace/cart")} hitSlop={10} style={styles.cartBtn}>
-          <Ionicons name="cart-outline" size={26} color={colors.text} />
-          {count > 0 && (
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{count}</Text>
-            </View>
-          )}
-        </Pressable>
+        <View style={styles.actions}>
+          <Pressable onPress={() => router.push("/(user)/marketplace/orders")} hitSlop={10} style={styles.iconBtn}>
+            <Ionicons name="receipt-outline" size={25} color={colors.text} />
+          </Pressable>
+          <Pressable onPress={() => router.push("/(user)/marketplace/cart")} hitSlop={10} style={styles.iconBtn}>
+            <Ionicons name="cart-outline" size={26} color={colors.text} />
+            {count > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{count}</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
@@ -99,7 +104,8 @@ function ProductRow({ product, onPress }: { product: MarketplaceProduct; onPress
 const THUMB = 72;
 const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
-  cartBtn: { padding: spacing.xs },
+  actions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  iconBtn: { padding: spacing.xs },
   cartBadge: {
     position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9,
     backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 4,
