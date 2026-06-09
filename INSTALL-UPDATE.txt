@@ -1,0 +1,11 @@
+MISE À JOUR MODULE CYCLE
+========================
+Remplace 3 fichiers :
+- src/lib/cycle-service.ts   (filtres souples + prédictions dès 1 cycle + delete)
+- src/hooks/useCycles.ts     (inchangé, ré-inclus)
+- app/(user)/index.tsx       (bouton supprimer + badge "estimé")
+
+INSTALLATION (Mac, fenêtre dans le projet) :
+1. cd ~/Downloads
+2. unzip -o cycle-update.zip
+3. Dans la fenêtre Expo : touche "r" pour recharger

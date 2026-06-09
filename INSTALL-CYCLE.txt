@@ -1,0 +1,20 @@
+MODULE CYCLE — Installation
+============================
+Ce zip contient les fichiers du module Cycle, déjà rangés
+dans la bonne arborescence (src/ et app/(user)/).
+
+Les fichiers vont REMPLACER :
+- app/(user)/_layout.tsx   (passe de Stack à Tabs)
+- app/(user)/index.tsx     (nouvel écran Cycle)
+et AJOUTER :
+- src/lib/cycle-service.ts
+- src/hooks/useCycles.ts
+- app/(user)/cycle/log.tsx
+- app/(user)/cycle/calendar.tsx
+
+INSTALLATION (sur le Mac, dans une 2e fenêtre Terminal) :
+1. cd ~/Downloads
+2. unzip -o cycle-module.zip          (le -o écrase sans demander)
+3. Les fichiers se placent dans ~/Downloads/hygiena-plus/...
+4. Dans la fenêtre où tourne Expo : appuie sur "r" pour recharger
+   (ou relance: npx expo start -c)
