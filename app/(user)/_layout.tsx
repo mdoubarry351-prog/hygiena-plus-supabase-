@@ -39,6 +39,13 @@ export default function UserLayout() {
             }}
           />
           <Tabs.Screen
+            name="community/index"
+            options={{
+              title: "Communauté",
+              tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" color={color} size={size} />,
+            }}
+          />
+          <Tabs.Screen
             name="profile"
             options={{
               title: "Profil",
@@ -51,6 +58,8 @@ export default function UserLayout() {
           <Tabs.Screen name="marketplace/cart" options={{ href: null }} />
           <Tabs.Screen name="marketplace/checkout" options={{ href: null }} />
           <Tabs.Screen name="marketplace/orders" options={{ href: null }} />
+          <Tabs.Screen name="community/new" options={{ href: null }} />
+          <Tabs.Screen name="community/[id]" options={{ href: null }} />
         </Tabs>
       </CartProvider>
     </RoleGuard>
