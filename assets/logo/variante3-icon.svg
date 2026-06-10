@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="v3Drop" x1="256" y1="72" x2="256" y2="444" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10B981"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <!-- Goutte -->
+  <path d="M256 72
+           C296 142 384 232 384 316
+           A128 128 0 1 1 128 316
+           C128 232 216 142 256 72 Z"
+        fill="url(#v3Drop)"/>
+  <!-- Reflet subtil -->
+  <ellipse cx="212" cy="232" rx="30" ry="62" transform="rotate(-28 212 232)"
+           fill="#D1FAE5" opacity="0.18"/>
+  <!-- Croix médicale « + » centrée dans le ventre de la goutte -->
+  <g fill="#D1FAE5">
+    <rect x="196" y="298" width="120" height="36" rx="18"/>
+    <rect x="238" y="256" width="36" height="120" rx="18"/>
+  </g>
+</svg>

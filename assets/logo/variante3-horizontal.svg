@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300" viewBox="0 0 800 300" fill="none">
+  <defs>
+    <linearGradient id="v3hDrop" x1="256" y1="72" x2="256" y2="444" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10B981"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <!-- Goutte + croix (art 512 mis à l'échelle) -->
+  <g transform="translate(-43 6) scale(0.56)">
+    <path d="M256 72
+             C296 142 384 232 384 316
+             A128 128 0 1 1 128 316
+             C128 232 216 142 256 72 Z"
+          fill="url(#v3hDrop)"/>
+    <ellipse cx="212" cy="232" rx="30" ry="62" transform="rotate(-28 212 232)"
+             fill="#D1FAE5" opacity="0.18"/>
+    <g fill="#D1FAE5">
+      <rect x="196" y="298" width="120" height="36" rx="18"/>
+      <rect x="238" y="256" width="36" height="120" rx="18"/>
+    </g>
+  </g>
+  <!-- Texte (le « + » repris en accent, en écho à la croix de la goutte) -->
+  <text x="205" y="150" font-family="'Poppins','Nunito','Segoe UI',sans-serif"
+        font-size="108" font-weight="600" letter-spacing="1.5"
+        dominant-baseline="central" fill="#059669">Hygiena<tspan fill="#FFB23E" font-weight="700">+</tspan></text>
+</svg>

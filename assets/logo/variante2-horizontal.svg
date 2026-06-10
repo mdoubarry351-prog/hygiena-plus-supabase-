@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300" viewBox="0 0 800 300" fill="none">
+  <defs>
+    <linearGradient id="v2hDrop" x1="256" y1="72" x2="256" y2="444" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10B981"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <!-- Goutte + feuille (art 512 mis à l'échelle) -->
+  <g transform="translate(-43 6) scale(0.56)">
+    <path d="M256 72
+             C296 142 384 232 384 316
+             A128 128 0 1 1 128 316
+             C128 232 216 142 256 72 Z"
+          fill="url(#v2hDrop)"/>
+    <ellipse cx="212" cy="232" rx="30" ry="62" transform="rotate(-28 212 232)"
+             fill="#D1FAE5" opacity="0.18"/>
+    <g transform="rotate(-18 256 322)">
+      <path d="M256 248
+               C306 288 306 356 256 396
+               C206 356 206 288 256 248 Z"
+            fill="#D1FAE5" opacity="0.96"/>
+      <path d="M256 266 L256 384" stroke="#059669" stroke-width="6"
+            stroke-linecap="round" opacity="0.55"/>
+    </g>
+  </g>
+  <!-- Texte -->
+  <text x="205" y="150" font-family="'Poppins','Nunito','Segoe UI',sans-serif"
+        font-size="108" font-weight="600" letter-spacing="1.5"
+        dominant-baseline="central" fill="#059669">Hygiena<tspan fill="#FFB23E" font-weight="700">+</tspan></text>
+</svg>
