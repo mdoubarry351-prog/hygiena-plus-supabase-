@@ -1,36 +1,33 @@
 import { useState, useCallback } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter, type Href } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
-import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
+import { CycleRing } from "@/components/CycleRing";
 import { useCycles } from "@/hooks/useCycles";
 import { useAuth } from "@/providers/AuthProvider";
-import { cycleService } from "@/lib/cycle-service";
 import { notificationsService } from "@/lib/notifications-service";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, fonts, radius, spacing, typography } from "@/theme";
 
-function formatDate(d: Date | null): string {
+const logo = require("../../assets/logo/hygiena-icon-1024.png");
+
+function formatShort(d: Date | null | undefined): string {
   if (!d) return "—";
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
 }
 
-// Message bienveillant du jour, dérivé de la phase du cycle quand l'info est
-// disponible (présentation uniquement, à partir des données déjà chargées).
-function dailyMessage(day: number | null | undefined, avg: number | null | undefined): string {
-  if (!day || !avg) return "Prends un moment pour toi aujourd'hui. 🌿";
-  const ovulation = Math.max(10, avg - 14);
-  if (day <= 5) return "Phase menstruelle — accorde-toi repos et douceur. 💗";
-  if (day < ovulation - 1) return "Phase folliculaire — ton énergie remonte, profites-en. 🌱";
-  if (day <= ovulation + 1) return "Autour de l'ovulation — tu rayonnes aujourd'hui. ✨";
-  return "Phase lutéale — écoute tes besoins, sois indulgente avec toi. 🌙";
+function daysUntil(d: Date | null | undefined): number | null {
+  if (!d) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const target = new Date(d); target.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
 
 export default function CycleHome() {
-  const { profile, session } = useAuth();
+  const { profile, session, role } = useAuth();
   const { cycles, prediction, loading, reload } = useCycles();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
@@ -41,7 +38,7 @@ export default function CycleHome() {
     try {
       setUnread(await notificationsService.getUnreadCount(session.user.id));
     } catch {
-      // Compteur non bloquant : on ignore l'erreur.
+      // Compteur non bloquant.
     }
   }, [session?.user]);
 
@@ -53,185 +50,201 @@ export default function CycleHome() {
     setRefreshing(false);
   }
 
-  function confirmDelete(id: string, dateLabel: string) {
-    Alert.alert(
-      "Supprimer ?",
-      `Supprimer l'entrée du ${dateLabel} ?`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer", style: "destructive",
-          onPress: async () => {
-            try {
-              await cycleService.deleteCycle(id);
-              await reload();
-            } catch (e) {
-              Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-            }
-          },
-        },
-      ]
-    );
-  }
-
   if (loading && cycles.length === 0) return <Loading />;
 
-  const day = prediction?.currentDay;
-  // "estimé" si on a moins de 2 cycles distincts (donc moyenne par défaut)
-  const isEstimate = cycles.length < 2;
-
-  // Salutation chaleureuse selon l'heure (présentation uniquement).
-  const hour = new Date().getHours();
-  const isEvening = hour >= 18 || hour < 5;
+  const isDoctor = role === "doctor";
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
-  const greetingText = `${isEvening ? "Bonsoir" : "Bonjour"}${firstName ? " " + firstName : ""} ${isEvening ? "🌙" : "🌿"}`;
-  const dayMessage = dailyMessage(day, prediction?.averageCycleLength);
+  const day = prediction?.currentDay;
+  const avg = prediction?.averageCycleLength;
+  const hasData = !!prediction?.hasEnoughData;
+
+  const fertileStart = prediction?.fertileWindowStart ?? null;
+  const fertileEnd = prediction?.fertileWindowEnd ?? null;
+  const periodIn = daysUntil(prediction?.nextPeriodStart);
+
+  // Bornes des phases en JOUR-DE-CYCLE (dérivées des données déjà chargées).
+  // Règles : durée réelle (averagePeriodLength, repli 5). Ovulation ≈ N-14
+  // (phase lutéale de 14 j). Fenêtre fertile : ovulation -5 → +1.
+  const ringN = avg ?? 28;
+  const periodLen = prediction?.averagePeriodLength ?? 5;
+  const ovulationDay = Math.max(periodLen + 1, ringN - 14);
+  const fertileStartDay = Math.max(periodLen + 1, ovulationDay - 5);
+  const fertileEndDay = Math.min(ringN, ovulationDay + 1);
+
+  // Niveau de confiance dérivé du nombre de cycles enregistrés (présentation).
+  const conf = cycles.length >= 4
+    ? { label: "élevée", color: colors.success }
+    : cycles.length >= 2
+      ? { label: "moyenne", color: colors.secondary }
+      : { label: "faible", color: colors.accent };
+
+  // Cartes d'accès rapide (Consultations masquée pour un médecin).
+  const quick: { emoji: string; title: string; sub: string; href: Href }[] = [
+    { emoji: "🩸", title: "Mon cycle", sub: "Suivi menstruel", href: "/(user)/cycle/calendar" },
+    ...(!isDoctor ? [{ emoji: "🌼", title: "Consultations", sub: "Médecins vérifiées", href: "/(user)/appointments" as Href }] : []),
+    { emoji: "🛍️", title: "Boutique", sub: "Produits santé", href: "/(user)/marketplace" },
+    { emoji: "💬", title: "Forum", sub: "Communauté", href: "/(user)/community" },
+  ];
 
   return (
     <Screen>
-      <View style={styles.topBar}>
-        <Text style={styles.greeting} numberOfLines={1}>
-          {greetingText}
-        </Text>
-        <Pressable onPress={() => router.push("/(user)/notifications")} hitSlop={10} style={styles.bellBtn}>
-          <Ionicons name="notifications-outline" size={26} color={colors.text} />
-          {unread > 0 && (
-            <View style={styles.bellBadge}>
-              <Text style={styles.bellBadgeText}>{unread > 99 ? "99+" : unread}</Text>
-            </View>
-          )}
-        </Pressable>
-      </View>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        <View style={styles.ringOuter}>
-          <View style={styles.ringInner}>
-            {day ? (
-              <>
-                <Text style={styles.ringDay}>Jour {day}</Text>
-                <Text style={styles.ringLabel}>de votre cycle</Text>
-              </>
-            ) : (
-              <Text style={styles.ringLabel}>Enregistrez{"\n"}vos règles</Text>
-            )}
+        {/* 1 · En-tête */}
+        <View style={styles.header}>
+          <View style={styles.avatar}>
+            <Image source={logo} style={styles.avatarImg} resizeMode="contain" />
           </View>
-        </View>
-
-        <View style={styles.dayMsg}>
-          <Text style={styles.dayMsgText}>{dayMessage}</Text>
-        </View>
-
-        {prediction?.hasEnoughData ? (
-          <Card style={styles.card}>
-            <View style={styles.cardHead}>
-              <Text style={typography.h3}>Prédictions</Text>
-              {isEstimate && <Text style={styles.badge}>estimé</Text>}
-            </View>
-            <Row label="Prochaines règles" value={formatDate(prediction.nextPeriodStart)} />
-            <Row label="Ovulation estimée" value={formatDate(prediction.nextOvulation)} />
-            <Row label="Fenêtre fertile" value={`${formatDate(prediction.fertileWindowStart)} – ${formatDate(prediction.fertileWindowEnd)}`} />
-            <Row label="Cycle moyen" value={`${prediction.averageCycleLength} jours`} last />
-            {isEstimate && (
-              <Text style={styles.estimateNote}>
-                Estimation basée sur un cycle de {prediction.averageCycleLength} jours.
-                Enregistrez plus de cycles pour affiner.
-              </Text>
+          <View style={styles.headerText}>
+            <Text style={styles.hello} numberOfLines={1}>Bonjour, {firstName || "vous"} 👋</Text>
+            {profile?.phone ? <Text style={styles.phone}>{profile.phone}</Text> : null}
+          </View>
+          <Pressable onPress={() => router.push("/(user)/notifications")} hitSlop={8} style={styles.iconBtn}>
+            <Ionicons name="notifications-outline" size={24} color={colors.text} />
+            {unread > 0 && (
+              <View style={styles.badge}><Text style={styles.badgeText}>{unread > 99 ? "99+" : unread}</Text></View>
             )}
-          </Card>
-        ) : (
-          <Card style={styles.card}>
-            <Text style={typography.h3}>Pas encore de prédictions</Text>
-            <Text style={[typography.body, styles.muted]}>
-              Enregistrez vos règles pour obtenir des prédictions personnalisées.
-            </Text>
-          </Card>
-        )}
+          </Pressable>
+          <Pressable onPress={() => router.push("/(user)/profile")} hitSlop={8} style={styles.iconBtn}>
+            <Ionicons name="heart-outline" size={24} color={colors.primary} />
+          </Pressable>
+        </View>
 
-        <Button title="+ Enregistrer mes règles" onPress={() => router.push("/(user)/cycle/log")} />
-        <Button title="Voir le calendrier" variant="outline" onPress={() => router.push("/(user)/cycle/calendar")} />
-
-        {cycles.length > 0 && (
-          <Card style={styles.card}>
-            <Text style={typography.h3}>Historique récent</Text>
-            {cycles.slice(0, 6).map((c) => {
-              const dateLabel = new Date(c.period_start).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
-              return (
-                <View key={c.id} style={styles.histRow}>
-                  <View style={styles.histLeft}>
-                    <Text style={styles.rowLabel}>{dateLabel}</Text>
-                    <Text style={styles.histSub}>
-                      {c.symptoms && c.symptoms.length > 0 ? `${c.symptoms.length} symptôme(s)` : "Aucun symptôme"}
-                    </Text>
-                  </View>
-                  <Pressable onPress={() => confirmDelete(c.id, dateLabel)} hitSlop={10} style={styles.trash}>
-                    <Ionicons name="trash-outline" size={20} color={colors.danger} />
-                  </Pressable>
-                </View>
-              );
-            })}
+        {/* 2 · Fenêtre fertile */}
+        {fertileStart && fertileEnd ? (
+          <Card style={styles.fertileCard}>
+            <Text style={styles.fertileLabel}>FENÊTRE FERTILE</Text>
+            <Text style={styles.fertileRange}>{formatShort(fertileStart)} → {formatShort(fertileEnd)}</Text>
           </Card>
-        )}
+        ) : null}
+
+        {/* 3 · Grand bouton d'action */}
+        <Pressable onPress={() => router.push("/(user)/cycle/log")} style={styles.cta}>
+          <View style={styles.ctaIcon}><Ionicons name="add" size={22} color={colors.white} /></View>
+          <View style={styles.ctaText}>
+            <Text style={styles.ctaTitle}>Enregistrer aujourd'hui</Text>
+            <Text style={styles.ctaSub}>Flux, douleurs, humeurs et symptômes</Text>
+          </View>
+          <Ionicons name="arrow-forward" size={20} color={colors.white} />
+        </Pressable>
+
+        {/* 4 · Accès rapide */}
+        <Text style={[typography.h3, styles.sectionTitle]}>Accès rapide</Text>
+
+        {/* 5 · Grille 2×2 */}
+        <View style={styles.grid}>
+          {quick.map((q) => (
+            <Pressable key={q.title} onPress={() => router.push(q.href)} style={styles.quickWrap}>
+              <Card style={styles.quickCard}>
+                <View style={styles.quickIcon}><Text style={styles.quickEmoji}>{q.emoji}</Text></View>
+                <Text style={styles.quickTitle}>{q.title}</Text>
+                <Text style={styles.quickSub}>{q.sub}</Text>
+              </Card>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* 6 · Anneau du cycle segmenté par phase */}
+        <Card style={styles.ringCard}>
+          <CycleRing
+            cycleLength={ringN}
+            currentDay={day ?? null}
+            periodLength={periodLen}
+            fertileStartDay={fertileStartDay}
+            fertileEndDay={fertileEndDay}
+            ovulationDay={ovulationDay}
+          />
+        </Card>
+
+        {/* 7 · Pilule de confiance */}
+        {hasData ? (
+          <View style={styles.confPill}>
+            <View style={[styles.confDot, { backgroundColor: conf.color }]} />
+            <Text style={styles.confText}>Confiance {conf.label} — Fiabilité des prévisions</Text>
+          </View>
+        ) : null}
+
+        {/* 8 · Cartes de prédiction */}
+        {hasData ? (
+          <View style={styles.predList}>
+            <PredCard
+              label="PROCHAINES RÈGLES"
+              value={formatShort(prediction?.nextPeriodStart)}
+              extra={periodIn != null && periodIn >= 0 ? `dans ${periodIn} jour${periodIn > 1 ? "s" : ""}` : undefined}
+            />
+            <PredCard label="OVULATION ESTIMÉE" value={formatShort(prediction?.nextOvulation)} />
+            <PredCard label="FENÊTRE FERTILE" value={`${formatShort(fertileStart)} → ${formatShort(fertileEnd)}`} />
+          </View>
+        ) : null}
       </ScrollView>
     </Screen>
   );
 }
 
-function Row({ label, value, last }: { label: string; value: string; last?: boolean }) {
+function PredCard({ label, value, extra }: { label: string; value: string; extra?: string }) {
   return (
-    <View style={[styles.row, last && styles.rowLast]}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
-    </View>
+    <Card style={styles.predCard}>
+      <Text style={styles.predLabel}>{label}</Text>
+      <View style={styles.predRow}>
+        <Text style={styles.predValue}>{value}</Text>
+        {extra ? <Text style={styles.predExtra}>{extra}</Text> : null}
+      </View>
+    </Card>
   );
 }
 
-const RING = 200;
 const styles = StyleSheet.create({
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg, gap: spacing.sm },
-  greeting: { ...typography.h2, flex: 1 },
-  bellBtn: { padding: spacing.xs },
-  bellBadge: {
-    position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9,
-    backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 4,
-  },
-  bellBadgeText: { color: colors.white, fontSize: 11, fontWeight: "700" },
-  content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  ringOuter: {
-    alignSelf: "center", width: RING, height: RING, borderRadius: RING / 2,
-    backgroundColor: colors.primaryLight,
-    alignItems: "center", justifyContent: "center",
-    marginTop: spacing.md, marginBottom: spacing.sm,
-    shadowColor: colors.primaryDark, shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 3,
-  },
-  ringInner: {
-    width: RING - 42, height: RING - 42, borderRadius: (RING - 42) / 2,
-    backgroundColor: colors.white, alignItems: "center", justifyContent: "center",
-  },
-  ringDay: { fontSize: 32, fontWeight: "700", color: colors.primaryDark },
-  ringLabel: { ...typography.caption, textAlign: "center", marginTop: spacing.xs },
-  dayMsg: {
-    alignSelf: "stretch", backgroundColor: colors.primaryLight, borderRadius: radius.md,
-    paddingVertical: spacing.sm, paddingHorizontal: spacing.md, marginBottom: spacing.xs,
-  },
-  dayMsgText: { ...typography.body, color: colors.primaryDark, textAlign: "center" },
-  card: { gap: spacing.sm, marginTop: spacing.xs },
-  cardHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  badge: {
-    ...typography.caption, color: colors.primaryDark, backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: 999, overflow: "hidden", fontWeight: "600",
-  },
-  row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
-  rowLast: { borderBottomWidth: 0 },
-  rowLabel: { ...typography.body, color: colors.textMuted },
-  rowValue: { ...typography.body, fontWeight: "600" },
-  muted: { color: colors.textMuted },
-  estimateNote: { ...typography.caption, color: colors.textMuted, marginTop: spacing.xs },
-  histRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
-  histLeft: { gap: 2 },
-  histSub: { ...typography.caption, color: colors.textMuted },
-  trash: { padding: spacing.xs },
+  content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+
+  // En-tête
+  header: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  avatarImg: { width: 30, height: 30 },
+  headerText: { flex: 1, gap: 1 },
+  hello: { ...typography.h2, fontSize: 20 },
+  phone: { ...typography.caption, color: colors.textMuted },
+  iconBtn: { padding: spacing.xs },
+  badge: { position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
+  badgeText: { color: colors.white, fontSize: 11, fontFamily: fonts.bodyBold },
+
+  // Fenêtre fertile
+  fertileCard: { backgroundColor: colors.primaryLight, borderColor: colors.primary, gap: 4 },
+  fertileLabel: { ...typography.caption, color: colors.primaryDark, fontFamily: fonts.bodySemiBold, letterSpacing: 1 },
+  fertileRange: { ...typography.h3, color: colors.primaryDark, fontFamily: fonts.titleBold },
+
+  // CTA
+  cta: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.primary, borderRadius: radius.lg, padding: spacing.md, shadowColor: colors.primaryDark, shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
+  ctaIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
+  ctaText: { flex: 1, gap: 2 },
+  ctaTitle: { color: colors.white, fontSize: 16, fontFamily: fonts.bodyBold, fontWeight: "700" },
+  ctaSub: { ...typography.caption, color: colors.white, opacity: 0.9, fontFamily: fonts.body },
+
+  // Accès rapide
+  sectionTitle: { marginTop: spacing.xs },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  quickWrap: { width: "48%" },
+  quickCard: { gap: spacing.xs },
+  quickIcon: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center", marginBottom: spacing.xs },
+  quickEmoji: { fontSize: 22 },
+  quickTitle: { ...typography.body, fontFamily: fonts.bodySemiBold, fontWeight: "700" },
+  quickSub: { ...typography.caption, color: colors.textMuted },
+
+  // Anneau
+  ringCard: { alignItems: "center", paddingVertical: spacing.lg },
+
+  // Confiance
+  confPill: { flexDirection: "row", alignItems: "center", gap: spacing.sm, alignSelf: "center", backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  confDot: { width: 10, height: 10, borderRadius: 5 },
+  confText: { ...typography.caption, color: colors.text, fontFamily: fonts.bodyMedium },
+
+  // Prédictions
+  predList: { gap: spacing.sm },
+  predCard: { gap: 4 },
+  predLabel: { ...typography.caption, color: colors.textMuted, fontFamily: fonts.bodySemiBold, letterSpacing: 1 },
+  predRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
+  predValue: { ...typography.h3, fontFamily: fonts.titleBold, color: colors.text, textTransform: "capitalize" },
+  predExtra: { ...typography.caption, color: colors.primary, fontFamily: fonts.bodySemiBold },
 });

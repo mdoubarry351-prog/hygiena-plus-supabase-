@@ -12,6 +12,8 @@ type AuthState = {
   initializing: boolean; // true tant que la session initiale n'est pas résolue
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ needsEmailConfirmation: boolean }>;
+  signInWithPhone: (phone: string) => Promise<void>;
+  verifyPhoneOtp: (phone: string, token: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
@@ -76,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializing,
     signIn: authService.signIn,
     signUp: authService.signUp,
+    signInWithPhone: authService.signInWithPhone,
+    verifyPhoneOtp: authService.verifyPhoneOtp,
     async signOut() {
       await authService.signOut();
       setProfile(null);

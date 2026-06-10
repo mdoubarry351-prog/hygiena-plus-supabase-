@@ -31,12 +31,35 @@ export const radius = {
   pill: 999,
 } as const;
 
-export const typography = {
-  h1: { fontSize: 28, fontWeight: "700" as const, color: colors.text },
-  h2: { fontSize: 22, fontWeight: "700" as const, color: colors.text },
-  h3: { fontSize: 18, fontWeight: "600" as const, color: colors.text },
-  body: { fontSize: 15, fontWeight: "400" as const, color: colors.text },
-  caption: { fontSize: 13, fontWeight: "400" as const, color: colors.textMuted },
+// Familles de polices chargées dans app/_layout.tsx (useFonts).
+// TOUT en Inter (sans-serif) — la hiérarchie se fait uniquement par la graisse.
+export const fonts = {
+  titleBold: "Inter_700Bold",
+  titleSemiBold: "Inter_600SemiBold",
+  body: "Inter_400Regular",
+  bodyMedium: "Inter_500Medium",
+  bodySemiBold: "Inter_600SemiBold",
+  bodyBold: "Inter_700Bold",
 } as const;
 
-export const theme = { colors, spacing, radius, typography };
+export const typography = {
+  h1: { fontSize: 28, fontWeight: "700" as const, fontFamily: fonts.titleBold, color: colors.text },
+  h2: { fontSize: 22, fontWeight: "700" as const, fontFamily: fonts.titleBold, color: colors.text },
+  h3: { fontSize: 18, fontWeight: "600" as const, fontFamily: fonts.titleSemiBold, color: colors.text },
+  body: { fontSize: 15, fontWeight: "400" as const, fontFamily: fonts.body, color: colors.text },
+  caption: { fontSize: 13, fontWeight: "400" as const, fontFamily: fonts.body, color: colors.textMuted },
+} as const;
+
+// Couleurs des phases du cycle — partagées par CycleRing (accueil) et le
+// calendrier, pour une convention cohérente. "Soft" = fond clair de pastille.
+export const phase = {
+  period: "#EF4444", // Règles → rouge
+  periodSoft: "#FEE2E2", // Règles prévues → rouge très clair
+  fertile: colors.primary, // Fenêtre fertile → vert (#10B981)
+  fertileSoft: colors.primaryLight, // → vert clair (#D1FAE5)
+  ovulation: "#3B82F6", // Ovulation → bleu
+  ovulationSoft: "#DBEAFE", // → bleu clair
+  neutral: "#E5E7EB", // Reste du cycle → gris clair
+} as const;
+
+export const theme = { colors, spacing, radius, typography, fonts, phase };

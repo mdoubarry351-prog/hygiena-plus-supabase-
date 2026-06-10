@@ -1,16 +1,17 @@
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet, Text } from "react-native";
 import { RoleGuard } from "@/components/RoleGuard";
 import { CartProvider } from "@/providers/CartProvider";
-import { useAuth } from "@/providers/AuthProvider";
-import { colors } from "@/theme";
+import { colors, fonts } from "@/theme";
+
+// Icône d'onglet = emoji (maquette). Atténué quand l'onglet n'est pas actif.
+function tabEmoji(emoji: string) {
+  return function TabEmoji({ focused }: { focused: boolean }) {
+    return <Text style={[styles.emoji, !focused && styles.emojiDim]}>{emoji}</Text>;
+  };
+}
 
 export default function UserLayout() {
-  const { role } = useAuth();
-  // Le médecin ne prend pas de RDV en tant que patient : on masque l'onglet
-  // « Rendez-vous » (prise de RDV patient) de sa barre d'onglets.
-  const isDoctor = role === "doctor";
-
   return (
     <RoleGuard allow={["user", "doctor"]}>
       <CartProvider>
@@ -20,53 +21,20 @@ export default function UserLayout() {
             tabBarActiveTintColor: colors.primary,
             tabBarInactiveTintColor: colors.textMuted,
             tabBarStyle: { borderTopColor: colors.border, height: 88, paddingTop: 8 },
-            tabBarLabelStyle: { fontSize: 11 },
+            tabBarLabelStyle: { fontSize: 11, fontFamily: fonts.bodyMedium },
           }}
         >
-          <Tabs.Screen
-            name="index"
-            options={{
-              title: "Cycle",
-              tabBarIcon: ({ color, size }) => <Ionicons name="ellipse-outline" color={color} size={size} />,
-            }}
-          />
-          <Tabs.Screen
-            name="cycle/calendar"
-            options={{
-              title: "Calendrier",
-              tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" color={color} size={size} />,
-            }}
-          />
-          <Tabs.Screen
-            name="marketplace/index"
-            options={{
-              title: "Boutique",
-              tabBarIcon: ({ color, size }) => <Ionicons name="bag-outline" color={color} size={size} />,
-            }}
-          />
-          <Tabs.Screen
-            name="community/index"
-            options={{
-              title: "Communauté",
-              tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" color={color} size={size} />,
-            }}
-          />
-          <Tabs.Screen
-            name="appointments/index"
-            options={{
-              title: "Rendez-vous",
-              // Masqué pour les médecins (ils reçoivent des RDV via l'espace pro).
-              href: isDoctor ? null : undefined,
-              tabBarIcon: ({ color, size }) => <Ionicons name="medkit-outline" color={color} size={size} />,
-            }}
-          />
-          <Tabs.Screen
-            name="profile"
-            options={{
-              title: "Profil",
-              tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" color={color} size={size} />,
-            }}
-          />
+          {/* 5 onglets : Aujourd'hui · Cycle · Boutique · Forum · Profil */}
+          <Tabs.Screen name="index" options={{ title: "Aujourd'hui", tabBarIcon: tabEmoji("🏡") }} />
+          <Tabs.Screen name="cycle/calendar" options={{ title: "Cycle", tabBarIcon: tabEmoji("🩸") }} />
+          <Tabs.Screen name="marketplace/index" options={{ title: "Boutique", tabBarIcon: tabEmoji("🛍️") }} />
+          <Tabs.Screen name="community/index" options={{ title: "Forum", tabBarIcon: tabEmoji("💬") }} />
+          <Tabs.Screen name="profile" options={{ title: "Profil", tabBarIcon: tabEmoji("👤") }} />
+
+          {/* Consultations retirées de la barre — accès via la carte « Consultations » de l'accueil.
+              (La restriction médecin reste assurée par le garde in-screen + la carte masquée pour un doctor.) */}
+          <Tabs.Screen name="appointments/index" options={{ href: null }} />
+
           {/* Écrans accessibles mais cachés de la barre d'onglets */}
           <Tabs.Screen name="cycle/log" options={{ href: null }} />
           <Tabs.Screen name="marketplace/[id]" options={{ href: null }} />
@@ -83,3 +51,8 @@ export default function UserLayout() {
     </RoleGuard>
   );
 }
+
+const styles = StyleSheet.create({
+  emoji: { fontSize: 22, marginTop: 2 },
+  emojiDim: { opacity: 0.4 },
+});

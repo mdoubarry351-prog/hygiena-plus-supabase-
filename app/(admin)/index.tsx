@@ -1,5 +1,5 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter, type Href } from "expo-router";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Redirect, useRouter, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -30,6 +30,11 @@ const SECTIONS: Section[] = [
 export default function AdminHub() {
   const { profile, signOut } = useAuth();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+
+  // Desktop : la sidebar gère la navigation → on affiche directement le tableau
+  // de bord dans la zone de contenu (le hub mobile reste pour les petits écrans).
+  if (width >= 900) return <Redirect href="/(admin)/dashboard" />;
 
   function handleSignOut() {
     Alert.alert("Se déconnecter", "Voulez-vous vraiment vous déconnecter ?", [

@@ -10,7 +10,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useDoctors } from "@/hooks/useDoctors";
 import { doctorDisplayName, type DoctorWithProfile } from "@/lib/appointments-service";
 import { formatPrice } from "@/lib/marketplace-service";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 export default function AppointmentsHome() {
   const { role } = useAuth();
@@ -34,7 +34,7 @@ export default function AppointmentsHome() {
   return (
     <Screen>
       <View style={styles.topBar}>
-        <Text style={typography.h2}>Rendez-vous</Text>
+        <Text style={typography.h2}>Trouver une médecin</Text>
         <Pressable onPress={() => router.push("/(user)/appointments/mine")} hitSlop={10} style={styles.iconBtn}>
           <Ionicons name="calendar-outline" size={25} color={colors.text} />
         </Pressable>
@@ -45,6 +45,9 @@ export default function AppointmentsHome() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
+        <Card style={styles.verified}>
+          <Text style={styles.verifiedText}>✅ Toutes nos médecins sont vérifiées</Text>
+        </Card>
         {doctors.length === 0 ? (
           <Card style={styles.empty}>
             <Ionicons name="medkit-outline" size={40} color={colors.textMuted} />
@@ -101,6 +104,8 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
   iconBtn: { padding: spacing.xs },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  verified: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  verifiedText: { ...typography.body, color: colors.primaryDark, fontFamily: fonts.bodySemiBold, fontWeight: "700" },
   empty: { alignItems: "center", gap: spacing.sm },
   muted: { color: colors.textMuted, textAlign: "center" },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md },

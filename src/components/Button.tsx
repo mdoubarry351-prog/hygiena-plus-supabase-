@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
-import { colors, radius, spacing } from "@/theme";
+import { colors, fonts, radius, spacing } from "@/theme";
 
 type Variant = "primary" | "secondary" | "outline" | "danger";
 
@@ -48,6 +48,6 @@ const styles = StyleSheet.create({
   outline: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.primary },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.5 },
-  text: { color: colors.white, fontSize: 16, fontWeight: "600" },
+  text: { color: colors.white, fontSize: 16, fontWeight: "600", fontFamily: fonts.bodySemiBold },
   textOutline: { color: colors.primary },
 });

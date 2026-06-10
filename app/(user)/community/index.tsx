@@ -50,6 +50,7 @@ export default function CommunityHome() {
       >
         {posts.length === 0 ? (
           <Card style={styles.empty}>
+            <Text style={styles.emptyEmoji}>💬</Text>
             <Text style={typography.h3}>Aucune publication</Text>
             <Text style={[typography.body, styles.muted]}>
               Soyez la première à partager quelque chose avec la communauté.
@@ -132,7 +133,8 @@ const styles = StyleSheet.create({
   },
   newBtnText: { color: colors.white, fontSize: 14, fontWeight: "600" },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  empty: { gap: spacing.sm },
+  empty: { gap: spacing.sm, alignItems: "center" },
+  emptyEmoji: { fontSize: 34 },
   muted: { color: colors.textMuted },
   post: { gap: spacing.sm },
   postHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

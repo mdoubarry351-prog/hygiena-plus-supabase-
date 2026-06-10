@@ -9,7 +9,7 @@ import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { authService } from "@/lib/auth-service";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 export default function Profile() {
   const { profile, session, role, refreshProfile, signOut } = useAuth();
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { fontSize: 36, fontWeight: "700", color: colors.primaryDark },
+  avatarText: { fontSize: 36, fontWeight: "700", fontFamily: fonts.titleBold, color: colors.primaryDark },
   email: { ...typography.caption },
   statusCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   statusLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 },

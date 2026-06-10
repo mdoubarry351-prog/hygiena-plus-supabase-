@@ -10,7 +10,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/providers/CartProvider";
 import { formatPrice } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 export default function MarketplaceHome() {
   const { products, loading, reload } = useProducts();
@@ -31,7 +31,7 @@ export default function MarketplaceHome() {
   return (
     <Screen>
       <View style={styles.topBar}>
-        <Text style={typography.h2}>Boutique</Text>
+        <Text style={typography.h2}>Hygiena+ Store</Text>
         <View style={styles.actions}>
           <Pressable onPress={() => router.push("/(user)/marketplace/orders")} hitSlop={10} style={styles.iconBtn}>
             <Ionicons name="receipt-outline" size={25} color={colors.text} />
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9,
     backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 4,
   },
-  cartBadgeText: { color: colors.white, fontSize: 11, fontWeight: "700" },
+  cartBadgeText: { color: colors.white, fontSize: 11, fontWeight: "700", fontFamily: fonts.bodyBold },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   empty: { gap: spacing.sm },
   muted: { color: colors.textMuted },

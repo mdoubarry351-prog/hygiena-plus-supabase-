@@ -4,7 +4,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
 import { useCycles } from "@/hooks/useCycles";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, fonts, phase, radius, spacing, typography } from "@/theme";
 
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
 const MONTHS = [
@@ -85,7 +85,7 @@ export default function CalendarScreen() {
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={typography.h2}>Calendrier</Text>
+        <Text style={typography.h2}>Mon cycle</Text>
 
         <Card style={styles.calCard}>
           <View style={styles.header}>
@@ -116,6 +116,8 @@ export default function CalendarScreen() {
                     <Text style={[
                       styles.dayText,
                       (type === "period" || type === "ovulation") && styles.dayTextLight,
+                      type === "predicted" && styles.dayTextPredicted,
+                      type === "fertile" && styles.dayTextFertile,
                     ]}>{d.getDate()}</Text>
                   </View>
                 </View>
@@ -126,20 +128,20 @@ export default function CalendarScreen() {
 
         {/* Légende */}
         <Card style={styles.legend}>
-          <LegendItem color={colors.primary} label="Règles" />
-          <LegendItem color={colors.primaryLight} label="Règles prévues" border />
-          <LegendItem color="#C9F0DD" label="Fenêtre fertile" />
-          <LegendItem color={colors.secondary} label="Ovulation" />
+          <LegendItem color={phase.period} label="Règles" />
+          <LegendItem color={phase.periodSoft} label="Règles prévues" borderColor={phase.period} />
+          <LegendItem color={phase.fertileSoft} label="Fenêtre fertile" borderColor={phase.fertile} />
+          <LegendItem color={phase.ovulation} label="Ovulation" />
         </Card>
       </ScrollView>
     </Screen>
   );
 }
 
-function LegendItem({ color, label, border }: { color: string; label: string; border?: boolean }) {
+function LegendItem({ color, label, borderColor }: { color: string; label: string; borderColor?: string }) {
   return (
     <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: color }, border && { borderWidth: 1, borderColor: colors.primary }]} />
+      <View style={[styles.legendDot, { backgroundColor: color }, borderColor ? { borderWidth: 1.5, borderColor } : null]} />
       <Text style={typography.caption}>{label}</Text>
     </View>
   );
@@ -157,11 +159,13 @@ const styles = StyleSheet.create({
   cell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: "center", justifyContent: "center" },
   dayDot: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   dayText: { ...typography.body },
-  dayTextLight: { color: colors.white, fontWeight: "600" },
-  dayPeriod: { backgroundColor: colors.primary },
-  dayPredicted: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primary },
-  dayFertile: { backgroundColor: "#C9F0DD" },
-  dayOvulation: { backgroundColor: colors.secondary },
+  dayTextLight: { color: colors.white, fontWeight: "600", fontFamily: fonts.bodySemiBold },
+  dayTextPredicted: { color: phase.period, fontWeight: "600", fontFamily: fonts.bodySemiBold },
+  dayTextFertile: { color: colors.primaryDark, fontWeight: "600", fontFamily: fonts.bodySemiBold },
+  dayPeriod: { backgroundColor: phase.period },
+  dayPredicted: { backgroundColor: phase.periodSoft, borderWidth: 1.5, borderColor: phase.period },
+  dayFertile: { backgroundColor: phase.fertileSoft },
+  dayOvulation: { backgroundColor: phase.ovulation },
   dayToday: { borderWidth: 2, borderColor: colors.text },
   legend: { gap: spacing.sm },
   legendItem: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

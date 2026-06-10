@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, Image, StyleSheet, Text, View } from "react-native";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
@@ -11,6 +11,7 @@ const logo = require("../../assets/logo/hygiena-icon-1024.png");
 
 export default function Login() {
   const { signIn } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -66,6 +67,7 @@ export default function Login() {
         />
 
         <Button title="Se connecter" onPress={handleLogin} loading={loading} />
+        <Button title="Se connecter par téléphone" variant="outline" onPress={() => router.push("/(auth)/phone")} />
       </View>
 
       <View style={styles.footer}>

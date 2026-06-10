@@ -40,6 +40,22 @@ export const authService = {
     if (error) throw error;
   },
 
+  /**
+   * Connexion par téléphone (OTP SMS) — méthode ALTERNATIVE à l'email.
+   * 1) Envoie le code par SMS. Crée le compte si le numéro est nouveau.
+   *    (Nécessite un fournisseur SMS configuré dans Supabase → Auth → Phone.)
+   */
+  async signInWithPhone(phone: string) {
+    const { error } = await supabase.auth.signInWithOtp({ phone });
+    if (error) throw error;
+  },
+
+  /** 2) Vérifie le code à 6 chiffres et ouvre la session. */
+  async verifyPhoneOtp(phone: string, token: string) {
+    const { error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
+    if (error) throw error;
+  },
+
   async resetPassword(email: string, redirectTo: string) {
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     if (error) throw error;
