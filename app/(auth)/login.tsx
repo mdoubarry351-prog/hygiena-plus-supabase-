@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, StyleSheet, Text, View } from "react-native";
 import { Link } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
 import { colors, spacing, typography } from "@/theme";
+
+const logo = require("../../assets/logo/hygiena-icon-1024.png");
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -32,45 +34,70 @@ export default function Login() {
 
   return (
     <Screen>
+      {/* Halo mint doux derrière l'en-tête (décoratif, non interactif) */}
+      <View style={styles.glow} pointerEvents="none" />
+
       <View style={styles.header}>
-        <Text style={styles.logo}>Hygiena+</Text>
-        <Text style={typography.caption}>Votre santé, en confiance.</Text>
+        <View style={styles.logoHalo}>
+          <Image source={logo} style={styles.logoImg} resizeMode="contain" />
+        </View>
+        <Text style={styles.wordmark}>
+          Hygiena<Text style={styles.plus}>+</Text>
+        </Text>
+        <Text style={styles.tagline}>Prenez soin de vous, jour après jour 🌿</Text>
       </View>
 
-      <Input
-        label="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        autoComplete="email"
-        keyboardType="email-address"
-        placeholder="vous@exemple.com"
-      />
-      <Input
-        label="Mot de passe"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        placeholder="••••••••"
-      />
+      <View style={styles.form}>
+        <Input
+          label="Email"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          placeholder="vous@exemple.com"
+        />
+        <Input
+          label="Mot de passe"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholder="••••••••"
+        />
 
-      <Button title="Se connecter" onPress={handleLogin} loading={loading} />
+        <Button title="Se connecter" onPress={handleLogin} loading={loading} />
+      </View>
 
       <View style={styles.footer}>
         <Link href="/(auth)/forgot-password" style={styles.link}>
           Mot de passe oublié ?
         </Link>
         <Link href="/(auth)/register" style={styles.link}>
-          Créer un compte
+          Pas encore de compte ? <Text style={styles.linkStrong}>Créer un compte</Text>
         </Link>
       </View>
     </Screen>
   );
 }
 
+const HALO = 124;
 const styles = StyleSheet.create({
-  header: { alignItems: "center", marginTop: spacing.xxl, marginBottom: spacing.xl },
-  logo: { ...typography.h1, color: colors.primary, fontSize: 34 },
-  footer: { marginTop: spacing.lg, gap: spacing.md, alignItems: "center" },
-  link: { color: colors.primary, fontWeight: "600" },
+  glow: {
+    position: "absolute", top: -150, left: -60, right: -60, height: 320,
+    borderRadius: 200, backgroundColor: colors.primaryLight, opacity: 0.5,
+  },
+  header: { alignItems: "center", marginTop: spacing.xxl, marginBottom: spacing.xl, gap: spacing.sm },
+  logoHalo: {
+    width: HALO, height: HALO, borderRadius: HALO / 2, backgroundColor: colors.primaryLight,
+    alignItems: "center", justifyContent: "center",
+    shadowColor: colors.primaryDark, shadowOpacity: 0.15, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 4,
+  },
+  logoImg: { width: 78, height: 78 },
+  wordmark: { fontSize: 32, fontWeight: "700", color: colors.primaryDark, marginTop: spacing.sm, letterSpacing: 0.3 },
+  plus: { color: colors.accent, fontWeight: "700" },
+  tagline: { ...typography.body, color: colors.textMuted, textAlign: "center" },
+  form: { gap: spacing.xs },
+  footer: { marginTop: spacing.xl, gap: spacing.md, alignItems: "center" },
+  link: { ...typography.body, color: colors.textMuted },
+  linkStrong: { color: colors.primary, fontWeight: "700" },
 });

@@ -18,6 +18,17 @@ function formatDate(d: Date | null): string {
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
 }
 
+// Message bienveillant du jour, dérivé de la phase du cycle quand l'info est
+// disponible (présentation uniquement, à partir des données déjà chargées).
+function dailyMessage(day: number | null | undefined, avg: number | null | undefined): string {
+  if (!day || !avg) return "Prends un moment pour toi aujourd'hui. 🌿";
+  const ovulation = Math.max(10, avg - 14);
+  if (day <= 5) return "Phase menstruelle — accorde-toi repos et douceur. 💗";
+  if (day < ovulation - 1) return "Phase folliculaire — ton énergie remonte, profites-en. 🌱";
+  if (day <= ovulation + 1) return "Autour de l'ovulation — tu rayonnes aujourd'hui. ✨";
+  return "Phase lutéale — écoute tes besoins, sois indulgente avec toi. 🌙";
+}
+
 export default function CycleHome() {
   const { profile, session } = useAuth();
   const { cycles, prediction, loading, reload } = useCycles();
@@ -69,11 +80,18 @@ export default function CycleHome() {
   // "estimé" si on a moins de 2 cycles distincts (donc moyenne par défaut)
   const isEstimate = cycles.length < 2;
 
+  // Salutation chaleureuse selon l'heure (présentation uniquement).
+  const hour = new Date().getHours();
+  const isEvening = hour >= 18 || hour < 5;
+  const firstName = profile?.full_name?.split(" ")[0] ?? "";
+  const greetingText = `${isEvening ? "Bonsoir" : "Bonjour"}${firstName ? " " + firstName : ""} ${isEvening ? "🌙" : "🌿"}`;
+  const dayMessage = dailyMessage(day, prediction?.averageCycleLength);
+
   return (
     <Screen>
       <View style={styles.topBar}>
         <Text style={styles.greeting} numberOfLines={1}>
-          Bonjour {profile?.full_name?.split(" ")[0] ?? ""} 👋
+          {greetingText}
         </Text>
         <Pressable onPress={() => router.push("/(user)/notifications")} hitSlop={10} style={styles.bellBtn}>
           <Ionicons name="notifications-outline" size={26} color={colors.text} />
@@ -90,7 +108,7 @@ export default function CycleHome() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        <View style={styles.ring}>
+        <View style={styles.ringOuter}>
           <View style={styles.ringInner}>
             {day ? (
               <>
@@ -101,6 +119,10 @@ export default function CycleHome() {
               <Text style={styles.ringLabel}>Enregistrez{"\n"}vos règles</Text>
             )}
           </View>
+        </View>
+
+        <View style={styles.dayMsg}>
+          <Text style={styles.dayMsgText}>{dayMessage}</Text>
         </View>
 
         {prediction?.hasEnoughData ? (
@@ -178,14 +200,24 @@ const styles = StyleSheet.create({
   },
   bellBadgeText: { color: colors.white, fontSize: 11, fontWeight: "700" },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  ring: {
+  ringOuter: {
     alignSelf: "center", width: RING, height: RING, borderRadius: RING / 2,
-    borderWidth: 12, borderColor: colors.primaryLight,
-    alignItems: "center", justifyContent: "center", marginVertical: spacing.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center", justifyContent: "center",
+    marginTop: spacing.md, marginBottom: spacing.sm,
+    shadowColor: colors.primaryDark, shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 3,
   },
-  ringInner: { alignItems: "center" },
-  ringDay: { fontSize: 34, fontWeight: "700", color: colors.primary },
+  ringInner: {
+    width: RING - 42, height: RING - 42, borderRadius: (RING - 42) / 2,
+    backgroundColor: colors.white, alignItems: "center", justifyContent: "center",
+  },
+  ringDay: { fontSize: 32, fontWeight: "700", color: colors.primaryDark },
   ringLabel: { ...typography.caption, textAlign: "center", marginTop: spacing.xs },
+  dayMsg: {
+    alignSelf: "stretch", backgroundColor: colors.primaryLight, borderRadius: radius.md,
+    paddingVertical: spacing.sm, paddingHorizontal: spacing.md, marginBottom: spacing.xs,
+  },
+  dayMsgText: { ...typography.body, color: colors.primaryDark, textAlign: "center" },
   card: { gap: spacing.sm, marginTop: spacing.xs },
   cardHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   badge: {
