@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -11,7 +12,8 @@ import { authService } from "@/lib/auth-service";
 import { colors, radius, spacing, typography } from "@/theme";
 
 export default function Profile() {
-  const { profile, session, refreshProfile, signOut } = useAuth();
+  const { profile, session, role, refreshProfile, signOut } = useAuth();
+  const router = useRouter();
 
   const [fullName, setFullName] = useState(profile?.full_name ?? "");
   const [phone, setPhone] = useState(profile?.phone ?? "");
@@ -96,6 +98,23 @@ export default function Profile() {
           {profile.is_premium && <Text style={styles.badge}>PREMIUM</Text>}
         </Card>
 
+        {role === "doctor" && (
+          <Pressable onPress={() => router.push("/(doctor)")}>
+            <Card style={styles.proCard}>
+              <View style={styles.proIcon}>
+                <Ionicons name="medkit" size={22} color={colors.secondary} />
+              </View>
+              <View style={styles.proText}>
+                <Text style={styles.proTitle}>Espace professionnel</Text>
+                <Text style={styles.proSub}>
+                  Tableau de bord, rendez-vous, disponibilité, fiche médecin
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </Card>
+          </Pressable>
+        )}
+
         <Card style={styles.formCard}>
           <Text style={typography.h3}>Informations</Text>
           <Input
@@ -150,4 +169,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   formCard: { gap: spacing.sm },
+  proCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  proIcon: {
+    width: 44, height: 44, borderRadius: radius.pill, backgroundColor: colors.surface,
+    alignItems: "center", justifyContent: "center",
+  },
+  proText: { flex: 1, gap: 2 },
+  proTitle: { ...typography.body, fontWeight: "600" },
+  proSub: { ...typography.caption, color: colors.textMuted },
 });

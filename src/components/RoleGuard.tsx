@@ -10,14 +10,26 @@ import type { UserRole } from "@/lib/database.types";
  * - Session mais profil non chargé -> écran de chargement
  * - Rôle non autorisé -> renvoie vers l'aiguilleur racine (qui redirige vers
  *   le bon espace selon le rôle réel)
+ *
+ * `allow` accepte un rôle unique ou une liste de rôles. Exemple : l'espace
+ * utilisateur autorise `["user", "doctor"]` car le médecin réutilise tous les
+ * écrans patients en plus de ses outils pro.
  */
-export function RoleGuard({ allow, children }: { allow: UserRole; children: ReactNode }) {
+export function RoleGuard({
+  allow,
+  children,
+}: {
+  allow: UserRole | UserRole[];
+  children: ReactNode;
+}) {
   const { session, profile, initializing } = useAuth();
 
   if (initializing) return <Loading />;
   if (!session) return <Redirect href="/(auth)/login" />;
   if (!profile) return <Loading />;
-  if (profile.role !== allow) return <Redirect href="/" />;
+
+  const allowed = Array.isArray(allow) ? allow : [allow];
+  if (!allowed.includes(profile.role)) return <Redirect href="/" />;
 
   return <>{children}</>;
 }

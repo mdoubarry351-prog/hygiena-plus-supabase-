@@ -10,7 +10,8 @@ import { Loading } from "@/components/Loading";
 import { useCycles } from "@/hooks/useCycles";
 import { useAuth } from "@/providers/AuthProvider";
 import { cycleService } from "@/lib/cycle-service";
-import { colors, spacing, typography } from "@/theme";
+import { notificationsService } from "@/lib/notifications-service";
+import { colors, radius, spacing, typography } from "@/theme";
 
 function formatDate(d: Date | null): string {
   if (!d) return "—";
@@ -18,16 +19,26 @@ function formatDate(d: Date | null): string {
 }
 
 export default function CycleHome() {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const { cycles, prediction, loading, reload } = useCycles();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const [unread, setUnread] = useState(0);
 
-  useFocusEffect(useCallback(() => { reload(); }, [reload]));
+  const loadUnread = useCallback(async () => {
+    if (!session?.user) return;
+    try {
+      setUnread(await notificationsService.getUnreadCount(session.user.id));
+    } catch {
+      // Compteur non bloquant : on ignore l'erreur.
+    }
+  }, [session?.user]);
+
+  useFocusEffect(useCallback(() => { reload(); loadUnread(); }, [reload, loadUnread]));
 
   async function onRefresh() {
     setRefreshing(true);
-    await reload();
+    await Promise.all([reload(), loadUnread()]);
     setRefreshing(false);
   }
 
@@ -60,13 +71,25 @@ export default function CycleHome() {
 
   return (
     <Screen>
+      <View style={styles.topBar}>
+        <Text style={styles.greeting} numberOfLines={1}>
+          Bonjour {profile?.full_name?.split(" ")[0] ?? ""} 👋
+        </Text>
+        <Pressable onPress={() => router.push("/(user)/notifications")} hitSlop={10} style={styles.bellBtn}>
+          <Ionicons name="notifications-outline" size={26} color={colors.text} />
+          {unread > 0 && (
+            <View style={styles.bellBadge}>
+              <Text style={styles.bellBadgeText}>{unread > 99 ? "99+" : unread}</Text>
+            </View>
+          )}
+        </Pressable>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        <Text style={styles.greeting}>Bonjour {profile?.full_name?.split(" ")[0] ?? ""} 👋</Text>
-
         <View style={styles.ring}>
           <View style={styles.ringInner}>
             {day ? (
@@ -146,8 +169,15 @@ function Row({ label, value, last }: { label: string; value: string; last?: bool
 
 const RING = 200;
 const styles = StyleSheet.create({
-  content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
-  greeting: { ...typography.h2 },
+  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg, gap: spacing.sm },
+  greeting: { ...typography.h2, flex: 1 },
+  bellBtn: { padding: spacing.xs },
+  bellBadge: {
+    position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9,
+    backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 4,
+  },
+  bellBadgeText: { color: colors.white, fontSize: 11, fontWeight: "700" },
+  content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   ring: {
     alignSelf: "center", width: RING, height: RING, borderRadius: RING / 2,
     borderWidth: 12, borderColor: colors.primaryLight,
