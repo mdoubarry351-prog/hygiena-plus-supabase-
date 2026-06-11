@@ -143,7 +143,7 @@ export const doctorService = {
   // Met à jour la fiche médecin (spécialité, bio, tarif).
   async updateProfile(
     doctorId: string,
-    patch: { specialty: string; bio: string | null; consultation_fee: number | null }
+    patch: { specialty: string; bio: string | null; consultation_fee: number | null; clinic_name: string | null }
   ): Promise<Doctor> {
     const { data, error } = await supabase
       .from("doctors")

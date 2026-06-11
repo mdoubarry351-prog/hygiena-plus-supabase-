@@ -17,6 +17,7 @@ export default function DoctorProfile() {
   const { doctor, loading, setDoctor } = useMyDoctor();
 
   const [specialty, setSpecialty] = useState("");
+  const [clinic, setClinic] = useState("");
   const [bio, setBio] = useState("");
   const [fee, setFee] = useState("");
   const [saving, setSaving] = useState(false);
@@ -25,6 +26,7 @@ export default function DoctorProfile() {
   useEffect(() => {
     if (doctor) {
       setSpecialty(doctor.specialty ?? "");
+      setClinic(doctor.clinic_name ?? "");
       setBio(doctor.bio ?? "");
       setFee(doctor.consultation_fee != null ? String(doctor.consultation_fee) : "");
     }
@@ -53,6 +55,7 @@ export default function DoctorProfile() {
 
   const dirty =
     specialty.trim() !== (doctor.specialty ?? "") ||
+    clinic.trim() !== (doctor.clinic_name ?? "") ||
     bio.trim() !== (doctor.bio ?? "") ||
     (feeNumber ?? null) !== (doctor.consultation_fee ?? null);
 
@@ -70,6 +73,7 @@ export default function DoctorProfile() {
     try {
       const updated = await doctorService.updateProfile(doctor.id, {
         specialty: specialty.trim(),
+        clinic_name: clinic.trim() ? clinic.trim() : null,
         bio: bio.trim() ? bio.trim() : null,
         consultation_fee: feeNumber,
       });
@@ -124,6 +128,13 @@ export default function DoctorProfile() {
             value={specialty}
             onChangeText={setSpecialty}
             placeholder="Ex. Gynécologie"
+            autoCapitalize="sentences"
+          />
+          <Input
+            label="Nom de la clinique"
+            value={clinic}
+            onChangeText={setClinic}
+            placeholder="Ex. Clinique Hygiena Santé, Conakry"
             autoCapitalize="sentences"
           />
           <Input

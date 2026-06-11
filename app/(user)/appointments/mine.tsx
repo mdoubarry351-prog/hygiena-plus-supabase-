@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Redirect } from "expo-router";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Redirect, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -16,7 +16,7 @@ import {
   type AppointmentWithDoctor,
 } from "@/lib/appointments-service";
 import type { AppointmentStatus } from "@/lib/database.types";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
   pending: "En attente",
@@ -34,6 +34,7 @@ const STATUS_COLORS: Record<AppointmentStatus, string> = {
 
 export default function MyAppointments() {
   const { session, role } = useAuth();
+  const router = useRouter();
   const [appointments, setAppointments] = useState<AppointmentWithDoctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -107,6 +108,15 @@ export default function MyAppointments() {
                   </View>
                 </View>
                 {a.reason ? <Text style={styles.reason}>{a.reason}</Text> : null}
+                {a.is_paid ? (
+                  <Pressable
+                    onPress={() => router.push({ pathname: "/(user)/appointments/receipt", params: { id: a.id } })}
+                    style={styles.receiptBtn}
+                  >
+                    <Ionicons name="receipt-outline" size={16} color={colors.primary} />
+                    <Text style={styles.receiptBtnText}>Voir le reçu</Text>
+                  </Pressable>
+                ) : null}
               </Card>
             );
           })
@@ -120,6 +130,8 @@ const styles = StyleSheet.create({
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   empty: { alignItems: "center", gap: spacing.sm },
   muted: { color: colors.textMuted, textAlign: "center" },
+  receiptBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs, alignSelf: "flex-start", paddingTop: spacing.xs },
+  receiptBtnText: { ...typography.caption, color: colors.primary, fontFamily: fonts.bodySemiBold },
   apptCard: { gap: spacing.sm },
   apptHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
   apptInfo: { flex: 1, gap: 2 },

@@ -45,6 +45,9 @@ export default function UserLayout() {
           <Tabs.Screen name="community/[id]" options={{ href: null }} />
           <Tabs.Screen name="appointments/[id]" options={{ href: null }} />
           <Tabs.Screen name="appointments/mine" options={{ href: null }} />
+          <Tabs.Screen name="appointments/receipt" options={{ href: null }} />
+          <Tabs.Screen name="appointments/chat" options={{ href: null }} />
+          <Tabs.Screen name="premium" options={{ href: null }} />
           <Tabs.Screen name="notifications" options={{ href: null }} />
         </Tabs>
       </CartProvider>

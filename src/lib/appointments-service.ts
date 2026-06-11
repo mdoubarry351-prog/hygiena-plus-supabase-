@@ -22,6 +22,21 @@ export type AppointmentWithDoctor = Appointment & {
   doctor: AppointmentDoctor | null;
 };
 
+// Médecin joint pour le reçu (avec nom de clinique).
+export type ReceiptDoctor = Pick<Doctor, "specialty" | "clinic_name"> & {
+  profile: DoctorProfile | null;
+};
+
+// Rendez-vous pour l'écran reçu (médecin + clinique).
+export type AppointmentReceipt = Appointment & { doctor: ReceiptDoctor | null };
+
+// Génère un numéro de reçu type « RCP-XXXXXXXX » (paiement simulé).
+export function generateReceiptNumber(): string {
+  const ts = Date.now().toString(36).slice(-4).toUpperCase();
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `RCP-${ts}${rand}`;
+}
+
 // Nom à afficher pour un médecin (repli sur « Médecin » si le profil est incomplet).
 export function doctorDisplayName(profile: DoctorProfile | null): string {
   return profile?.full_name?.trim() || "Médecin";
@@ -82,13 +97,16 @@ export const appointmentsService = {
   },
 
   // Crée un rendez-vous. Le statut est « pending » par défaut côté base.
+  // Si `payment` est fourni (paiement simulé confirmé) : is_paid=true + reçu.
   async createAppointment(input: {
     patientId: string;
     doctorId: string;
     date: string;
     time: string;
     reason?: string | null;
+    payment?: { amountPaid: number; receiptNumber: string };
   }): Promise<Appointment> {
+    const paid = input.payment;
     const payload: TablesInsert<"appointments"> = {
       patient_id: input.patientId,
       doctor_id: input.doctorId,
@@ -96,6 +114,10 @@ export const appointmentsService = {
       appointment_time: input.time,
       status: "pending",
       reason: input.reason ?? null,
+      is_paid: !!paid,
+      amount_paid: paid ? paid.amountPaid : null,
+      paid_at: paid ? new Date().toISOString() : null,
+      receipt_number: paid ? paid.receiptNumber : null,
     };
     const { data, error } = await supabase
       .from("appointments")
@@ -104,5 +126,16 @@ export const appointmentsService = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  // Rendez-vous unique avec médecin + clinique, pour l'écran reçu.
+  async getAppointmentReceipt(id: string): Promise<AppointmentReceipt | null> {
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("*, doctor:doctors(specialty, clinic_name, profile:profiles!doctors_user_id_fkey(full_name, avatar_url))")
+      .eq("id", id)
+      .single();
+    if (error) throw error;
+    return data as AppointmentReceipt;
   },
 };

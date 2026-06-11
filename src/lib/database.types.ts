@@ -146,6 +146,7 @@ export type Database = {
           license_number: string | null;
           availability: Json;
           consultation_fee: number | null;
+          clinic_name: string | null;
           is_validated: boolean;
           validated_by: string | null;
           validated_at: string | null;
@@ -160,6 +161,7 @@ export type Database = {
           license_number?: string | null;
           availability?: Json;
           consultation_fee?: number | null;
+          clinic_name?: string | null;
           is_validated?: boolean;
           validated_by?: string | null;
           validated_at?: string | null;
@@ -174,6 +176,7 @@ export type Database = {
           license_number?: string | null;
           availability?: Json;
           consultation_fee?: number | null;
+          clinic_name?: string | null;
           is_validated?: boolean;
           validated_by?: string | null;
           validated_at?: string | null;
@@ -209,6 +212,10 @@ export type Database = {
           status: AppointmentStatus;
           reason: string | null;
           notes: string | null;
+          is_paid: boolean;
+          amount_paid: number | null;
+          paid_at: string | null;
+          receipt_number: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -221,6 +228,10 @@ export type Database = {
           status?: AppointmentStatus;
           reason?: string | null;
           notes?: string | null;
+          is_paid?: boolean;
+          amount_paid?: number | null;
+          paid_at?: string | null;
+          receipt_number?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -233,6 +244,10 @@ export type Database = {
           status?: AppointmentStatus;
           reason?: string | null;
           notes?: string | null;
+          is_paid?: boolean;
+          amount_paid?: number | null;
+          paid_at?: string | null;
+          receipt_number?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -245,6 +260,50 @@ export type Database = {
           },
           {
             foreignKeyName: "appointments_doctor_id_fkey";
+            columns: ["doctor_id"];
+            referencedRelation: "doctors";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      // =================================================
+      // 4b. doctor_messages (messagerie premium patient ↔ médecin)
+      // =================================================
+      doctor_messages: {
+        Row: {
+          id: string;
+          patient_id: string;
+          doctor_id: string;
+          sender_role: string;
+          content: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          patient_id: string;
+          doctor_id: string;
+          sender_role: string;
+          content: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          patient_id?: string;
+          doctor_id?: string;
+          sender_role?: string;
+          content?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "doctor_messages_patient_id_fkey";
+            columns: ["patient_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "doctor_messages_doctor_id_fkey";
             columns: ["doctor_id"];
             referencedRelation: "doctors";
             referencedColumns: ["id"];
@@ -755,6 +814,7 @@ export type Profile = Tables<"profiles">;
 export type MenstrualCycle = Tables<"menstrual_cycles">;
 export type Doctor = Tables<"doctors">;
 export type Appointment = Tables<"appointments">;
+export type DoctorMessage = Tables<"doctor_messages">;
 export type MarketplaceProduct = Tables<"marketplace_products">;
 export type MarketplaceOrder = Tables<"marketplace_orders">;
 export type CommunityPost = Tables<"community_posts">;

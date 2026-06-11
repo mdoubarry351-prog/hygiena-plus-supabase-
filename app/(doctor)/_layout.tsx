@@ -30,9 +30,16 @@ export default function DoctorLayout() {
           }}
         />
         <Tabs.Screen
+          name="messages"
+          options={{
+            title: "Messages",
+            tabBarIcon: ({ color, size }) => <Ionicons name="chatbubbles-outline" color={color} size={size} />,
+          }}
+        />
+        <Tabs.Screen
           name="availability"
           options={{
-            title: "Disponibilité",
+            title: "Dispo",
             tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" color={color} size={size} />,
           }}
         />
@@ -43,6 +50,8 @@ export default function DoctorLayout() {
             tabBarIcon: ({ color, size }) => <Ionicons name="medkit-outline" color={color} size={size} />,
           }}
         />
+        {/* Écran de chat (accessible depuis la boîte de réception) */}
+        <Tabs.Screen name="chat" options={{ href: null }} />
       </Tabs>
     </RoleGuard>
   );

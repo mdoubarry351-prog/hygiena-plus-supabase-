@@ -77,26 +77,32 @@ export default function Profile() {
           {profile.email ? <Text style={styles.email}>{profile.email}</Text> : null}
         </View>
 
-        <Card style={styles.statusCard}>
-          <View style={styles.statusLeft}>
-            <Ionicons
-              name={profile.is_premium ? "star" : "star-outline"}
-              size={22}
-              color={profile.is_premium ? colors.accent : colors.textMuted}
-            />
-            <View>
-              <Text style={styles.statusTitle}>
-                {profile.is_premium ? "Compte Premium" : "Compte gratuit"}
-              </Text>
-              <Text style={styles.statusSub}>
-                {profile.is_premium
-                  ? "Vous profitez de toutes les fonctionnalités."
-                  : "Passez Premium pour débloquer plus de fonctionnalités."}
-              </Text>
+        <Pressable onPress={() => router.push("/(user)/premium")}>
+          <Card style={styles.statusCard}>
+            <View style={styles.statusLeft}>
+              <Ionicons
+                name={profile.is_premium ? "star" : "star-outline"}
+                size={22}
+                color={profile.is_premium ? colors.accent : colors.textMuted}
+              />
+              <View>
+                <Text style={styles.statusTitle}>
+                  {profile.is_premium ? "Compte Premium" : "Compte gratuit"}
+                </Text>
+                <Text style={styles.statusSub}>
+                  {profile.is_premium
+                    ? "Messagerie médecins illimitée. Gérer mon abonnement."
+                    : "Passez Premium pour écrire aux médecins."}
+                </Text>
+              </View>
             </View>
-          </View>
-          {profile.is_premium && <Text style={styles.badge}>PREMIUM</Text>}
-        </Card>
+            {profile.is_premium ? (
+              <Text style={styles.badge}>PREMIUM</Text>
+            ) : (
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            )}
+          </Card>
+        </Pressable>
 
         {role === "doctor" && (
           <Pressable onPress={() => router.push("/(doctor)")}>

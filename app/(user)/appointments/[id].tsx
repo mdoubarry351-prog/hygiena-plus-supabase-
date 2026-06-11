@@ -12,10 +12,11 @@ import {
   appointmentsService,
   doctorDisplayName,
   formatAppointmentDate,
+  generateReceiptNumber,
   type DoctorWithProfile,
 } from "@/lib/appointments-service";
 import { formatPrice } from "@/lib/marketplace-service";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 // Créneaux horaires proposés (toutes les 30 min, matin et après-midi).
 const TIME_SLOTS = [
@@ -46,7 +47,7 @@ function buildDays(): DayOption[] {
 export default function BookAppointment() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { session, role } = useAuth();
+  const { session, profile, role } = useAuth();
 
   const [doctor, setDoctor] = useState<DoctorWithProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,6 +107,37 @@ export default function BookAppointment() {
     }
   }
 
+  // Messagerie premium : conseils en ligne (≠ consultation, qui passe par un RDV).
+  function handleMessage() {
+    if (!doctor) return;
+    if (profile?.is_premium) {
+      router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: doctor.id, doctorName: name } });
+    } else {
+      router.push("/(user)/premium");
+    }
+  }
+
+  // Paiement SIMULÉ : crée le RDV payé + reçu, puis ouvre le reçu.
+  async function handlePay() {
+    if (!session?.user || !doctor || !selectedDate || !selectedTime) return;
+    setSaving(true);
+    try {
+      const created = await appointmentsService.createAppointment({
+        patientId: session.user.id,
+        doctorId: doctor.id,
+        date: selectedDate,
+        time: selectedTime,
+        reason: reason.trim() || null,
+        payment: { amountPaid: doctor.consultation_fee ?? 0, receiptNumber: generateReceiptNumber() },
+      });
+      router.replace({ pathname: "/(user)/appointments/receipt", params: { id: created.id } });
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Paiement échoué");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -132,6 +164,15 @@ export default function BookAppointment() {
             <Text style={[typography.body, styles.muted]}>{doctor.bio}</Text>
           </Card>
         ) : null}
+
+        <Pressable onPress={handleMessage} style={styles.msgBtn}>
+          <Ionicons name="chatbubbles-outline" size={18} color={colors.primary} />
+          <Text style={styles.msgBtnText}>Écrire au médecin (conseils)</Text>
+          {!profile?.is_premium ? <Ionicons name="star" size={14} color={colors.accent} /> : null}
+        </Pressable>
+        <Text style={styles.msgNote}>
+          Conseils en ligne (Premium). Pour une consultation, prenez rendez-vous ci-dessous.
+        </Text>
 
         <Text style={[typography.h3, styles.sectionTitle]}>Choisir une date</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayRow}>
@@ -170,14 +211,30 @@ export default function BookAppointment() {
         />
 
         {canBook ? (
-          <Text style={styles.summary}>
-            {formatAppointmentDate(selectedDate!)} à {selectedTime}
-          </Text>
+          <Card style={styles.payCard}>
+            <View style={styles.payRow}>
+              <Text style={styles.payLabel}>Montant à payer</Text>
+              <Text style={styles.payAmount}>
+                {doctor.consultation_fee != null ? formatPrice(doctor.consultation_fee) : "Tarif sur place"}
+              </Text>
+            </View>
+            <Text style={styles.paySummary}>{formatAppointmentDate(selectedDate!)} à {selectedTime}</Text>
+            <Text style={styles.payNote}>Paiement simulé — aucun débit réel.</Text>
+          </Card>
         ) : (
           <Text style={[styles.summary, styles.muted]}>Sélectionnez une date et une heure.</Text>
         )}
 
-        <Button title="Confirmer le rendez-vous" onPress={handleBook} loading={saving} disabled={!canBook} />
+        {doctor.consultation_fee != null ? (
+          <Button
+            title={canBook ? `Payer ${formatPrice(doctor.consultation_fee)}` : "Payer"}
+            onPress={handlePay}
+            loading={saving}
+            disabled={!canBook}
+          />
+        ) : (
+          <Button title="Confirmer le rendez-vous" onPress={handleBook} loading={saving} disabled={!canBook} />
+        )}
         <Button title="Annuler" variant="outline" onPress={() => router.back()} />
       </ScrollView>
     </Screen>
@@ -214,4 +271,13 @@ const styles = StyleSheet.create({
   chipTextActive: { color: colors.white },
   textArea: { height: 90, textAlignVertical: "top", paddingTop: spacing.sm },
   summary: { ...typography.body, fontWeight: "600", textTransform: "capitalize", textAlign: "center" },
+  payCard: { backgroundColor: colors.primaryLight, borderColor: colors.primary, gap: spacing.xs },
+  payRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  payLabel: { ...typography.body, color: colors.primaryDark },
+  payAmount: { ...typography.h3, color: colors.primaryDark },
+  paySummary: { ...typography.caption, color: colors.primaryDark, textTransform: "capitalize" },
+  payNote: { ...typography.caption, color: colors.textMuted },
+  msgBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, height: 48, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.primary },
+  msgBtnText: { ...typography.body, color: colors.primary, fontFamily: fonts.bodySemiBold },
+  msgNote: { ...typography.caption, color: colors.textMuted, textAlign: "center" },
 });
