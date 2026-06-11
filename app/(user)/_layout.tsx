@@ -16,6 +16,9 @@ export default function UserLayout() {
     <RoleGuard allow={["user", "doctor"]}>
       <CartProvider>
         <Tabs
+          // Le retour suit l'ordre de visite des écrans (pas-à-pas) au lieu de
+          // sauter au 1er onglet (Accueil). Défaut bottom-tabs = "firstRoute".
+          backBehavior="history"
           screenOptions={{
             headerShown: false,
             tabBarActiveTintColor: colors.primary,
