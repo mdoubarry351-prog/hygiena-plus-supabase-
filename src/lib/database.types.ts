@@ -706,7 +706,22 @@ export type Database = {
         ];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      // Vue sécurisée des publications : user_id renvoyé NULL pour un post
+      // anonyme d'une autre personne (ne jamais exposer l'identité réelle).
+      community_posts_safe: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          content: string;
+          is_anonymous: boolean;
+          likes_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       is_admin: {
         Args: Record<string, never>;
@@ -743,6 +758,7 @@ export type Appointment = Tables<"appointments">;
 export type MarketplaceProduct = Tables<"marketplace_products">;
 export type MarketplaceOrder = Tables<"marketplace_orders">;
 export type CommunityPost = Tables<"community_posts">;
+export type CommunityPostSafe = Database["public"]["Views"]["community_posts_safe"]["Row"];
 export type CommunityComment = Tables<"community_comments">;
 export type CommunityLike = Tables<"community_likes">;
 export type AppSettings = Tables<"app_settings">;

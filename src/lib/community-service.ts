@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type {
   CommunityPost,
+  CommunityPostSafe,
   CommunityComment,
   Profile,
   TablesInsert,
@@ -9,8 +10,28 @@ import type {
 // Infos d'auteur jointes depuis profiles (uniquement ce dont l'UI a besoin).
 export type PostAuthor = Pick<Profile, "full_name" | "avatar_url">;
 
-// Publication enrichie avec son auteur (null si introuvable ou anonyme).
-export type CommunityPostWithAuthor = CommunityPost & { author: PostAuthor | null };
+// Publication enrichie avec son auteur. Lue depuis la vue sécurisée
+// `community_posts_safe` → user_id peut être null (post anonyme d'autrui),
+// auteur null dans ce cas (jamais de résolution d'identité).
+export type CommunityPostWithAuthor = CommunityPostSafe & { author: PostAuthor | null };
+
+// Récupère les profils auteurs UNIQUEMENT pour des user_id non nuls
+// (donc jamais pour les posts anonymes), en une requête séparée — une vue
+// n'ayant pas de clé étrangère, on ne peut pas embarquer profiles directement.
+async function fetchAuthors(ids: (string | null)[]): Promise<Map<string, PostAuthor>> {
+  const map = new Map<string, PostAuthor>();
+  const unique = Array.from(new Set(ids.filter((x): x is string => !!x)));
+  if (unique.length === 0) return map;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_url")
+    .in("id", unique);
+  if (error) throw error;
+  for (const p of data ?? []) {
+    map.set(p.id, { full_name: p.full_name, avatar_url: p.avatar_url });
+  }
+  return map;
+}
 
 // Commentaire enrichi avec son auteur.
 export type CommunityCommentWithAuthor = CommunityComment & { author: PostAuthor | null };
@@ -36,25 +57,32 @@ export function formatRelativeTime(iso: string): string {
 }
 
 export const communityService = {
-  // Fil d'actualité : publications les plus récentes en premier, avec auteur joint.
+  // Fil d'actualité : lecture via la vue sécurisée community_posts_safe
+  // (anonymat garanti côté SQL), puis fusion des auteurs côté JS.
   async getPosts(): Promise<CommunityPostWithAuthor[]> {
     const { data, error } = await supabase
-      .from("community_posts")
-      .select("*, author:profiles(full_name, avatar_url)")
+      .from("community_posts_safe")
+      .select("*")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return (data ?? []) as CommunityPostWithAuthor[];
+    const rows = data ?? [];
+    const authors = await fetchAuthors(rows.map((r) => r.user_id));
+    return rows.map((r) => ({
+      ...r,
+      author: r.user_id ? authors.get(r.user_id) ?? null : null,
+    }));
   },
 
-  // Détail d'une publication.
+  // Détail d'une publication (lecture via la vue sécurisée).
   async getPost(id: string): Promise<CommunityPostWithAuthor | null> {
     const { data, error } = await supabase
-      .from("community_posts")
-      .select("*, author:profiles(full_name, avatar_url)")
+      .from("community_posts_safe")
+      .select("*")
       .eq("id", id)
       .single();
     if (error) throw error;
-    return data as CommunityPostWithAuthor;
+    const authors = await fetchAuthors([data.user_id]);
+    return { ...data, author: data.user_id ? authors.get(data.user_id) ?? null : null };
   },
 
   // Crée une publication. `isAnonymous` masque l'auteur dans l'app.
