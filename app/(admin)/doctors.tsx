@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   card: { gap: spacing.sm },
   head: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
   info: { flex: 1, gap: 2 },
-  name: { ...typography.body, fontWeight: "700" },
+  name: { ...typography.name },
   specialty: { ...typography.caption, color: colors.secondary, fontWeight: "600" },
   meta: { ...typography.caption, color: colors.textMuted },
   metaRow: { flexDirection: "row", gap: spacing.lg },

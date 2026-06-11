@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   apptCard: { gap: spacing.sm },
   apptHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
   apptInfo: { flex: 1, gap: 2 },
-  name: { ...typography.body, fontWeight: "600" },
+  name: { ...typography.name },
   specialty: { ...typography.caption, color: colors.secondary, fontWeight: "600" },
   badge: {
     ...typography.caption, color: colors.white, fontWeight: "700",

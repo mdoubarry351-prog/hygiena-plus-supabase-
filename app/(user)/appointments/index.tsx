@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   avatar: { width: AVATAR, height: AVATAR, borderRadius: radius.pill, backgroundColor: colors.primaryLight },
   avatarPlaceholder: { alignItems: "center", justifyContent: "center" },
   rowInfo: { flex: 1, gap: 2 },
-  name: { ...typography.body, fontWeight: "600" },
+  name: { ...typography.name },
   specialty: { ...typography.caption, color: colors.secondary, fontWeight: "600" },
   rowFoot: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.xs },
   fee: { ...typography.body, fontWeight: "700", color: colors.primary },

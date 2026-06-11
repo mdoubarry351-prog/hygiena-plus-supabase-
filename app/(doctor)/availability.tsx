@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   muted: { color: colors.textMuted, marginBottom: spacing.sm },
   dayCard: { gap: spacing.sm },
   dayHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  dayLabel: { ...typography.body, fontWeight: "600" },
+  dayLabel: { ...typography.name },
   hoursInput: { marginBottom: 0 },
   closedRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   closedText: { ...typography.caption, color: colors.textMuted },

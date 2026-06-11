@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   muted: { color: colors.textMuted },
   card: { gap: spacing.sm },
   head: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
-  reason: { ...typography.body, fontWeight: "600", flex: 1 },
+  reason: { ...typography.name, flex: 1 },
   badge: { ...typography.caption, color: colors.white, fontWeight: "700", paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, overflow: "hidden" },
   meta: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
   detail: { gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },

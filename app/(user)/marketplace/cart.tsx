@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   thumb: { width: THUMB, height: THUMB, borderRadius: radius.md, backgroundColor: colors.surface },
   thumbPlaceholder: { alignItems: "center", justifyContent: "center" },
   info: { flex: 1, gap: spacing.xs },
-  name: { ...typography.body, fontWeight: "600" },
+  name: { ...typography.name },
   price: { ...typography.body, fontWeight: "700", color: colors.primary },
   stepper: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginTop: spacing.xs },
   stepBtn: {

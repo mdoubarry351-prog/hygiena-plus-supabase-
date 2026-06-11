@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   dot: { position: "absolute", top: 0, right: 2, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
   body: { flex: 1, gap: 2 },
   headRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
-  title: { ...typography.body, fontWeight: "600", flex: 1, color: colors.text },
+  title: { ...typography.name, flex: 1 },
   titleUnread: { fontWeight: "700" },
   time: { ...typography.caption, color: colors.textMuted },
   message: { ...typography.body, color: colors.textMuted, lineHeight: 21 },

@@ -13,7 +13,28 @@ export type PostAuthor = Pick<Profile, "full_name" | "avatar_url">;
 // Publication enrichie avec son auteur. Lue depuis la vue sécurisée
 // `community_posts_safe` → user_id peut être null (post anonyme d'autrui),
 // auteur null dans ce cas (jamais de résolution d'identité).
-export type CommunityPostWithAuthor = CommunityPostSafe & { author: PostAuthor | null };
+// `comments_count` : nombre de commentaires (compté à part — pas de colonne dédiée).
+export type CommunityPostWithAuthor = CommunityPostSafe & {
+  author: PostAuthor | null;
+  comments_count: number;
+};
+
+// Compte les commentaires par publication en UNE requête (pas de N+1) :
+// on récupère les post_id de community_comments pour les ids de la page,
+// puis on agrège côté JS. Respecte la RLS de lecture des commentaires existante.
+async function countComments(ids: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (ids.length === 0) return map;
+  const { data, error } = await supabase
+    .from("community_comments")
+    .select("post_id")
+    .in("post_id", ids);
+  if (error) throw error;
+  for (const row of data ?? []) {
+    map.set(row.post_id, (map.get(row.post_id) ?? 0) + 1);
+  }
+  return map;
+}
 
 // Récupère les profils auteurs UNIQUEMENT pour des user_id non nuls
 // (donc jamais pour les posts anonymes), en une requête séparée — une vue
@@ -66,10 +87,14 @@ export const communityService = {
       .order("created_at", { ascending: false });
     if (error) throw error;
     const rows = data ?? [];
-    const authors = await fetchAuthors(rows.map((r) => r.user_id));
+    const [authors, comments] = await Promise.all([
+      fetchAuthors(rows.map((r) => r.user_id)),
+      countComments(rows.map((r) => r.id)),
+    ]);
     return rows.map((r) => ({
       ...r,
       author: r.user_id ? authors.get(r.user_id) ?? null : null,
+      comments_count: comments.get(r.id) ?? 0,
     }));
   },
 
@@ -81,8 +106,15 @@ export const communityService = {
       .eq("id", id)
       .single();
     if (error) throw error;
-    const authors = await fetchAuthors([data.user_id]);
-    return { ...data, author: data.user_id ? authors.get(data.user_id) ?? null : null };
+    const [authors, comments] = await Promise.all([
+      fetchAuthors([data.user_id]),
+      countComments([data.id]),
+    ]);
+    return {
+      ...data,
+      author: data.user_id ? authors.get(data.user_id) ?? null : null,
+      comments_count: comments.get(data.id) ?? 0,
+    };
   },
 
   // Crée une publication. `isAnonymous` masque l'auteur dans l'app.

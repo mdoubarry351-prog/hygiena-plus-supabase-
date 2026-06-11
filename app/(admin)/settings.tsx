@@ -101,6 +101,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
   rowIcon: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
   rowInfo: { flex: 1, gap: 2 },
-  rowLabel: { ...typography.body, fontWeight: "600" },
+  rowLabel: { ...typography.name },
   rowSub: { ...typography.caption, color: colors.textMuted },
 });

@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   rowMain: { flex: 1 },
   rowInfo: { gap: 2 },
-  name: { ...typography.body, fontWeight: "600" },
+  name: { ...typography.name },
   meta: { ...typography.caption, color: colors.textMuted },
   rowActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   badge: { ...typography.caption, color: colors.white, fontWeight: "700", paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, overflow: "hidden" },
@@ -173,5 +173,5 @@ const styles = StyleSheet.create({
   formContent: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
   textArea: { height: 100, textAlignVertical: "top", paddingTop: spacing.sm },
   activeRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.sm },
-  activeLabel: { ...typography.body, fontWeight: "600" },
+  activeLabel: { ...typography.name },
 });

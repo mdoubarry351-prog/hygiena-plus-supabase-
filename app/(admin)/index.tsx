@@ -84,6 +84,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   icon: { width: 44, height: 44, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
   rowInfo: { flex: 1, gap: 2 },
-  rowTitle: { ...typography.body, fontWeight: "600" },
+  rowTitle: { ...typography.name },
   rowSub: { ...typography.caption, color: colors.textMuted },
 });

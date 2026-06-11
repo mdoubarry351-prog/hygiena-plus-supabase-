@@ -113,9 +113,9 @@ function PostRow({
               {post.likes_count}
             </Text>
           </Pressable>
-          <View style={styles.commentHint}>
-            <Ionicons name="chatbubble-outline" size={18} color={colors.textMuted} />
-            <Text style={styles.commentHintText}>Commenter</Text>
+          <View style={styles.likeBtn}>
+            <Ionicons name="chatbubble-outline" size={20} color={colors.textMuted} />
+            <Text style={styles.likeCount}>{post.comments_count}</Text>
           </View>
         </View>
       </Card>
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   headInfo: { flex: 1 },
-  author: { ...typography.body, fontWeight: "600" },
+  author: { ...typography.name },
   time: { ...typography.caption, color: colors.textMuted },
   body: { ...typography.body, color: colors.text, lineHeight: 21 },
   postFoot: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },

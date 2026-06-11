@@ -89,6 +89,6 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   anonText: { flex: 1, gap: 2 },
-  anonTitle: { ...typography.body, fontWeight: "600" },
+  anonTitle: { ...typography.name },
   anonHint: { ...typography.caption, color: colors.textMuted },
 });

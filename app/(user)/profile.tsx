@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   email: { ...typography.caption },
   statusCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   statusLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 },
-  statusTitle: { ...typography.body, fontWeight: "600" },
+  statusTitle: { ...typography.name },
   statusSub: { ...typography.caption, marginTop: 2, flexShrink: 1 },
   badge: {
     ...typography.caption,
@@ -175,6 +175,6 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   proText: { flex: 1, gap: 2 },
-  proTitle: { ...typography.body, fontWeight: "600" },
+  proTitle: { ...typography.name },
   proSub: { ...typography.caption, color: colors.textMuted },
 });

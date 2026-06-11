@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   card: { gap: spacing.sm },
   head: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
   info: { flex: 1, gap: 2 },
-  author: { ...typography.body, fontWeight: "600" },
+  author: { ...typography.name },
   time: { ...typography.caption, color: colors.textMuted },
   trash: { padding: spacing.xs },
   body: { ...typography.body, color: colors.text, lineHeight: 21 },

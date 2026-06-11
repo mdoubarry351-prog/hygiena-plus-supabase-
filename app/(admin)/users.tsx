@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
   avatarText: { fontSize: 16, fontWeight: "700", color: colors.primaryDark },
   rowInfo: { flex: 1, gap: 2 },
-  name: { ...typography.body, fontWeight: "600" },
+  name: { ...typography.name },
   email: { ...typography.caption, color: colors.textMuted },
   badge: { ...typography.caption, color: colors.white, fontWeight: "700", paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, overflow: "hidden" },
   detail: { marginTop: spacing.xs, gap: spacing.xs, backgroundColor: colors.surface },

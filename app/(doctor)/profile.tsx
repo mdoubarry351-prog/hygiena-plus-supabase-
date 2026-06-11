@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   statusCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   statusLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 },
   statusText: { flex: 1 },
-  statusTitle: { ...typography.body, fontWeight: "600" },
+  statusTitle: { ...typography.name },
   statusSub: { ...typography.caption, marginTop: 2, flexShrink: 1 },
   formCard: { gap: spacing.sm },
   textArea: { height: 120, textAlignVertical: "top", paddingTop: spacing.sm },

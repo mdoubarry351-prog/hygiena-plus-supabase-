@@ -25,7 +25,7 @@ import {
   type CommunityPostWithAuthor,
   type CommunityCommentWithAuthor,
 } from "@/lib/community-service";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 export default function PostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   headInfo: { flex: 1 },
-  author: { ...typography.body, fontWeight: "600" },
+  author: { ...typography.name },
   time: { ...typography.caption, color: colors.textMuted },
   body: { ...typography.body, color: colors.text, lineHeight: 22 },
   postFoot: { flexDirection: "row", alignItems: "center", marginTop: spacing.xs },
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   },
   commentBody: { flex: 1, gap: 2 },
   commentHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  commentAuthor: { ...typography.caption, color: colors.text, fontWeight: "600" },
+  commentAuthor: { ...typography.caption, color: colors.text, fontFamily: fonts.bodyBold, fontWeight: "700" },
   commentTime: { ...typography.caption, color: colors.textMuted },
   commentText: { ...typography.body, color: colors.text, lineHeight: 20 },
   composer: {

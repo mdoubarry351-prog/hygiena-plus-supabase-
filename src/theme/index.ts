@@ -45,9 +45,11 @@ export const fonts = {
 export const typography = {
   h1: { fontSize: 28, fontWeight: "700" as const, fontFamily: fonts.titleBold, color: colors.text },
   h2: { fontSize: 22, fontWeight: "700" as const, fontFamily: fonts.titleBold, color: colors.text },
-  h3: { fontSize: 18, fontWeight: "600" as const, fontFamily: fonts.titleSemiBold, color: colors.text },
+  h3: { fontSize: 18, fontWeight: "700" as const, fontFamily: fonts.titleBold, color: colors.text },
   body: { fontSize: 15, fontWeight: "400" as const, fontFamily: fonts.body, color: colors.text },
   caption: { fontSize: 13, fontWeight: "400" as const, fontFamily: fonts.body, color: colors.textMuted },
+  // Nom / titre principal de carte ou de ligne de liste (gras, taille corps).
+  name: { fontSize: 15, fontWeight: "700" as const, fontFamily: fonts.bodyBold, color: colors.text },
 } as const;
 
 // Couleurs des phases du cycle — partagées par CycleRing (accueil) et le

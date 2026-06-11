@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   apptCard: { gap: spacing.sm },
   apptHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
   apptInfo: { flex: 1, gap: 2 },
-  patientName: { ...typography.body, fontWeight: "700" },
+  patientName: { ...typography.name },
   badge: {
     ...typography.caption, color: colors.white, fontWeight: "700",
     paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, overflow: "hidden",

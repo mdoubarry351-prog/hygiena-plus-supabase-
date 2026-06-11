@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   },
   timeText: { ...typography.body, fontWeight: "700", color: colors.primaryDark },
   todayInfo: { flex: 1, gap: 2 },
-  patientName: { ...typography.body, fontWeight: "600" },
+  patientName: { ...typography.name },
   reason: { ...typography.caption, color: colors.textMuted },
   miniBadge: {
     ...typography.caption, color: colors.white, fontWeight: "700",

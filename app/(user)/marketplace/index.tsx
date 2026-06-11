@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   thumb: { width: THUMB, height: THUMB, borderRadius: radius.md, backgroundColor: colors.surface },
   thumbPlaceholder: { alignItems: "center", justifyContent: "center" },
   rowInfo: { flex: 1, gap: 2 },
-  name: { ...typography.body, fontWeight: "600" },
+  name: { ...typography.name },
   desc: { ...typography.caption, color: colors.textMuted },
   rowFoot: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.xs },
   price: { ...typography.body, fontWeight: "700", color: colors.primary },
