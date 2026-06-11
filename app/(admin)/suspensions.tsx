@@ -70,7 +70,7 @@ export default function AdminSuspensions() {
         text: "Réactiver",
         onPress: async () => {
           try {
-            await adminService.liftSuspension(session.user.id, s.id);
+            await adminService.liftSuspension(session.user.id, s.id, s.user_id);
             setSuspensions((prev) => prev.map((x) => (x.id === s.id ? { ...x, is_active: false } : x)));
           } catch (e) {
             Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");

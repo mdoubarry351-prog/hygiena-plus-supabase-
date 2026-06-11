@@ -1,6 +1,22 @@
 import { supabase } from "./supabase";
 import type { Profile, TablesUpdate } from "./database.types";
 
+const SUSPENDED_MESSAGE = "Votre compte a été suspendu. Contactez l'administrateur.";
+
+/**
+ * Traduit l'erreur Supabase d'un compte banni en un message clair en français.
+ * Supabase renvoie un code "user_banned" (et un message « User is banned »).
+ * Toute autre erreur est renvoyée telle quelle.
+ */
+function mapAuthError(error: unknown): Error {
+  const code = (error as { code?: string } | null)?.code;
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (code === "user_banned" || /banned/i.test(message)) {
+    return new Error(SUSPENDED_MESSAGE);
+  }
+  return error instanceof Error ? error : new Error(message);
+}
+
 /**
  * Service d'authentification. Centralise tous les appels Supabase Auth
  * + la lecture/écriture du profil applicatif (table public.profiles).
@@ -8,7 +24,7 @@ import type { Profile, TablesUpdate } from "./database.types";
 export const authService = {
   async signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    if (error) throw mapAuthError(error);
   },
 
   /**
@@ -90,13 +106,13 @@ export const authService = {
    */
   async signInWithPhone(phone: string) {
     const { error } = await supabase.auth.signInWithOtp({ phone });
-    if (error) throw error;
+    if (error) throw mapAuthError(error);
   },
 
   /** 2) Vérifie le code à 6 chiffres et ouvre la session. */
   async verifyPhoneOtp(phone: string, token: string) {
     const { error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
-    if (error) throw error;
+    if (error) throw mapAuthError(error);
   },
 
   async resetPassword(email: string, redirectTo: string) {

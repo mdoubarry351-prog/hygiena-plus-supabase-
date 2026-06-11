@@ -37,6 +37,28 @@ async function logAction(
   if (error) console.warn("admin_logs (log non enregistré):", error.message);
 }
 
+// Invoque l'Edge Function admin-user-actions (service role côté serveur).
+// Le JWT admin de l'appelant est envoyé automatiquement par supabase-js.
+type AdminUserAction = "delete_user" | "ban_user" | "unban_user";
+async function invokeAdminUserAction(action: AdminUserAction, userId: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke("admin-user-actions", {
+    body: { action, user_id: userId },
+  });
+  if (error) {
+    let message = error.message || "Action administrateur échouée";
+    try {
+      const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
+      const body = ctx?.json ? ((await ctx.json()) as { error?: string }) : null;
+      if (body?.error) message = body.error;
+    } catch {
+      // on garde le message par défaut
+    }
+    throw new Error(message);
+  }
+  const body = data as { success?: boolean; error?: string } | null;
+  if (body?.error) throw new Error(body.error);
+}
+
 // ----- Types enrichis (jointures) -----
 export type DoctorRow = Doctor & {
   profile: Pick<Profile, "full_name" | "email"> | null;
@@ -305,15 +327,79 @@ export const adminService = {
       .single();
     if (error) throw error;
     await logAction(adminId, "suspend_user", "user_suspensions", data.id, { user_id: userId });
+    // Application réelle : bannit le compte auth (bloque la connexion).
+    await invokeAdminUserAction("ban_user", userId);
   },
 
-  async liftSuspension(adminId: string, id: string): Promise<void> {
+  // id = identifiant de la ligne user_suspensions ; userId = compte concerné (pour le déban).
+  async liftSuspension(adminId: string, id: string, userId: string): Promise<void> {
     const { error } = await supabase
       .from("user_suspensions")
       .update({ is_active: false })
       .eq("id", id);
     if (error) throw error;
-    await logAction(adminId, "lift_suspension", "user_suspensions", id);
+    await logAction(adminId, "lift_suspension", "user_suspensions", id, { user_id: userId });
+    // Lève réellement le bannissement auth.
+    await invokeAdminUserAction("unban_user", userId);
+  },
+
+  // Supprime DÉFINITIVEMENT le compte d'un utilisateur (cascade côté serveur).
+  async deleteUserAccount(adminId: string, userId: string): Promise<void> {
+    await invokeAdminUserAction("delete_user", userId);
+    await logAction(adminId, "delete_user", "profiles", userId);
+  },
+
+  // ---------------- Médecins : ajout / retrait / suppression ----------------
+  // Promeut un compte EXISTANT en médecin : role='doctor' puis création de la fiche (validée).
+  async addDoctor(
+    adminId: string,
+    targetUserId: string,
+    input: {
+      specialty: string;
+      bio?: string | null;
+      consultation_fee?: number | null;
+      clinic_name?: string | null;
+    }
+  ): Promise<Doctor> {
+    const { error: roleErr } = await supabase
+      .from("profiles")
+      .update({ role: "doctor" })
+      .eq("id", targetUserId);
+    if (roleErr) throw roleErr;
+    await logAction(adminId, "update_user_role", "profiles", targetUserId, { role: "doctor" });
+
+    const payload: TablesInsert<"doctors"> = {
+      user_id: targetUserId,
+      specialty: input.specialty,
+      bio: input.bio ?? null,
+      consultation_fee: input.consultation_fee ?? null,
+      clinic_name: input.clinic_name ?? null,
+      is_validated: true,
+      validated_by: adminId,
+      validated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase.from("doctors").insert(payload).select("*").single();
+    if (error) throw error;
+    await logAction(adminId, "add_doctor", "doctors", data.id, { user_id: targetUserId });
+    return data;
+  },
+
+  // Retire le statut médecin : supprime la fiche doctors et repasse le compte en 'user'.
+  async demoteDoctor(adminId: string, doctor: { id: string; user_id: string }): Promise<void> {
+    const { error: delErr } = await supabase.from("doctors").delete().eq("id", doctor.id);
+    if (delErr) throw delErr;
+    const { error: roleErr } = await supabase
+      .from("profiles")
+      .update({ role: "user" })
+      .eq("id", doctor.user_id);
+    if (roleErr) throw roleErr;
+    await logAction(adminId, "demote_doctor", "doctors", doctor.id, { user_id: doctor.user_id });
+  },
+
+  // Supprime DÉFINITIVEMENT le compte complet d'un médecin (cascade côté serveur).
+  async deleteDoctorAccount(adminId: string, userId: string): Promise<void> {
+    await invokeAdminUserAction("delete_user", userId);
+    await logAction(adminId, "delete_doctor_account", "profiles", userId);
   },
 
   // ---------------- 10. Paramètres ----------------

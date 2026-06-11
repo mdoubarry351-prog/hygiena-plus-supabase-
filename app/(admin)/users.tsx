@@ -22,11 +22,20 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Profile | null>(null);
+  // userId -> id de la ligne user_suspensions active (pour la réactivation)
+  const [suspendedMap, setSuspendedMap] = useState<Record<string, string>>({});
 
   const load = useCallback(async (q?: string) => {
     setLoading(true);
     try {
-      setUsers(await adminService.getUsers(q));
+      const [us, sus] = await Promise.all([
+        adminService.getUsers(q),
+        adminService.getSuspensions(),
+      ]);
+      setUsers(us);
+      const map: Record<string, string> = {};
+      for (const s of sus) if (s.is_active) map[s.user_id] = s.id;
+      setSuspendedMap(map);
     } catch {
       setUsers([]);
     } finally {
@@ -35,6 +44,76 @@ export default function AdminUsers() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const targetLabel = (u: Profile) => u.full_name ?? u.email ?? "cet utilisateur";
+
+  function suspend(u: Profile) {
+    if (!session?.user) return;
+    Alert.alert(
+      "Suspendre le compte ?",
+      `${targetLabel(u)} ne pourra plus se connecter tant que la suspension est active.`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Suspendre",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await adminService.suspendUser(session.user.id, u.id, null, null);
+              await load(search.trim() || undefined);
+              Alert.alert("Suspendu", "Le compte a été suspendu.");
+            } catch (e) {
+              Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function reactivate(u: Profile) {
+    const sid = suspendedMap[u.id];
+    if (!session?.user || !sid) return;
+    Alert.alert("Réactiver le compte ?", "La suspension sera levée et l'utilisateur pourra à nouveau se connecter.", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Réactiver",
+        onPress: async () => {
+          try {
+            await adminService.liftSuspension(session.user.id, sid, u.id);
+            await load(search.trim() || undefined);
+          } catch (e) {
+            Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+          }
+        },
+      },
+    ]);
+  }
+
+  function deleteAccount(u: Profile) {
+    if (!session?.user) return;
+    Alert.alert(
+      "Supprimer définitivement ?",
+      `Le compte de ${targetLabel(u)} et toutes ses données seront supprimés. Cette action est IRRÉVERSIBLE.`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await adminService.deleteUserAccount(session.user.id, u.id);
+              setSelected(null);
+              setUsers((prev) => prev.filter((x) => x.id !== u.id));
+              Alert.alert("Supprimé", "Le compte a été supprimé définitivement.");
+            } catch (e) {
+              Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+            }
+          },
+        },
+      ]
+    );
+  }
 
   function changeRole(user: Profile, role: UserRole) {
     if (!session?.user || role === user.role) return;
@@ -79,6 +158,8 @@ export default function AdminUsers() {
           ) : (
             users.map((u) => {
               const open = selected?.id === u.id;
+              const isSuspended = !!suspendedMap[u.id];
+              const isSelf = session?.user?.id === u.id;
               return (
                 <Pressable key={u.id} onPress={() => setSelected(open ? null : u)}>
                   <Card style={styles.row}>
@@ -86,6 +167,7 @@ export default function AdminUsers() {
                     <View style={styles.rowInfo}>
                       <Text style={styles.name} numberOfLines={1}>{u.full_name ?? "Sans nom"}</Text>
                       <Text style={styles.email} numberOfLines={1}>{u.email ?? "—"}</Text>
+                      {isSuspended ? <Text style={styles.suspendedTag}>● Suspendu</Text> : null}
                     </View>
                     <Text style={[styles.badge, { backgroundColor: ROLE_COLORS[u.role] }]}>{ROLE_LABELS[u.role]}</Text>
                   </Card>
@@ -106,6 +188,28 @@ export default function AdminUsers() {
                           </Pressable>
                         ))}
                       </View>
+
+                      {isSelf ? (
+                        <Text style={styles.selfNote}>C'est votre compte : actions de suspension/suppression indisponibles.</Text>
+                      ) : (
+                        <View style={styles.actions}>
+                          {isSuspended ? (
+                            <Pressable style={[styles.actionBtn, styles.actionReactivate]} onPress={() => reactivate(u)}>
+                              <Ionicons name="refresh" size={16} color={colors.primary} />
+                              <Text style={styles.actionReactivateText}>Réactiver</Text>
+                            </Pressable>
+                          ) : (
+                            <Pressable style={[styles.actionBtn, styles.actionSuspend]} onPress={() => suspend(u)}>
+                              <Ionicons name="hand-left-outline" size={16} color={colors.accent} />
+                              <Text style={styles.actionSuspendText}>Suspendre</Text>
+                            </Pressable>
+                          )}
+                          <Pressable style={[styles.actionBtn, styles.actionDelete]} onPress={() => deleteAccount(u)}>
+                            <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                            <Text style={styles.actionDeleteText}>Supprimer</Text>
+                          </Pressable>
+                        </View>
+                      )}
                     </Card>
                   )}
                 </Pressable>
@@ -138,4 +242,14 @@ const styles = StyleSheet.create({
   roleBtn: { flex: 1, alignItems: "center", paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border },
   roleBtnText: { ...typography.caption, fontWeight: "600", color: colors.text },
   roleBtnTextActive: { color: colors.white },
+  suspendedTag: { ...typography.caption, color: colors.danger, fontWeight: "700" },
+  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
+  actionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5 },
+  actionSuspend: { borderColor: colors.accent },
+  actionSuspendText: { ...typography.caption, color: colors.accent, fontWeight: "700" },
+  actionReactivate: { borderColor: colors.primary },
+  actionReactivateText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
+  actionDelete: { borderColor: colors.danger },
+  actionDeleteText: { ...typography.caption, color: colors.danger, fontWeight: "700" },
+  selfNote: { ...typography.caption, color: colors.textMuted, marginTop: spacing.sm, fontStyle: "italic" },
 });

@@ -246,8 +246,8 @@ const styles = StyleSheet.create({
   ctaSub: { ...typography.caption, color: colors.white, opacity: 0.9, fontFamily: fonts.body },
 
   // Promotion premium
-  premiumCard: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  premiumIcon: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" },
+  premiumCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  premiumIcon: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
   premiumText: { flex: 1, gap: 2 },
   premiumTitle: { ...typography.name, color: colors.primaryDark },
   premiumSub: { ...typography.caption, color: colors.textMuted },
