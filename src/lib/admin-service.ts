@@ -65,6 +65,27 @@ async function invokeAdminUserAction(action: AdminUserAction, userId: string): P
 export type DoctorRow = Doctor & {
   profile: Pick<Profile, "full_name" | "email"> | null;
 };
+
+// Création d'un médecin de zéro (compte de connexion inclus) via Edge Function.
+export type CreateDoctorInput = {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string | null;
+  specialty: string;
+  yearsExperience: number;
+  consultationFeeGNF: number;
+  bio: string | null;
+  avatarUrl: string | null;
+  isValidated: boolean;
+};
+export type CreateDoctorResult = {
+  success: boolean;
+  user_id: string;
+  temp_password: string;
+  phone: string | null;
+  email: string | null;
+};
 export type ReportRow = UserReport & {
   reporter: Pick<Profile, "full_name"> | null;
   reported: Pick<Profile, "full_name"> | null;
@@ -405,6 +426,30 @@ export const adminService = {
   },
 
   // ---------------- Médecins : ajout / retrait / suppression ----------------
+  // Crée un médecin de ZÉRO (compte de connexion inclus) via l'Edge Function
+  // admin-user-actions (action create_doctor). Elle crée le compte auth,
+  // pose role='doctor', insère la fiche doctors, journalise et renvoie les
+  // identifiants de connexion (dont le mot de passe temporaire).
+  async createDoctor(input: CreateDoctorInput): Promise<CreateDoctorResult> {
+    const { data, error } = await supabase.functions.invoke("admin-user-actions", {
+      body: { action: "create_doctor", ...input },
+    });
+    if (error) {
+      let message = error.message || "Création du médecin échouée";
+      try {
+        const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
+        const body = ctx?.json ? ((await ctx.json()) as { error?: string }) : null;
+        if (body?.error) message = body.error;
+      } catch {
+        // garde le message par défaut
+      }
+      throw new Error(message);
+    }
+    const result = data as (CreateDoctorResult & { error?: string }) | null;
+    if (!result || result.error) throw new Error(result?.error || "Création du médecin échouée");
+    return result;
+  },
+
   // Promeut un compte EXISTANT en médecin : role='doctor' puis création de la fiche (validée).
   async addDoctor(
     adminId: string,

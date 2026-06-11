@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -10,9 +11,22 @@ import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, type DoctorRow } from "@/lib/admin-service";
-import type { Profile } from "@/lib/database.types";
+import { uploadAvatar } from "@/lib/storage";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, radius, spacing, typography } from "@/theme";
+
+const SPECIALTIES = [
+  "Médecine générale",
+  "Gynécologie",
+  "Obstétrique",
+  "Dermatologie",
+  "Pédiatrie",
+  "Nutrition",
+  "Psychologie",
+  "Sage-femme",
+];
+
+const DEFAULT_FEE = "75000";
 
 export default function AdminDoctors() {
   const { session } = useAuth();
@@ -20,15 +34,19 @@ export default function AdminDoctors() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Flux "Ajouter un médecin" (promotion d'un compte existant)
+  // Flux "Ajouter un médecin" (création complète, compte de connexion inclus)
   const [adding, setAdding] = useState(false);
-  const [search, setSearch] = useState("");
-  const [results, setResults] = useState<Profile[]>([]);
-  const [picked, setPicked] = useState<Profile | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [localAvatar, setLocalAvatar] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [fullName, setFullName] = useState("");
   const [specialty, setSpecialty] = useState("");
-  const [clinic, setClinic] = useState("");
+  const [yearsExp, setYearsExp] = useState("0");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [fee, setFee] = useState(DEFAULT_FEE);
+  const [isValidated, setIsValidated] = useState(true);
   const [bio, setBio] = useState("");
-  const [fee, setFee] = useState("");
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -52,45 +70,80 @@ export default function AdminDoctors() {
 
   function resetAdd() {
     setAdding(false);
-    setSearch(""); setResults([]); setPicked(null);
-    setSpecialty(""); setClinic(""); setBio(""); setFee("");
+    setAvatarUrl(null); setLocalAvatar(null); setAvatarUploading(false);
+    setFullName(""); setSpecialty(""); setYearsExp("0"); setPhone(""); setEmail("");
+    setFee(DEFAULT_FEE); setIsValidated(true); setBio("");
   }
 
-  async function runSearch() {
-    if (!search.trim()) return;
+  async function pickAvatar() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour ajouter une photo de médecin.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+      base64: true,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (!asset?.base64) { Alert.alert("Erreur", "Impossible de lire la photo."); return; }
+    setLocalAvatar(asset.uri);
+    setAvatarUploading(true);
     try {
-      const found = await adminService.getUsers(search);
-      // On ne propose que des comptes "utilisateur" (ni médecin déjà, ni admin).
-      setResults(found.filter((u) => u.role === "user"));
-    } catch {
-      setResults([]);
+      setAvatarUrl(await uploadAvatar(asset.base64));
+    } catch (e) {
+      setLocalAvatar(null);
+      Alert.alert("Échec de l'upload", e instanceof Error ? e.message : "Réessayez.");
+    } finally {
+      setAvatarUploading(false);
     }
   }
 
-  async function submitAdd() {
-    if (!session?.user || !picked) return;
-    if (!specialty.trim()) {
-      Alert.alert("Spécialité requise", "Veuillez indiquer la spécialité du médecin.");
-      return;
-    }
-    const feeNum = fee.trim() ? Number(fee.replace(/\s/g, "")) : null;
-    if (fee.trim() && (feeNum === null || Number.isNaN(feeNum) || feeNum < 0)) {
-      Alert.alert("Tarif invalide", "Le tarif doit être un nombre positif.");
-      return;
-    }
+  async function submitCreate() {
+    if (!session?.user) return;
+    if (avatarUploading) { Alert.alert("Patientez", "La photo est encore en cours d'envoi."); return; }
+    if (!fullName.trim()) { Alert.alert("Nom requis", "Indiquez le nom complet du médecin."); return; }
+    if (!specialty) { Alert.alert("Spécialité requise", "Sélectionnez une spécialité."); return; }
+    if (!phone.trim()) { Alert.alert("Téléphone requis", "Le téléphone est l'identifiant de connexion du médecin."); return; }
+
+    const parts = fullName.trim().split(/\s+/);
+    const firstName = parts[0];
+    const lastName = parts.slice(1).join(" ");
+
+    const years = Number(yearsExp.replace(/\s/g, "")) || 0;
+    const feeNum = fee.trim() ? Number(fee.replace(/\s/g, "")) : 0;
+    if (!Number.isFinite(feeNum) || feeNum < 0) { Alert.alert("Tarif invalide", "Le tarif doit être un nombre positif."); return; }
+
     setSaving(true);
     try {
-      await adminService.addDoctor(session.user.id, picked.id, {
-        specialty: specialty.trim(),
+      const res = await adminService.createDoctor({
+        firstName,
+        lastName,
+        phone: phone.trim(),
+        email: email.trim() || null,
+        specialty,
+        yearsExperience: years,
+        consultationFeeGNF: feeNum,
         bio: bio.trim() || null,
-        consultation_fee: feeNum,
-        clinic_name: clinic.trim() || null,
+        avatarUrl,
+        isValidated,
       });
+      const lines = [
+        "Identifiants de connexion à communiquer au médecin :",
+        `Téléphone : ${res.phone ?? phone.trim()}`,
+      ];
+      if (res.email) lines.push(`Email : ${res.email}`);
+      lines.push(`Mot de passe temporaire : ${res.temp_password}`);
+      if (!res.email) lines.push("\nAstuce : ajoutez un email pour une connexion immédiate (email + mot de passe).");
       resetAdd();
       await load();
-      Alert.alert("Médecin ajouté", "Le compte a été promu médecin et sa fiche est validée.");
+      Alert.alert("Médecin créé ✅", lines.join("\n"));
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Ajout échoué");
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Création échouée");
     } finally {
       setSaving(false);
     }
@@ -169,6 +222,12 @@ export default function AdminDoctors() {
 
   if (loading && doctors.length === 0) return <Loading />;
 
+  const feeHint = (() => {
+    const n = Number(fee.replace(/\s/g, ""));
+    return fee.trim() && Number.isFinite(n) && n >= 0 ? formatPrice(n) : null;
+  })();
+  const avatarPreview = localAvatar ?? avatarUrl;
+
   return (
     <Screen>
       <AdminHeader title="Médecins" />
@@ -183,42 +242,74 @@ export default function AdminDoctors() {
               <Text style={typography.h3}>Ajouter un médecin</Text>
               <Pressable onPress={resetAdd} hitSlop={8}><Ionicons name="close" size={20} color={colors.textMuted} /></Pressable>
             </View>
-            <Text style={styles.note}>
-              On promeut un compte EXISTANT en médecin. La personne doit déjà s'être inscrite sur l'application.
-            </Text>
-            {picked ? (
-              <>
-                <View style={styles.pickedRow}>
-                  <Text style={styles.pickedName}>{picked.full_name ?? picked.email ?? "Utilisateur"}</Text>
-                  <Pressable onPress={() => setPicked(null)} hitSlop={8}><Ionicons name="close" size={16} color={colors.textMuted} /></Pressable>
+
+            {/* Photo */}
+            <View style={styles.avatarBlock}>
+              {avatarPreview ? (
+                <View>
+                  <Image source={{ uri: avatarPreview }} style={styles.avatarPreview} />
+                  {avatarUploading && (
+                    <View style={styles.avatarOverlay}><ActivityIndicator color={colors.white} /></View>
+                  )}
                 </View>
-                <Input label="Spécialité *" value={specialty} onChangeText={setSpecialty} placeholder="Ex. Gynécologie" autoCapitalize="sentences" />
-                <Input label="Nom de la clinique" value={clinic} onChangeText={setClinic} placeholder="Ex. Clinique Hygiena, Conakry" autoCapitalize="sentences" />
-                <Input label="Biographie" value={bio} onChangeText={setBio} placeholder="Parcours, consultations…" multiline numberOfLines={4} style={styles.textArea} />
-                <Input label="Tarif de consultation (GNF)" value={fee} onChangeText={setFee} placeholder="Ex. 150000" keyboardType="numeric" />
-                <Button title="Ajouter le médecin" onPress={submitAdd} loading={saving} />
-              </>
-            ) : (
-              <>
-                <Input
-                  value={search}
-                  onChangeText={setSearch}
-                  placeholder="Rechercher un utilisateur…"
-                  autoCapitalize="none"
-                  returnKeyType="search"
-                  onSubmitEditing={runSearch}
-                  style={styles.searchInput}
-                />
-                {results.map((u) => (
-                  <Pressable key={u.id} onPress={() => { setPicked(u); setResults([]); }}>
-                    <View style={styles.resultRow}>
-                      <Text style={styles.resultName}>{u.full_name ?? "Sans nom"}</Text>
-                      <Text style={styles.resultEmail}>{u.email ?? "—"}</Text>
-                    </View>
+              ) : (
+                <View style={[styles.avatarPreview, styles.avatarPlaceholder]}>
+                  <Ionicons name="person-outline" size={40} color={colors.textMuted} />
+                </View>
+              )}
+              <Pressable onPress={pickAvatar} disabled={avatarUploading} style={[styles.photoBtn, avatarUploading && styles.photoBtnDisabled]}>
+                <Ionicons name="camera-outline" size={18} color={colors.primary} />
+                <Text style={styles.photoBtnText}>{avatarPreview ? "Changer la photo" : "Ajouter une photo"}</Text>
+              </Pressable>
+            </View>
+
+            {/* Nom complet */}
+            <Input label="Nom complet *" value={fullName} onChangeText={setFullName} placeholder="Ex. Aïssata Diallo" autoCapitalize="words" />
+
+            {/* Spécialité (select) */}
+            <Text style={styles.fieldLabel}>Spécialité *</Text>
+            <View style={styles.chips}>
+              {SPECIALTIES.map((s) => {
+                const active = specialty === s;
+                return (
+                  <Pressable key={s} onPress={() => setSpecialty(s)} style={[styles.chip, active && styles.chipActive]}>
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{s}</Text>
                   </Pressable>
-                ))}
-              </>
-            )}
+                );
+              })}
+            </View>
+
+            {/* Années d'expérience */}
+            <Input label="Années d'expérience" value={yearsExp} onChangeText={setYearsExp} placeholder="0" keyboardType="numeric" />
+
+            {/* Téléphone (connexion) */}
+            <Input label="Téléphone (connexion) *" value={phone} onChangeText={setPhone} placeholder="620 00 00 00" keyboardType="phone-pad" autoCapitalize="none" />
+            <Text style={styles.note}>Identifiant de connexion du médecin. Pour une connexion immédiate, renseignez aussi un email (la connexion par SMS nécessite un fournisseur SMS).</Text>
+
+            {/* Email (optionnel) */}
+            <Input label="Email (optionnel)" value={email} onChangeText={setEmail} placeholder="medecin@exemple.com" keyboardType="email-address" autoCapitalize="none" />
+
+            {/* Tarif */}
+            <Input label="Tarif consultation (GNF)" value={fee} onChangeText={setFee} placeholder="75000" keyboardType="numeric" />
+            {feeHint ? <Text style={styles.hint}>{feeHint}</Text> : null}
+
+            {/* Statut (select) */}
+            <Text style={styles.fieldLabel}>Statut</Text>
+            <View style={styles.statusRow}>
+              <Pressable onPress={() => setIsValidated(true)} style={[styles.statusBtn, isValidated && styles.statusBtnActive]}>
+                <Ionicons name="shield-checkmark-outline" size={16} color={isValidated ? colors.white : colors.textMuted} />
+                <Text style={[styles.statusText, isValidated && styles.statusTextActive]}>Actif (visible, certifié)</Text>
+              </Pressable>
+              <Pressable onPress={() => setIsValidated(false)} style={[styles.statusBtn, !isValidated && styles.statusBtnInactive]}>
+                <Ionicons name="eye-off-outline" size={16} color={!isValidated ? colors.white : colors.textMuted} />
+                <Text style={[styles.statusText, !isValidated && styles.statusTextActive]}>Inactif</Text>
+              </Pressable>
+            </View>
+
+            {/* Présentation */}
+            <Input label="Présentation" value={bio} onChangeText={setBio} placeholder="Quelques phrases sur le médecin, son parcours, son approche…" multiline numberOfLines={4} style={styles.textArea} />
+
+            <Button title="Créer le médecin" onPress={submitCreate} loading={saving} disabled={avatarUploading} />
           </Card>
         ) : (
           <Pressable onPress={() => setAdding(true)} style={styles.addToggle}>
@@ -312,11 +403,27 @@ const styles = StyleSheet.create({
   addCard: { gap: spacing.sm },
   addHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   note: { ...typography.caption, color: colors.textMuted },
-  searchInput: { marginBottom: 0 },
-  resultRow: { paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
-  resultName: { ...typography.name },
-  resultEmail: { ...typography.caption, color: colors.textMuted },
-  pickedRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.xs },
-  pickedName: { ...typography.name },
+  hint: { ...typography.caption, color: colors.primaryDark, fontWeight: "700", marginTop: -spacing.xs },
+  fieldLabel: { ...typography.caption, color: colors.textMuted, fontWeight: "700", marginTop: spacing.xs },
   textArea: { height: 100, textAlignVertical: "top", paddingTop: spacing.sm },
+  // Avatar
+  avatarBlock: { alignItems: "center", gap: spacing.sm },
+  avatarPreview: { width: 100, height: 100, borderRadius: 50, backgroundColor: colors.surface },
+  avatarPlaceholder: { alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.border, borderStyle: "dashed" },
+  avatarOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: 50, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center" },
+  photoBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.primary },
+  photoBtnDisabled: { opacity: 0.5 },
+  photoBtnText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
+  // Selects (chips + statut)
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  chip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { ...typography.caption, fontWeight: "700", color: colors.text },
+  chipTextActive: { color: colors.white },
+  statusRow: { flexDirection: "row", gap: spacing.sm },
+  statusBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border },
+  statusBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  statusBtnInactive: { backgroundColor: colors.textMuted, borderColor: colors.textMuted },
+  statusText: { ...typography.caption, fontWeight: "700", color: colors.textMuted },
+  statusTextActive: { color: colors.white },
 });

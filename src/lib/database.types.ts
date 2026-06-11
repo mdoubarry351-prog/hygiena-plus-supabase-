@@ -153,6 +153,7 @@ export type Database = {
           availability: Json;
           consultation_fee: number | null;
           clinic_name: string | null;
+          years_experience: number;
           is_validated: boolean;
           validated_by: string | null;
           validated_at: string | null;
@@ -168,6 +169,7 @@ export type Database = {
           availability?: Json;
           consultation_fee?: number | null;
           clinic_name?: string | null;
+          years_experience?: number;
           is_validated?: boolean;
           validated_by?: string | null;
           validated_at?: string | null;
@@ -183,6 +185,7 @@ export type Database = {
           availability?: Json;
           consultation_fee?: number | null;
           clinic_name?: string | null;
+          years_experience?: number;
           is_validated?: boolean;
           validated_by?: string | null;
           validated_at?: string | null;
