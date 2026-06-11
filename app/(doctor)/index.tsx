@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
@@ -56,13 +57,11 @@ export default function DoctorDashboard() {
           <Text style={styles.switchText}>Mon espace perso</Text>
         </Pressable>
         <View style={styles.topBar}><Text style={typography.h2}>Tableau de bord</Text></View>
-        <Card style={styles.empty}>
-          <Ionicons name="alert-circle-outline" size={40} color={colors.textMuted} />
-          <Text style={typography.h3}>Fiche médecin introuvable</Text>
-          <Text style={[typography.body, styles.muted]}>
-            Votre compte a le rôle médecin mais aucune fiche n'est rattachée. Contactez l'administrateur.
-          </Text>
-        </Card>
+        <EmptyState
+          icon="alert-circle-outline"
+          title="Fiche médecin introuvable"
+          message="Votre compte a le rôle médecin mais aucune fiche n'est rattachée. Contactez l'administrateur."
+        />
       </Screen>
     );
   }
@@ -103,10 +102,7 @@ export default function DoctorDashboard() {
 
         <Text style={[typography.h3, styles.sectionTitle]}>Rendez-vous du jour</Text>
         {todays.length === 0 ? (
-          <Card style={styles.emptyToday}>
-            <Ionicons name="cafe-outline" size={28} color={colors.textMuted} />
-            <Text style={[typography.body, styles.muted]}>Aucun rendez-vous prévu aujourd'hui.</Text>
-          </Card>
+          <EmptyState icon="cafe-outline" title="Aucun rendez-vous aujourd'hui" />
         ) : (
           todays.map((a) => (
             <Card key={a.id} style={styles.todayRow}>

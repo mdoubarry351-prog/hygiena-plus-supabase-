@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useCommunity } from "@/hooks/useCommunity";
 import {
@@ -49,13 +50,11 @@ export default function CommunityHome() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {posts.length === 0 ? (
-          <Card style={styles.empty}>
-            <Text style={styles.emptyEmoji}>💬</Text>
-            <Text style={typography.h3}>Aucune publication</Text>
-            <Text style={[typography.body, styles.muted]}>
-              Soyez la première à partager quelque chose avec la communauté.
-            </Text>
-          </Card>
+          <EmptyState
+            emoji="💬"
+            title="Aucune publication"
+            message="Soyez la première à partager quelque chose avec la communauté."
+          />
         ) : (
           posts.map((post) => (
             <PostRow

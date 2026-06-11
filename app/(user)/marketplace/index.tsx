@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/providers/CartProvider";
@@ -53,12 +54,11 @@ export default function MarketplaceHome() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {products.length === 0 ? (
-          <Card style={styles.empty}>
-            <Text style={typography.h3}>Aucun produit disponible</Text>
-            <Text style={[typography.body, styles.muted]}>
-              Revenez plus tard, de nouveaux produits arrivent bientôt.
-            </Text>
-          </Card>
+          <EmptyState
+            icon="bag-handle-outline"
+            title="Aucun produit disponible"
+            message="Revenez plus tard, de nouveaux produits arrivent bientôt."
+          />
         ) : (
           products.map((p) => (
             <ProductRow

@@ -5,6 +5,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import type { AppSettings } from "@/lib/database.types";
@@ -60,12 +61,11 @@ export default function AdminSettings() {
       <AdminHeader title="Paramètres" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {!settings ? (
-          <Card style={styles.empty}>
-            <Ionicons name="alert-circle-outline" size={36} color={colors.textMuted} />
-            <Text style={[typography.body, styles.muted]}>
-              Aucune ligne de paramètres trouvée dans app_settings.
-            </Text>
-          </Card>
+          <EmptyState
+            icon="alert-circle-outline"
+            title="Aucun paramètre"
+            message="Aucune ligne de paramètres trouvée dans app_settings."
+          />
         ) : (
           <Card style={styles.card}>
             <Text style={[typography.body, styles.intro]}>Activez ou désactivez les modules de l'application.</Text>

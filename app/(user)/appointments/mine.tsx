@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import {
@@ -74,13 +75,11 @@ export default function MyAppointments() {
         <Text style={typography.h2}>Mes rendez-vous</Text>
 
         {appointments.length === 0 ? (
-          <Card style={styles.empty}>
-            <Ionicons name="calendar-outline" size={40} color={colors.textMuted} />
-            <Text style={typography.h3}>Aucun rendez-vous</Text>
-            <Text style={[typography.body, styles.muted]}>
-              Vos rendez-vous avec un médecin apparaîtront ici.
-            </Text>
-          </Card>
+          <EmptyState
+            icon="calendar-outline"
+            title="Aucun rendez-vous"
+            message="Vos rendez-vous avec un médecin apparaîtront ici."
+          />
         ) : (
           appointments.map((a) => {
             const name = doctorDisplayName(a.doctor?.profile ?? null);

@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { EmptyState } from "@/components/EmptyState";
 import { useCart, type CartItem } from "@/providers/CartProvider";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -18,14 +19,13 @@ export default function Cart() {
         <Text style={typography.h2}>Mon panier</Text>
 
         {items.length === 0 ? (
-          <Card style={styles.empty}>
-            <Ionicons name="cart-outline" size={40} color={colors.textMuted} />
-            <Text style={typography.h3}>Votre panier est vide</Text>
-            <Text style={[typography.body, styles.muted]}>
-              Parcourez la boutique pour ajouter des produits.
-            </Text>
-            <Button title="Voir la boutique" variant="outline" onPress={() => router.replace("/(user)/marketplace")} />
-          </Card>
+          <EmptyState
+            icon="cart-outline"
+            title="Votre panier est vide"
+            message="Parcourez la boutique pour ajouter des produits."
+            actionLabel="Voir la boutique"
+            onAction={() => router.replace("/(user)/marketplace")}
+          />
         ) : (
           <>
             {items.map((it) => (

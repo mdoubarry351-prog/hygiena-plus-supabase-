@@ -5,6 +5,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, type DoctorRow } from "@/lib/admin-service";
 import { formatPrice } from "@/lib/marketplace-service";
@@ -69,7 +70,7 @@ export default function AdminDoctors() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {doctors.length === 0 ? (
-          <Card style={styles.empty}><Text style={[typography.body, styles.muted]}>Aucun médecin enregistré.</Text></Card>
+          <EmptyState icon="medkit-outline" title="Aucun médecin enregistré" />
         ) : (
           doctors.map((d) => (
             <Card key={d.id} style={styles.card}>

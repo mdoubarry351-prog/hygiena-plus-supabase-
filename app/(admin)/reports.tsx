@@ -6,6 +6,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, REPORT_STATUSES, type ReportRow, type ReportStatus } from "@/lib/admin-service";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -76,7 +77,7 @@ export default function AdminReports() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {reports.length === 0 ? (
-          <Card style={styles.empty}><Text style={[typography.body, styles.muted]}>Aucun signalement.</Text></Card>
+          <EmptyState icon="flag-outline" title="Aucun signalement" message="Tout est calme côté communauté." />
         ) : (
           reports.map((r) => {
             const open = openId === r.id;

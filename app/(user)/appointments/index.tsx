@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { useDoctors } from "@/hooks/useDoctors";
@@ -49,13 +50,11 @@ export default function AppointmentsHome() {
           <Text style={styles.verifiedText}>✅ Toutes nos médecins sont vérifiées</Text>
         </Card>
         {doctors.length === 0 ? (
-          <Card style={styles.empty}>
-            <Ionicons name="medkit-outline" size={40} color={colors.textMuted} />
-            <Text style={typography.h3}>Aucun médecin disponible</Text>
-            <Text style={[typography.body, styles.muted]}>
-              Revenez plus tard, de nouveaux praticiens arrivent bientôt.
-            </Text>
-          </Card>
+          <EmptyState
+            icon="medkit-outline"
+            title="Aucun médecin disponible"
+            message="Revenez plus tard, de nouveaux praticiens arrivent bientôt."
+          />
         ) : (
           doctors.map((d) => (
             <DoctorRow

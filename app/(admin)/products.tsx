@@ -7,6 +7,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import { formatPrice } from "@/lib/marketplace-service";
@@ -69,7 +70,7 @@ export default function AdminProducts() {
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {products.length === 0 ? (
-          <Card style={styles.empty}><Text style={[typography.body, styles.muted]}>Aucun produit. Touchez + pour en créer un.</Text></Card>
+          <EmptyState icon="bag-handle-outline" title="Aucun produit" message="Touchez + pour en créer un." />
         ) : (
           products.map((p) => (
             <Card key={p.id} style={styles.row}>

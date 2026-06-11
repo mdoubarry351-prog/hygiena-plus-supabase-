@@ -5,6 +5,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import { formatPrice, type OrderItem } from "@/lib/marketplace-service";
@@ -91,7 +92,7 @@ export default function AdminOrders() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {orders.length === 0 ? (
-          <Card style={styles.empty}><Text style={[typography.body, styles.muted]}>Aucune commande.</Text></Card>
+          <EmptyState icon="receipt-outline" title="Aucune commande" />
         ) : (
           orders.map((o) => {
             const count = itemCount(o.items);

@@ -6,6 +6,7 @@ import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import type { Profile, UserRole } from "@/lib/database.types";
@@ -74,7 +75,7 @@ export default function AdminUsers() {
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
           {users.length === 0 ? (
-            <Card style={styles.empty}><Text style={[typography.body, styles.muted]}>Aucun utilisateur.</Text></Card>
+            <EmptyState icon="people-outline" title="Aucun utilisateur" />
           ) : (
             users.map((u) => {
               const open = selected?.id === u.id;

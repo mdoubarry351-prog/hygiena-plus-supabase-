@@ -5,6 +5,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import { authorDisplayName, formatRelativeTime, type CommunityPostWithAuthor } from "@/lib/community-service";
@@ -64,7 +65,7 @@ export default function AdminCommunity() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {posts.length === 0 ? (
-          <Card style={styles.empty}><Text style={[typography.body, styles.muted]}>Aucune publication.</Text></Card>
+          <EmptyState emoji="💬" title="Aucune publication" />
         ) : (
           posts.map((p) => (
             <Card key={p.id} style={styles.card}>

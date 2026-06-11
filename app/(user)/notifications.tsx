@@ -4,6 +4,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useNotifications } from "@/hooks/useNotifications";
 import { formatRelativeTime } from "@/lib/community-service";
@@ -42,13 +43,11 @@ export default function Notifications() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {notifications.length === 0 ? (
-          <Card style={styles.empty}>
-            <Ionicons name="notifications-off-outline" size={40} color={colors.textMuted} />
-            <Text style={typography.h3}>Aucune notification</Text>
-            <Text style={[typography.body, styles.muted]}>
-              Vous serez notifiée ici de vos rendez-vous, commandes et nouveautés.
-            </Text>
-          </Card>
+          <EmptyState
+            icon="notifications-off-outline"
+            title="Aucune notification"
+            message="Vous serez notifiée ici de vos rendez-vous, commandes et nouveautés."
+          />
         ) : (
           notifications.map((n) => (
             <NotificationRow key={n.id} notification={n} onPress={() => { if (!n.is_read) markAsRead(n.id); }} />

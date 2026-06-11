@@ -4,6 +4,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { marketplaceService, formatPrice, type OrderItem } from "@/lib/marketplace-service";
@@ -83,13 +84,11 @@ export default function Orders() {
         <Text style={typography.h2}>Mes commandes</Text>
 
         {orders.length === 0 ? (
-          <Card style={styles.empty}>
-            <Ionicons name="receipt-outline" size={40} color={colors.textMuted} />
-            <Text style={typography.h3}>Aucune commande</Text>
-            <Text style={[typography.body, styles.muted]}>
-              Vos commandes apparaîtront ici après votre premier achat.
-            </Text>
-          </Card>
+          <EmptyState
+            icon="receipt-outline"
+            title="Aucune commande"
+            message="Vos commandes apparaîtront ici après votre premier achat."
+          />
         ) : (
           orders.map((o) => {
             const count = itemCount(o.items);

@@ -7,6 +7,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, type SuspensionRow } from "@/lib/admin-service";
 import type { Profile } from "@/lib/database.types";
@@ -121,7 +122,7 @@ export default function AdminSuspensions() {
 
         <Text style={[typography.h3, styles.listTitle]}>Suspensions</Text>
         {suspensions.length === 0 ? (
-          <Card style={styles.empty}><Text style={[typography.body, styles.muted]}>Aucune suspension.</Text></Card>
+          <EmptyState icon="hand-left-outline" title="Aucune suspension" />
         ) : (
           suspensions.map((s) => (
             <Card key={s.id} style={styles.card}>

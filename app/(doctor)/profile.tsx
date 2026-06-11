@@ -5,6 +5,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
@@ -35,13 +36,11 @@ export default function DoctorProfile() {
     return (
       <Screen>
         <View style={styles.topBar}><Text style={typography.h2}>Profil</Text></View>
-        <Card style={styles.empty}>
-          <Ionicons name="alert-circle-outline" size={40} color={colors.textMuted} />
-          <Text style={typography.h3}>Fiche médecin introuvable</Text>
-          <Text style={[typography.body, styles.muted]}>
-            Aucune fiche n'est rattachée à votre compte. Contactez l'administrateur.
-          </Text>
-        </Card>
+        <EmptyState
+          icon="alert-circle-outline"
+          title="Fiche médecin introuvable"
+          message="Aucune fiche n'est rattachée à votre compte. Contactez l'administrateur."
+        />
         <View style={styles.signOutWrap}>
           <Button title="Se déconnecter" variant="danger" onPress={() => handleSignOut(signOut)} />
         </View>
