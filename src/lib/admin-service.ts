@@ -8,9 +8,11 @@ import type {
   UserReport,
   UserSuspension,
   AppSettings,
+  StoreSettings,
   UserRole,
   OrderStatus,
   Json,
+  Tables,
   TablesInsert,
   TablesUpdate,
 } from "@/lib/database.types";
@@ -70,6 +72,7 @@ export type ReportRow = UserReport & {
 export type SuspensionRow = UserSuspension & {
   user: Pick<Profile, "full_name" | "email"> | null;
 };
+export type AuditLogRow = Tables<"admin_logs"> & { adminName: string | null };
 
 export type AdminCounts = {
   users: number;
@@ -480,5 +483,59 @@ export const adminService = {
     if (error) throw error;
     await logAction(adminId, "update_settings", "app_settings", id, patch as Json);
     return data;
+  },
+
+  // ---------------- 11b. Paramètres de la boutique ----------------
+  async getStoreSettings(): Promise<StoreSettings | null> {
+    const { data, error } = await supabase
+      .from("store_settings")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async updateStoreSettings(
+    adminId: string,
+    id: string,
+    patch: TablesUpdate<"store_settings">
+  ): Promise<StoreSettings> {
+    const payload: TablesUpdate<"store_settings"> = {
+      ...patch,
+      updated_by: adminId,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase
+      .from("store_settings")
+      .update(payload)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    await logAction(adminId, "update_store_settings", "store_settings", id, patch as Json);
+    return data;
+  },
+
+  // ---------------- 11. Journal d'audit ----------------
+  // Lit les dernières actions admin (admin_logs) + résout le nom de l'admin
+  // via une requête profiles séparée (pas d'embed FK fragile).
+  async getAuditLogs(limit = 100): Promise<AuditLogRow[]> {
+    const { data, error } = await supabase
+      .from("admin_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    const logs = data ?? [];
+
+    const ids = [...new Set(logs.map((l) => l.admin_id).filter((x): x is string => !!x))];
+    const nameById: Record<string, string> = {};
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+      for (const p of profs ?? []) nameById[p.id] = p.full_name ?? "";
+    }
+
+    return logs.map((l) => ({ ...l, adminName: l.admin_id ? nameById[l.admin_id] ?? null : null }));
   },
 };

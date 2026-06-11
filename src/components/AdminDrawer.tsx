@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, usePathname, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/providers/AuthProvider";
+import { useAdminBadges, badgeForSeg } from "@/hooks/useAdminBadges";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 // =====================================================
@@ -59,7 +60,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { label: "Produits", icon: "bag-handle-outline", href: "/(admin)/products", seg: "products" },
       { label: "Commandes", icon: "receipt-outline", href: "/(admin)/orders", seg: "orders" },
-      { label: "Boutique", icon: "storefront-outline", href: "/(admin)/settings", seg: "settings" },
+      { label: "Boutique", icon: "storefront-outline", href: "/(admin)/store-settings", seg: "store-settings" },
     ],
   },
   {
@@ -72,6 +73,7 @@ const GROUPS: NavGroup[] = [
       { label: "Statistiques", icon: "bar-chart-outline", href: "/(admin)/stats", seg: "stats" },
       { label: "Gestion des services", icon: "settings-outline", href: "/(admin)/settings", seg: "settings" },
       { label: "Suspensions", icon: "hand-left-outline", href: "/(admin)/suspensions", seg: "suspensions" },
+      { label: "Journal d'audit", icon: "document-text-outline", href: "/(admin)/logs", seg: "logs" },
     ],
   },
 ];
@@ -84,6 +86,7 @@ export function AdminDrawer() {
   const router = useRouter();
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
+  const badges = useAdminBadges();
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -92,6 +95,10 @@ export function AdminDrawer() {
       duration: 220,
       useNativeDriver: true,
     }).start();
+    // Rafraîchit les compteurs à chaque ouverture du menu.
+    // (badges.reload est stable ; on ne dépend que de l'état d'ouverture.)
+    if (drawerOpen) badges.reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawerOpen, anim]);
 
   const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [-PANEL_WIDTH, 0] });
@@ -136,6 +143,7 @@ export function AdminDrawer() {
                 {group.title ? <Text style={styles.groupTitle}>{group.title.toUpperCase()}</Text> : null}
                 {group.items.map((item, ii) => {
                   const active = pathname === `/${item.seg}` || pathname.endsWith(`/${item.seg}`);
+                  const count = badgeForSeg(item.seg, badges);
                   return (
                     <Pressable
                       key={`${item.seg}-${ii}`}
@@ -148,6 +156,11 @@ export function AdminDrawer() {
                         color={active ? colors.primaryDark : colors.textMuted}
                       />
                       <Text style={[styles.itemText, active && styles.itemTextActive]}>{item.label}</Text>
+                      {count > 0 ? (
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>{count > 99 ? "99+" : count}</Text>
+                        </View>
+                      ) : null}
                     </Pressable>
                   );
                 })}
@@ -191,8 +204,10 @@ const styles = StyleSheet.create({
   groupTitle: { ...typography.caption, color: colors.textMuted, fontWeight: "700", letterSpacing: 0.5, paddingHorizontal: spacing.sm, marginBottom: spacing.xs },
   item: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, borderRadius: radius.md },
   itemActive: { backgroundColor: colors.primaryLight },
-  itemText: { ...typography.body, color: colors.text, fontWeight: "500" },
+  itemText: { ...typography.body, color: colors.text, fontWeight: "500", flex: 1 },
   itemTextActive: { color: colors.primaryDark, fontWeight: "700" },
+  badge: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
+  badgeText: { color: colors.white, fontSize: 11, fontFamily: fonts.bodyBold, fontWeight: "700" },
   footer: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
   avatarText: { ...typography.name, color: colors.primaryDark },

@@ -622,6 +622,65 @@ export type Database = {
       };
 
       // =================================================
+      // 11b. store_settings (paramètres de la boutique — ligne unique)
+      // =================================================
+      store_settings: {
+        Row: {
+          id: string;
+          whatsapp_enabled: boolean;
+          whatsapp_number: string | null;
+          cod_enabled: boolean;
+          cod_max_amount: number;
+          cod_min_account_age_days: number;
+          cod_zones: string[] | null;
+          default_delivery_fee: number;
+          free_delivery_threshold: number | null;
+          delivery_zones: Json | null;
+          announcement: string | null;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          whatsapp_enabled?: boolean;
+          whatsapp_number?: string | null;
+          cod_enabled?: boolean;
+          cod_max_amount?: number;
+          cod_min_account_age_days?: number;
+          cod_zones?: string[] | null;
+          default_delivery_fee?: number;
+          free_delivery_threshold?: number | null;
+          delivery_zones?: Json | null;
+          announcement?: string | null;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          whatsapp_enabled?: boolean;
+          whatsapp_number?: string | null;
+          cod_enabled?: boolean;
+          cod_max_amount?: number;
+          cod_min_account_age_days?: number;
+          cod_zones?: string[] | null;
+          default_delivery_fee?: number;
+          free_delivery_threshold?: number | null;
+          delivery_zones?: Json | null;
+          announcement?: string | null;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "store_settings_updated_by_fkey";
+            columns: ["updated_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      // =================================================
       // 12. user_reports
       // =================================================
       user_reports: {
@@ -828,6 +887,7 @@ export type CommunityPostSafe = Database["public"]["Views"]["community_posts_saf
 export type CommunityComment = Tables<"community_comments">;
 export type CommunityLike = Tables<"community_likes">;
 export type AppSettings = Tables<"app_settings">;
+export type StoreSettings = Tables<"store_settings">;
 export type AdminLog = Tables<"admin_logs">;
 export type UserReport = Tables<"user_reports">;
 export type UserSuspension = Tables<"user_suspensions">;

@@ -2,7 +2,8 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useRouter, usePathname, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/providers/AuthProvider";
-import { colors, radius, spacing, typography } from "@/theme";
+import { useAdminBadges, badgeForSeg } from "@/hooks/useAdminBadges";
+import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 type Item = { seg: string; label: string; href: Href };
 type Group = { title: string; items: Item[] };
@@ -35,6 +36,7 @@ const GROUPS: Group[] = [
     items: [
       { seg: "products", label: "Produits", href: "/(admin)/products" },
       { seg: "orders", label: "Commandes", href: "/(admin)/orders" },
+      { seg: "store-settings", label: "Boutique", href: "/(admin)/store-settings" },
     ],
   },
   {
@@ -48,6 +50,7 @@ const GROUPS: Group[] = [
     items: [
       { seg: "stats", label: "Statistiques", href: "/(admin)/stats" },
       { seg: "suspensions", label: "Suspensions", href: "/(admin)/suspensions" },
+      { seg: "logs", label: "Journal d'audit", href: "/(admin)/logs" },
     ],
   },
 ];
@@ -57,6 +60,7 @@ export function AdminSidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { signOut } = useAuth();
+  const badges = useAdminBadges();
 
   function handleSignOut() {
     Alert.alert("Se déconnecter", "Voulez-vous vraiment vous déconnecter ?", [
@@ -77,6 +81,7 @@ export function AdminSidebar() {
             <Text style={styles.groupTitle}>{group.title.toUpperCase()}</Text>
             {group.items.map((item) => {
               const active = pathname === `/${item.seg}` || pathname.endsWith(`/${item.seg}`);
+              const count = badgeForSeg(item.seg, badges);
               return (
                 <Pressable
                   key={item.seg}
@@ -84,6 +89,11 @@ export function AdminSidebar() {
                   style={[styles.item, active && styles.itemActive]}
                 >
                   <Text style={[styles.itemText, active && styles.itemTextActive]}>{item.label}</Text>
+                  {count > 0 ? (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{count > 99 ? "99+" : count}</Text>
+                    </View>
+                  ) : null}
                 </Pressable>
               );
             })}
@@ -109,10 +119,12 @@ const styles = StyleSheet.create({
   nav: { gap: spacing.lg, paddingBottom: spacing.lg },
   group: { gap: spacing.xs },
   groupTitle: { ...typography.caption, color: colors.textMuted, fontWeight: "700", letterSpacing: 0.5, paddingHorizontal: spacing.sm, marginBottom: spacing.xs },
-  item: { paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, borderRadius: radius.md },
+  item: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, borderRadius: radius.md },
   itemActive: { backgroundColor: colors.primaryLight },
-  itemText: { ...typography.body, color: colors.text, fontWeight: "500" },
+  itemText: { ...typography.body, color: colors.text, fontWeight: "500", flex: 1 },
   itemTextActive: { color: colors.primaryDark, fontWeight: "700" },
+  badge: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
+  badgeText: { color: colors.white, fontSize: 11, fontFamily: fonts.bodyBold, fontWeight: "700" },
   signOut: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm },
   signOutText: { ...typography.body, color: colors.danger, fontWeight: "600" },
 });
