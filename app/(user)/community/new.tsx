@@ -3,6 +3,7 @@ import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native"
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
@@ -44,8 +45,8 @@ export default function NewPost() {
 
   return (
     <Screen>
+      <ScreenHeader title="Nouvelle publication" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={typography.h2}>Nouvelle publication</Text>
 
         <Input
           label="Votre message"

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
@@ -57,8 +58,8 @@ export default function LogCycle() {
 
   return (
     <Screen>
+      <ScreenHeader title="Enregistrer mes règles" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={typography.h2}>Enregistrer mes règles</Text>
 
         <Input
           label="Date de début (AAAA-MM-JJ)"

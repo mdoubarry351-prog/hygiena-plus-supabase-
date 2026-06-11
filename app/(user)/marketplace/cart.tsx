@@ -2,6 +2,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
@@ -15,8 +16,8 @@ export default function Cart() {
 
   return (
     <Screen>
+      <ScreenHeader title="Mon panier" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={typography.h2}>Mon panier</Text>
 
         {items.length === 0 ? (
           <EmptyState

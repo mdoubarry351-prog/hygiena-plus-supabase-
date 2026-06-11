@@ -4,6 +4,7 @@ import { Redirect, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
@@ -34,12 +35,14 @@ export default function AppointmentsHome() {
 
   return (
     <Screen>
-      <View style={styles.topBar}>
-        <Text style={typography.h2}>Trouver une médecin</Text>
-        <Pressable onPress={() => router.push("/(user)/appointments/mine")} hitSlop={10} style={styles.iconBtn}>
-          <Ionicons name="calendar-outline" size={25} color={colors.text} />
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="Trouver une médecin"
+        right={
+          <Pressable onPress={() => router.push("/(user)/appointments/mine")} hitSlop={10} style={styles.iconBtn}>
+            <Ionicons name="calendar-outline" size={25} color={colors.text} />
+          </Pressable>
+        }
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

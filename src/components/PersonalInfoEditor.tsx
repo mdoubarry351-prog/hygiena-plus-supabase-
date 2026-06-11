@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Screen } from "@/components/Screen";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
@@ -27,7 +26,6 @@ function initialNames(profile: Profile | null): { first: string; last: string } 
 // Présentation + appels auth-service uniquement ; full_name reste synchronisé.
 export function PersonalInfoEditor({ title = "Mes informations" }: { title?: string }) {
   const { profile, session, refreshProfile } = useAuth();
-  const router = useRouter();
 
   const init = initialNames(profile);
   const [firstName, setFirstName] = useState(init.first);
@@ -116,13 +114,8 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
 
   return (
     <Screen>
+      <ScreenHeader title={title} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
-          <Text style={styles.backText}>Retour</Text>
-        </Pressable>
-
-        <Text style={typography.h2}>{title}</Text>
 
         {/* Identité */}
         <Card style={styles.card}>

@@ -3,6 +3,7 @@ import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "rea
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
@@ -140,6 +141,7 @@ export default function BookAppointment() {
 
   return (
     <Screen>
+      <ScreenHeader title="Prendre rendez-vous" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <Card style={styles.doctorCard}>
           {doctor.profile?.avatar_url ? (

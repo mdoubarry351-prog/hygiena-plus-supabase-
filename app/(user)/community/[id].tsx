@@ -13,6 +13,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
@@ -103,6 +104,7 @@ export default function PostDetail() {
 
   return (
     <Screen>
+      <ScreenHeader title="Publication" />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

@@ -4,6 +4,7 @@ import { Redirect, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
@@ -68,12 +69,12 @@ export default function MyAppointments() {
 
   return (
     <Screen>
+      <ScreenHeader title="Mes rendez-vous" />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        <Text style={typography.h2}>Mes rendez-vous</Text>
 
         {appointments.length === 0 ? (
           <EmptyState

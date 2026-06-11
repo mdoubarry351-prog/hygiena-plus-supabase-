@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
@@ -48,12 +49,8 @@ export default function Receipt() {
 
   return (
     <Screen>
+      <ScreenHeader />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
-          <Text style={styles.backText}>Retour</Text>
-        </Pressable>
-
         <View style={styles.badge}>
           <View style={styles.badgeCircle}>
             <Ionicons name="checkmark" size={36} color={colors.white} />

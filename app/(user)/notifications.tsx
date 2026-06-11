@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "r
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
@@ -27,15 +28,17 @@ export default function Notifications() {
 
   return (
     <Screen>
-      <View style={styles.topBar}>
-        <Text style={typography.h2}>Notifications</Text>
-        {unreadCount > 0 && (
-          <Pressable onPress={markAllAsRead} hitSlop={10} style={styles.markAllBtn}>
-            <Ionicons name="checkmark-done-outline" size={18} color={colors.primary} />
-            <Text style={styles.markAllText}>Tout marquer comme lu</Text>
-          </Pressable>
-        )}
-      </View>
+      <ScreenHeader
+        title="Notifications"
+        right={
+          unreadCount > 0 ? (
+            <Pressable onPress={markAllAsRead} hitSlop={10} style={styles.markAllBtn}>
+              <Ionicons name="checkmark-done-outline" size={18} color={colors.primary} />
+              <Text style={styles.markAllText}>Tout marquer comme lu</Text>
+            </Pressable>
+          ) : undefined
+        }
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
