@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -14,6 +15,7 @@ import { colors, radius, spacing, typography } from "@/theme";
 
 export default function DoctorProfile() {
   const { profile, signOut } = useAuth();
+  const router = useRouter();
   const { doctor, loading, setDoctor } = useMyDoctor();
 
   const [specialty, setSpecialty] = useState("");
@@ -121,8 +123,22 @@ export default function DoctorProfile() {
           </View>
         </Card>
 
+        {/* Infos personnelles (distinctes de la fiche pro) */}
+        <Pressable onPress={() => router.push("/(doctor)/account")}>
+          <Card style={styles.accountRow}>
+            <View style={styles.accountIcon}>
+              <Ionicons name="person-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.accountText}>
+              <Text style={styles.accountTitle}>Mes informations personnelles</Text>
+              <Text style={styles.accountSub}>Nom, téléphone, email, mot de passe</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
         <Card style={styles.formCard}>
-          <Text style={typography.h3}>Ma fiche</Text>
+          <Text style={typography.h3}>Fiche professionnelle</Text>
           <Input
             label="Spécialité"
             value={specialty}
@@ -198,6 +214,11 @@ const styles = StyleSheet.create({
   statusTitle: { ...typography.name },
   statusSub: { ...typography.caption, marginTop: 2, flexShrink: 1 },
   formCard: { gap: spacing.sm },
+  accountRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  accountIcon: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  accountText: { flex: 1, gap: 2 },
+  accountTitle: { ...typography.name },
+  accountSub: { ...typography.caption, color: colors.textMuted },
   textArea: { height: 120, textAlignVertical: "top", paddingTop: spacing.sm },
   empty: { alignItems: "center", gap: spacing.sm, marginTop: spacing.md },
   muted: { color: colors.textMuted, textAlign: "center" },

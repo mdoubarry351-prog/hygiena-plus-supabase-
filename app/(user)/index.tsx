@@ -131,6 +131,29 @@ export default function CycleHome() {
           <Ionicons name="arrow-forward" size={20} color={colors.white} />
         </Pressable>
 
+        {/* 3b · Promotion Premium (masquée si déjà premium) */}
+        {profile?.is_premium ? (
+          <View style={styles.premiumActive}>
+            <Ionicons name="checkmark-circle" size={16} color={colors.primaryDark} />
+            <Text style={styles.premiumActiveText}>Premium actif</Text>
+          </View>
+        ) : (
+          <Pressable onPress={() => router.push("/(user)/premium")}>
+            <Card style={styles.premiumCard}>
+              <View style={styles.premiumIcon}>
+                <Ionicons name="sparkles" size={20} color={colors.accent} />
+              </View>
+              <View style={styles.premiumText}>
+                <Text style={styles.premiumTitle}>Passer au mode premium</Text>
+                <Text style={styles.premiumSub}>
+                  Messagerie illimitée avec les médecins • Conseils à tout moment • Suivi prioritaire
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.primaryDark} />
+            </Card>
+          </Pressable>
+        )}
+
         {/* 4 · Accès rapide */}
         <Text style={[typography.h3, styles.sectionTitle]}>Accès rapide</Text>
 
@@ -221,6 +244,15 @@ const styles = StyleSheet.create({
   ctaText: { flex: 1, gap: 2 },
   ctaTitle: { color: colors.white, fontSize: 16, fontFamily: fonts.bodyBold, fontWeight: "700" },
   ctaSub: { ...typography.caption, color: colors.white, opacity: 0.9, fontFamily: fonts.body },
+
+  // Promotion premium
+  premiumCard: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  premiumIcon: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" },
+  premiumText: { flex: 1, gap: 2 },
+  premiumTitle: { ...typography.name, color: colors.primaryDark },
+  premiumSub: { ...typography.caption, color: colors.textMuted },
+  premiumActive: { flexDirection: "row", alignItems: "center", gap: spacing.xs, alignSelf: "flex-start", backgroundColor: colors.primaryLight, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill },
+  premiumActiveText: { ...typography.caption, color: colors.primaryDark, fontFamily: fonts.bodySemiBold },
 
   // Accès rapide
   sectionTitle: { marginTop: spacing.xs },

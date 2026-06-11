@@ -50,8 +50,9 @@ export default function DoctorLayout() {
             tabBarIcon: ({ color, size }) => <Ionicons name="medkit-outline" color={color} size={size} />,
           }}
         />
-        {/* Écran de chat (accessible depuis la boîte de réception) */}
+        {/* Écrans accessibles hors barre d'onglets */}
         <Tabs.Screen name="chat" options={{ href: null }} />
+        <Tabs.Screen name="account" options={{ href: null }} />
       </Tabs>
     </RoleGuard>
   );

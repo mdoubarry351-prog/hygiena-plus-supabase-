@@ -10,14 +10,15 @@ import { colors, spacing, typography } from "@/theme";
 export default function Register() {
   const { signUp } = useAuth();
   const router = useRouter();
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleRegister() {
-    if (!fullName.trim()) {
-      Alert.alert("Nom requis", "Indiquez votre nom complet.");
+    if (!firstName.trim() || !lastName.trim()) {
+      Alert.alert("Nom requis", "Indiquez votre prénom et votre nom.");
       return;
     }
     if (password.length < 6) {
@@ -26,7 +27,10 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const { needsEmailConfirmation } = await signUp(email.trim(), password, fullName.trim());
+      const { needsEmailConfirmation } = await signUp(email.trim(), password, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      });
       if (needsEmailConfirmation) {
         Alert.alert(
           "Compte créé",
@@ -50,7 +54,8 @@ export default function Register() {
         <Text style={typography.caption}>Rejoignez Hygiena+</Text>
       </View>
 
-      <Input label="Nom complet" value={fullName} onChangeText={setFullName} placeholder="Awa Diop" />
+      <Input label="Prénom" value={firstName} onChangeText={setFirstName} placeholder="Awa" autoCapitalize="words" />
+      <Input label="Nom" value={lastName} onChangeText={setLastName} placeholder="Diop" autoCapitalize="words" />
       <Input
         label="Email"
         value={email}
