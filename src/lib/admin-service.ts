@@ -85,6 +85,17 @@ export type MonthlySeries = {
   orders: number[];
 };
 
+export type DashboardStats = {
+  users: number;
+  doctors: number;
+  posts: number;
+  appointments: number;
+  revenueThisMonth: number;
+  ordersPending: number;
+  ordersThisMonth: number;
+  outOfStock: number;
+};
+
 // Statuts possibles d'un signalement (user_reports.status est un text libre).
 export const REPORT_STATUSES = ["pending", "resolved", "dismissed"] as const;
 export type ReportStatus = (typeof REPORT_STATUSES)[number];
@@ -113,6 +124,47 @@ export const adminService = {
       countRows("appointments"),
     ]);
     return { users, doctors, orders, posts, appointments };
+  },
+
+  // Statistiques du tableau de bord (léger : 4 counts + 1 requête commandes + 1 count rupture).
+  async getDashboardStats(): Promise<DashboardStats> {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    const [users, doctors, posts, appointments, ordersRes, outOfStockRes] = await Promise.all([
+      countRows("profiles"),
+      countRows("doctors"),
+      countRows("community_posts"),
+      countRows("appointments"),
+      supabase.from("marketplace_orders").select("status, total_amount, created_at"),
+      supabase.from("marketplace_products").select("id", { count: "exact", head: true }).lte("stock", 0),
+    ]);
+    if (ordersRes.error) throw ordersRes.error;
+    if (outOfStockRes.error) throw outOfStockRes.error;
+
+    let revenueThisMonth = 0;
+    let ordersPending = 0;
+    let ordersThisMonth = 0;
+    for (const o of ordersRes.data ?? []) {
+      if (o.status === "pending") ordersPending += 1;
+      const inMonth = (o.created_at ?? "") >= monthStart;
+      if (inMonth) {
+        ordersThisMonth += 1;
+        // Le chiffre d'affaires exclut les commandes annulées.
+        if (o.status !== "cancelled") revenueThisMonth += o.total_amount ?? 0;
+      }
+    }
+
+    return {
+      users,
+      doctors,
+      posts,
+      appointments,
+      revenueThisMonth,
+      ordersPending,
+      ordersThisMonth,
+      outOfStock: outOfStockRes.count ?? 0,
+    };
   },
 
   // ---------------- 2. Statistiques ----------------

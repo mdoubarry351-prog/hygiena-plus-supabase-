@@ -14,10 +14,10 @@ import { colors, radius, spacing, typography } from "@/theme";
 type ToggleKey = "marketplace_enabled" | "doctors_enabled" | "premium_enabled" | "appointments_enabled";
 
 const TOGGLES: { key: ToggleKey; label: string; sub: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: "marketplace_enabled", label: "Marketplace", sub: "Boutique et commandes", icon: "bag-handle-outline" },
-  { key: "doctors_enabled", label: "Médecins", sub: "Annuaire des médecins", icon: "medkit-outline" },
-  { key: "appointments_enabled", label: "Rendez-vous", sub: "Prise de rendez-vous", icon: "calendar-outline" },
-  { key: "premium_enabled", label: "Premium", sub: "Abonnement premium", icon: "star-outline" },
+  { key: "marketplace_enabled", label: "Marketplace", sub: "Boutique et commandes pour les utilisatrices.", icon: "bag-handle-outline" },
+  { key: "doctors_enabled", label: "Médecins", sub: "Annuaire des médecins et téléconsultation.", icon: "medkit-outline" },
+  { key: "appointments_enabled", label: "Rendez-vous", sub: "Prise de rendez-vous payante avec les médecins.", icon: "calendar-outline" },
+  { key: "premium_enabled", label: "Premium", sub: "Abonnement premium et messagerie médecin.", icon: "star-outline" },
 ];
 
 export default function AdminSettings() {
@@ -58,8 +58,19 @@ export default function AdminSettings() {
 
   return (
     <Screen>
-      <AdminHeader title="Paramètres" />
+      <AdminHeader title="Gestion des services" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <Text style={styles.subtitle}>Activez ou désactivez les services proposés aux utilisatrices.</Text>
+
+        {/* Bandeau d'information */}
+        <View style={styles.banner}>
+          <Ionicons name="information-circle-outline" size={20} color={colors.primaryDark} />
+          <Text style={styles.bannerText}>
+            Aucune fonctionnalité n'est supprimée. Les réglages sont enregistrés en base et restent actifs après une
+            déconnexion ou un redémarrage de l'application.
+          </Text>
+        </View>
+
         {!settings ? (
           <EmptyState
             icon="alert-circle-outline"
@@ -67,25 +78,32 @@ export default function AdminSettings() {
             message="Aucune ligne de paramètres trouvée dans app_settings."
           />
         ) : (
-          <Card style={styles.card}>
-            <Text style={[typography.body, styles.intro]}>Activez ou désactivez les modules de l'application.</Text>
-            {TOGGLES.map((t) => (
-              <View key={t.key} style={styles.row}>
-                <View style={styles.rowIcon}><Ionicons name={t.icon} size={20} color={colors.primary} /></View>
-                <View style={styles.rowInfo}>
-                  <Text style={styles.rowLabel}>{t.label}</Text>
-                  <Text style={styles.rowSub}>{t.sub}</Text>
+          TOGGLES.map((t) => {
+            const on = !!settings[t.key];
+            return (
+              <Card key={t.key} style={styles.moduleCard}>
+                <View style={[styles.moduleIcon, { backgroundColor: on ? colors.primaryLight : colors.surface }]}>
+                  <Ionicons name={t.icon} size={22} color={on ? colors.primaryDark : colors.textMuted} />
                 </View>
-                <Switch
-                  value={!!settings[t.key]}
-                  onValueChange={() => toggle(t.key)}
-                  disabled={busyKey === t.key}
-                  trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor={colors.white}
-                />
-              </View>
-            ))}
-          </Card>
+                <View style={styles.moduleInfo}>
+                  <Text style={styles.moduleTitle}>{t.label}</Text>
+                  <Text style={styles.moduleSub}>{t.sub}</Text>
+                </View>
+                <View style={styles.moduleToggle}>
+                  <Text style={[styles.statusLabel, on ? styles.statusOn : styles.statusOff]}>
+                    {on ? "ACTIVÉ" : "DÉSACTIVÉ"}
+                  </Text>
+                  <Switch
+                    value={on}
+                    onValueChange={() => toggle(t.key)}
+                    disabled={busyKey === t.key}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor={colors.white}
+                  />
+                </View>
+              </Card>
+            );
+          })
         )}
       </ScrollView>
     </Screen>
@@ -93,14 +111,17 @@ export default function AdminSettings() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  empty: { alignItems: "center", gap: spacing.sm },
-  muted: { color: colors.textMuted, textAlign: "center" },
-  card: { gap: spacing.sm },
-  intro: { color: colors.textMuted, marginBottom: spacing.xs },
-  row: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
-  rowIcon: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
-  rowInfo: { flex: 1, gap: 2 },
-  rowLabel: { ...typography.name },
-  rowSub: { ...typography.caption, color: colors.textMuted },
+  content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
+  subtitle: { ...typography.caption, color: colors.textMuted },
+  banner: { flexDirection: "row", gap: spacing.sm, backgroundColor: colors.primaryLight, borderRadius: radius.md, padding: spacing.md, alignItems: "flex-start" },
+  bannerText: { ...typography.caption, color: colors.primaryDark, flex: 1, lineHeight: 18 },
+  moduleCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  moduleIcon: { width: 44, height: 44, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+  moduleInfo: { flex: 1, gap: 2 },
+  moduleTitle: { ...typography.name },
+  moduleSub: { ...typography.caption, color: colors.textMuted },
+  moduleToggle: { alignItems: "flex-end", gap: spacing.xs },
+  statusLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.5 },
+  statusOn: { color: colors.primaryDark },
+  statusOff: { color: colors.textMuted },
 });

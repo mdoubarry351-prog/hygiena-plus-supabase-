@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { useDoctors } from "@/hooks/useDoctors";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { doctorDisplayName, type DoctorWithProfile } from "@/lib/appointments-service";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
@@ -17,6 +18,7 @@ import { colors, fonts, radius, spacing, typography } from "@/theme";
 export default function AppointmentsHome() {
   const { role } = useAuth();
   const { doctors, loading, reload } = useDoctors();
+  const { doctors_enabled } = useAppSettings();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -32,6 +34,16 @@ export default function AppointmentsHome() {
   if (role === "doctor") return <Redirect href="/(user)" />;
 
   if (loading && doctors.length === 0) return <Loading />;
+
+  // Module désactivé par l'admin : accès aux médecins/consultations bloqué.
+  if (!doctors_enabled) {
+    return (
+      <Screen>
+        <ScreenHeader title="Trouver une médecin" />
+        <EmptyState icon="medkit-outline" title="Service non disponible pour le moment" />
+      </Screen>
+    );
+  }
 
   return (
     <Screen>

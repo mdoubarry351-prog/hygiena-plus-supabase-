@@ -8,6 +8,7 @@ import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
 import { CycleRing } from "@/components/CycleRing";
 import { useCycles } from "@/hooks/useCycles";
+import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { useAuth } from "@/providers/AuthProvider";
 import { notificationsService } from "@/lib/notifications-service";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
@@ -29,6 +30,7 @@ function daysUntil(d: Date | null | undefined): number | null {
 export default function CycleHome() {
   const { profile, session, role } = useAuth();
   const { cycles, prediction, loading, reload } = useCycles();
+  const { marketplace_enabled, doctors_enabled, premium_enabled } = useAppSettings();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -79,12 +81,19 @@ export default function CycleHome() {
       : { label: "faible", color: colors.accent };
 
   // Cartes d'accès rapide (Consultations masquée pour un médecin).
-  const quick: { emoji: string; title: string; sub: string; href: Href }[] = [
+  const quick: { emoji: string; title: string; sub: string; href: Href; module?: "marketplace" | "doctors" }[] = [
     { emoji: "🩸", title: "Mon cycle", sub: "Suivi menstruel", href: "/(user)/cycle/calendar" },
-    ...(!isDoctor ? [{ emoji: "🌼", title: "Consultations", sub: "Médecins vérifiées", href: "/(user)/appointments" as Href }] : []),
-    { emoji: "🛍️", title: "Boutique", sub: "Produits santé", href: "/(user)/marketplace" },
+    ...(!isDoctor ? [{ emoji: "🌼", title: "Consultations", sub: "Médecins vérifiées", href: "/(user)/appointments" as Href, module: "doctors" as const }] : []),
+    { emoji: "🛍️", title: "Boutique", sub: "Produits santé", href: "/(user)/marketplace", module: "marketplace" },
     { emoji: "💬", title: "Forum", sub: "Communauté", href: "/(user)/community" },
   ];
+
+  // Bloque la navigation vers un module désactivé par l'admin (message au tap).
+  function openQuick(q: (typeof quick)[number]) {
+    if (q.module === "marketplace" && !marketplace_enabled) return showServiceUnavailable();
+    if (q.module === "doctors" && !doctors_enabled) return showServiceUnavailable();
+    router.push(q.href);
+  }
 
   return (
     <Screen>
@@ -138,7 +147,7 @@ export default function CycleHome() {
             <Text style={styles.premiumActiveText}>Premium actif</Text>
           </View>
         ) : (
-          <Pressable onPress={() => router.push("/(user)/premium")}>
+          <Pressable onPress={() => { if (!premium_enabled) return showServiceUnavailable(); router.push("/(user)/premium"); }}>
             <Card style={styles.premiumCard}>
               <View style={styles.premiumIcon}>
                 <Ionicons name="sparkles" size={20} color={colors.accent} />
@@ -160,7 +169,7 @@ export default function CycleHome() {
         {/* 5 · Grille 2×2 */}
         <View style={styles.grid}>
           {quick.map((q) => (
-            <Pressable key={q.title} onPress={() => router.push(q.href)} style={styles.quickWrap}>
+            <Pressable key={q.title} onPress={() => openQuick(q)} style={styles.quickWrap}>
               <Card style={styles.quickCard}>
                 <View style={styles.quickIcon}><Text style={styles.quickEmoji}>{q.emoji}</Text></View>
                 <Text style={styles.quickTitle}>{q.title}</Text>

@@ -58,7 +58,7 @@ export default function ProductDetail() {
       <ScreenHeader />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {product.image_url ? (
-          <Image source={{ uri: product.image_url }} style={styles.image} />
+          <Image source={{ uri: product.image_url }} style={styles.image} resizeMode="cover" />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
             <Ionicons name="bag-outline" size={48} color={colors.textMuted} />
@@ -116,7 +116,7 @@ export default function ProductDetail() {
 
 const styles = StyleSheet.create({
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
-  image: { width: "100%", height: 240, borderRadius: radius.lg, backgroundColor: colors.surface },
+  image: { width: "100%", height: 300, borderRadius: radius.lg, backgroundColor: colors.surface },
   imagePlaceholder: { alignItems: "center", justifyContent: "center" },
   price: { ...typography.h2, color: colors.primary },
   stockIn: { ...typography.caption, color: colors.success, fontWeight: "600" },

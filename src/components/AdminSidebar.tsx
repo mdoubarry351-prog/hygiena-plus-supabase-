@@ -7,36 +7,47 @@ import { colors, radius, spacing, typography } from "@/theme";
 type Item = { seg: string; label: string; href: Href };
 type Group = { title: string; items: Item[] };
 
-// Les 10 sections existantes regroupées dans l'esprit de la maquette.
+// Sections regroupées (alignées sur le drawer mobile).
 const GROUPS: Group[] = [
   {
     title: "Pilotage",
     items: [
-      { seg: "dashboard", label: "Tableau de bord", href: "/(admin)/dashboard" },
-      { seg: "stats", label: "Statistiques", href: "/(admin)/stats" },
+      { seg: "dashboard", label: "Dashboard", href: "/(admin)/dashboard" },
     ],
   },
   {
-    title: "Personnes",
+    title: "Comptes",
     items: [
       { seg: "users", label: "Utilisateurs", href: "/(admin)/users" },
       { seg: "doctors", label: "Médecins", href: "/(admin)/doctors" },
+      { seg: "accounts", label: "Gestion des comptes", href: "/(admin)/accounts" },
     ],
   },
   {
-    title: "Activité",
+    title: "Services",
+    items: [
+      { seg: "reports", label: "Signalements", href: "/(admin)/reports" },
+      { seg: "settings", label: "Gestion des services", href: "/(admin)/settings" },
+    ],
+  },
+  {
+    title: "Marketplace",
     items: [
       { seg: "products", label: "Produits", href: "/(admin)/products" },
       { seg: "orders", label: "Commandes", href: "/(admin)/orders" },
-      { seg: "community", label: "Communauté", href: "/(admin)/community" },
     ],
   },
   {
-    title: "Modération & système",
+    title: "Communauté",
     items: [
-      { seg: "reports", label: "Signalements", href: "/(admin)/reports" },
+      { seg: "community", label: "Modération", href: "/(admin)/community" },
+    ],
+  },
+  {
+    title: "Système",
+    items: [
+      { seg: "stats", label: "Statistiques", href: "/(admin)/stats" },
       { seg: "suspensions", label: "Suspensions", href: "/(admin)/suspensions" },
-      { seg: "settings", label: "Paramètres", href: "/(admin)/settings" },
     ],
   },
 ];

@@ -5,7 +5,9 @@ import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { authService } from "@/lib/auth-service";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
@@ -17,6 +19,7 @@ const BENEFITS: { icon: keyof typeof Ionicons.glyphMap; title: string; sub: stri
 
 export default function Premium() {
   const { profile, session, refreshProfile } = useAuth();
+  const { premium_enabled } = useAppSettings();
   const [saving, setSaving] = useState(false);
   const isPremium = !!profile?.is_premium;
 
@@ -35,6 +38,16 @@ export default function Premium() {
     } finally {
       setSaving(false);
     }
+  }
+
+  // Module désactivé par l'admin : premium indisponible.
+  if (!premium_enabled) {
+    return (
+      <Screen>
+        <ScreenHeader />
+        <EmptyState icon="sparkles-outline" title="Service non disponible pour le moment" />
+      </Screen>
+    );
   }
 
   return (

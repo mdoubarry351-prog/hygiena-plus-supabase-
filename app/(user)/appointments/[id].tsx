@@ -9,6 +9,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
+import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import {
   appointmentsService,
   doctorDisplayName,
@@ -49,6 +50,7 @@ export default function BookAppointment() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session, profile, role } = useAuth();
+  const { appointments_enabled, premium_enabled } = useAppSettings();
 
   const [doctor, setDoctor] = useState<DoctorWithProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,6 +88,7 @@ export default function BookAppointment() {
   const canBook = !!selectedDate && !!selectedTime;
 
   async function handleBook() {
+    if (!appointments_enabled) return showServiceUnavailable();
     if (!session?.user || !doctor || !selectedDate || !selectedTime) return;
     setSaving(true);
     try {
@@ -110,6 +113,7 @@ export default function BookAppointment() {
 
   // Messagerie premium : conseils en ligne (≠ consultation, qui passe par un RDV).
   function handleMessage() {
+    if (!premium_enabled) return showServiceUnavailable();
     if (!doctor) return;
     if (profile?.is_premium) {
       router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: doctor.id, doctorName: name } });
@@ -120,6 +124,7 @@ export default function BookAppointment() {
 
   // Paiement SIMULÉ : crée le RDV payé + reçu, puis ouvre le reçu.
   async function handlePay() {
+    if (!appointments_enabled) return showServiceUnavailable();
     if (!session?.user || !doctor || !selectedDate || !selectedTime) return;
     setSaving(true);
     try {

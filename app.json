@@ -27,7 +27,13 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Hygiena+ a besoin d'accéder à vos photos pour ajouter une image de produit."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -8,6 +8,7 @@ import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useProducts } from "@/hooks/useProducts";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { useCart } from "@/providers/CartProvider";
 import { formatPrice } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
@@ -15,6 +16,7 @@ import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 export default function MarketplaceHome() {
   const { products, loading, reload } = useProducts();
+  const { marketplace_enabled } = useAppSettings();
   const { count } = useCart();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
@@ -28,6 +30,18 @@ export default function MarketplaceHome() {
   }
 
   if (loading && products.length === 0) return <Loading />;
+
+  // Module désactivé par l'admin : on bloque l'accès à la boutique.
+  if (!marketplace_enabled) {
+    return (
+      <Screen>
+        <View style={styles.topBar}>
+          <Text style={typography.h2}>Hygiena+ Store</Text>
+        </View>
+        <EmptyState icon="bag-handle-outline" title="Service non disponible pour le moment" />
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -79,7 +93,7 @@ function ProductRow({ product, onPress }: { product: MarketplaceProduct; onPress
     <Pressable onPress={onPress}>
       <Card style={styles.row}>
         {product.image_url ? (
-          <Image source={{ uri: product.image_url }} style={styles.thumb} />
+          <Image source={{ uri: product.image_url }} style={styles.thumb} resizeMode="cover" />
         ) : (
           <View style={[styles.thumb, styles.thumbPlaceholder]}>
             <Ionicons name="bag-outline" size={28} color={colors.textMuted} />
@@ -101,7 +115,7 @@ function ProductRow({ product, onPress }: { product: MarketplaceProduct; onPress
   );
 }
 
-const THUMB = 72;
+const THUMB = 96;
 const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
   actions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
