@@ -128,6 +128,47 @@ export default function Profile() {
           </Card>
         </Pressable>
 
+        <Text style={[typography.h3, styles.sectionTitle]}>Aide & informations</Text>
+
+        <Pressable onPress={() => router.push("/(user)/help")}>
+          <Card style={styles.proCard}>
+            <View style={styles.proIcon}>
+              <Ionicons name="help-circle-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.proText}>
+              <Text style={styles.proTitle}>Aide & FAQ</Text>
+              <Text style={styles.proSub}>Questions fréquentes, nous contacter</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
+        <Pressable onPress={() => router.push("/(user)/privacy")}>
+          <Card style={styles.proCard}>
+            <View style={styles.proIcon}>
+              <Ionicons name="shield-checkmark-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.proText}>
+              <Text style={styles.proTitle}>Politique de confidentialité</Text>
+              <Text style={styles.proSub}>Vos données et vos droits</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
+        <Pressable onPress={() => router.push("/(user)/terms")}>
+          <Card style={styles.proCard}>
+            <View style={styles.proIcon}>
+              <Ionicons name="document-text-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.proText}>
+              <Text style={styles.proTitle}>Conditions d'utilisation</Text>
+              <Text style={styles.proSub}>Règles d'usage de l'application</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
         <Button title="Se déconnecter" variant="danger" onPress={handleSignOut} />
       </ScrollView>
     </Screen>
@@ -163,6 +204,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   formCard: { gap: spacing.sm },
+  sectionTitle: { marginTop: spacing.sm },
   proCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   proIcon: {
     width: 44, height: 44, borderRadius: radius.pill, backgroundColor: colors.surface,
