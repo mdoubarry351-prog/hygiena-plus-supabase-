@@ -102,6 +102,19 @@ export default function Profile() {
           </Card>
         </Pressable>
 
+        <Pressable onPress={() => router.push("/(user)/lock")}>
+          <Card style={styles.proCard}>
+            <View style={styles.proIcon}>
+              <Ionicons name="lock-closed-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.proText}>
+              <Text style={styles.proTitle}>Verrouillage & confidentialité</Text>
+              <Text style={styles.proSub}>Code PIN, biométrie</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
         <Button title="Se déconnecter" variant="danger" onPress={handleSignOut} />
       </ScrollView>
     </Screen>

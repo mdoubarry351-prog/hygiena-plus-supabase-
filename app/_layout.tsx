@@ -10,10 +10,22 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
-import { AuthProvider } from "@/providers/AuthProvider";
+import { AuthProvider, useAuth } from "@/providers/AuthProvider";
+import { AppLockProvider, useAppLock } from "@/providers/AppLockProvider";
+import { LockScreen } from "@/components/LockScreen";
 
 // Garde l'écran de démarrage visible tant que les polices ne sont pas chargées.
 SplashScreen.preventAutoHideAsync();
+
+// Affiche l'écran de verrouillage PAR-DESSUS le contenu quand : l'utilisateur est
+// connecté, le verrouillage est activé, et l'app est verrouillée. Ne bloque jamais
+// l'écran de login (pas de session).
+function AppLockGate() {
+  const { session } = useAuth();
+  const { enabled, locked } = useAppLock();
+  if (session && enabled && locked) return <LockScreen />;
+  return null;
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -34,8 +46,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <StatusBar style="dark" />
-        <Slot />
+        <AppLockProvider>
+          <StatusBar style="dark" />
+          <Slot />
+          <AppLockGate />
+        </AppLockProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

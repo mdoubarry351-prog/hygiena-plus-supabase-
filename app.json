@@ -33,6 +33,12 @@
         {
           "photosPermission": "Hygiena+ a besoin d'accéder à vos photos pour ajouter une image de produit."
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Hygiena+ utilise Face ID pour protéger l'accès à vos données."
+        }
       ]
     ],
     "experiments": {
