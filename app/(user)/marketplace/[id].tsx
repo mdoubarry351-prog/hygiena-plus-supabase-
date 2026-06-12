@@ -73,7 +73,7 @@ export default function ProductDetail() {
     <Screen>
       <ScreenHeader
         right={
-          <Pressable onPress={() => toggle(product.id)} hitSlop={10}>
+          <Pressable onPress={() => toggle(product.id)} hitSlop={10} accessibilityRole="button" accessibilityLabel={favIds.has(product.id) ? "Retirer des favoris" : "Ajouter aux favoris"}>
             <Ionicons
               name={favIds.has(product.id) ? "heart" : "heart-outline"}
               size={24}

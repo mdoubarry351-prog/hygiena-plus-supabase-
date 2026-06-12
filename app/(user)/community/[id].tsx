@@ -152,7 +152,7 @@ export default function PostDetail() {
               </View>
               <CategoryTag category={post.category} />
               {!post.is_anonymous && post.user_id && post.user_id !== meId ? (
-                <Pressable onPress={() => confirmBlock(post.user_id!, () => router.back())} hitSlop={10} style={styles.blockBtn}>
+                <Pressable onPress={() => confirmBlock(post.user_id!, () => router.back())} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Bloquer cet utilisateur">
                   <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
                 </Pressable>
               ) : null}
@@ -171,7 +171,7 @@ export default function PostDetail() {
                   {post.likes_count}
                 </Text>
               </Pressable>
-              <Pressable onPress={() => toggleSave(post.id)} hitSlop={8} style={styles.bookmarkBtn}>
+              <Pressable onPress={() => toggleSave(post.id)} hitSlop={8} style={styles.bookmarkBtn} accessibilityRole="button" accessibilityLabel={savedIds.has(post.id) ? "Retirer des enregistrements" : "Enregistrer la publication"}>
                 <Ionicons
                   name={savedIds.has(post.id) ? "bookmark" : "bookmark-outline"}
                   size={22}
@@ -210,7 +210,7 @@ export default function PostDetail() {
                     <View style={styles.commentRight}>
                       <Text style={styles.commentTime}>{formatRelativeTime(c.created_at)}</Text>
                       {!c.is_anonymous && c.user_id !== meId ? (
-                        <Pressable onPress={() => confirmBlock(c.user_id, () => load())} hitSlop={8} style={styles.blockBtn}>
+                        <Pressable onPress={() => confirmBlock(c.user_id, () => load())} hitSlop={8} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Bloquer cet utilisateur">
                           <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
                         </Pressable>
                       ) : null}

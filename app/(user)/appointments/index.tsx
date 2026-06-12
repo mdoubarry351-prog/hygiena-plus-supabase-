@@ -77,7 +77,7 @@ export default function AppointmentsHome() {
       <ScreenHeader
         title="Trouver une médecin"
         right={
-          <Pressable onPress={() => router.push("/(user)/appointments/mine")} hitSlop={10} style={styles.iconBtn}>
+          <Pressable onPress={() => router.push("/(user)/appointments/mine")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Mes rendez-vous">
             <Ionicons name="calendar-outline" size={25} color={colors.text} />
           </Pressable>
         }

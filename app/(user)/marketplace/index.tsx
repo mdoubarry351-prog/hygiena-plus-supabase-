@@ -51,13 +51,13 @@ export default function MarketplaceHome() {
       <View style={styles.topBar}>
         <Text style={typography.h2}>Hygiena+ Store</Text>
         <View style={styles.actions}>
-          <Pressable onPress={() => router.push("/(user)/marketplace/favorites")} hitSlop={10} style={styles.iconBtn}>
+          <Pressable onPress={() => router.push("/(user)/marketplace/favorites")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Mes favoris">
             <Ionicons name="heart-outline" size={25} color={colors.text} />
           </Pressable>
-          <Pressable onPress={() => router.push("/(user)/marketplace/orders")} hitSlop={10} style={styles.iconBtn}>
+          <Pressable onPress={() => router.push("/(user)/marketplace/orders")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Mes commandes">
             <Ionicons name="receipt-outline" size={25} color={colors.text} />
           </Pressable>
-          <Pressable onPress={() => router.push("/(user)/marketplace/cart")} hitSlop={10} style={styles.iconBtn}>
+          <Pressable onPress={() => router.push("/(user)/marketplace/cart")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Panier">
             <Ionicons name="cart-outline" size={26} color={colors.text} />
             {count > 0 && (
               <View style={styles.cartBadge}>
@@ -120,7 +120,7 @@ function ProductRow({ product, isFav, onToggleFav, onPress }: { product: Marketp
             {outOfStock && <Text style={styles.outOfStock}>Rupture</Text>}
           </View>
         </View>
-        <Pressable onPress={onToggleFav} hitSlop={10} style={styles.favBtn}>
+        <Pressable onPress={onToggleFav} hitSlop={10} style={styles.favBtn} accessibilityRole="button" accessibilityLabel={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}>
           <Ionicons
             name={isFav ? "heart" : "heart-outline"}
             size={22}

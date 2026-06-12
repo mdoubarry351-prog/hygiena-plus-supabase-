@@ -18,6 +18,8 @@ export function Button({ title, onPress, variant = "primary", loading, disabled 
       onPress={onPress}
       disabled={isDisabled}
       accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
       style={({ pressed }) => [
         styles.base,
         styles[variant],
@@ -28,7 +30,10 @@ export function Button({ title, onPress, variant = "primary", loading, disabled 
       {loading ? (
         <ActivityIndicator color={variant === "outline" ? colors.primary : colors.white} />
       ) : (
-        <Text style={[styles.text, variant === "outline" && styles.textOutline]}>{title}</Text>
+        // Plafond généreux : laisse la police s'agrandir tout en protégeant la hauteur fixe.
+        <Text style={[styles.text, variant === "outline" && styles.textOutline]} maxFontSizeMultiplier={1.6} numberOfLines={1}>
+          {title}
+        </Text>
       )}
     </Pressable>
   );

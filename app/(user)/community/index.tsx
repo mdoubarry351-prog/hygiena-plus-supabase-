@@ -72,7 +72,7 @@ export default function CommunityHome() {
       <View style={styles.topBar}>
         <Text style={typography.h2}>Communauté</Text>
         <View style={styles.topActions}>
-          <Pressable onPress={() => router.push("/(user)/community/saved")} hitSlop={10} style={styles.iconBtn}>
+          <Pressable onPress={() => router.push("/(user)/community/saved")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Publications enregistrées">
             <Ionicons name="bookmark-outline" size={22} color={colors.text} />
           </Pressable>
           <Pressable
@@ -217,7 +217,7 @@ function PostRow({
           </View>
           <CategoryTag category={post.category} />
           {canBlock ? (
-            <Pressable onPress={onBlock} hitSlop={10} style={styles.blockBtn}>
+            <Pressable onPress={onBlock} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Bloquer cet utilisateur">
               <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
             </Pressable>
           ) : null}
@@ -240,7 +240,7 @@ function PostRow({
             <Ionicons name="chatbubble-outline" size={20} color={colors.textMuted} />
             <Text style={styles.likeCount}>{post.comments_count}</Text>
           </View>
-          <Pressable onPress={onToggleSave} hitSlop={8} style={styles.bookmarkBtn}>
+          <Pressable onPress={onToggleSave} hitSlop={8} style={styles.bookmarkBtn} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
             <Ionicons
               name={saved ? "bookmark" : "bookmark-outline"}
               size={20}

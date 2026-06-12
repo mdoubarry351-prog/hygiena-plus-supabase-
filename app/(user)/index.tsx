@@ -117,13 +117,13 @@ export default function CycleHome() {
             <Text style={styles.hello} numberOfLines={1}>Bonjour, {firstName || "vous"} 👋</Text>
             {profile?.phone ? <Text style={styles.phone}>{profile.phone}</Text> : null}
           </View>
-          <Pressable onPress={() => router.push("/(user)/notifications")} hitSlop={8} style={styles.iconBtn}>
+          <Pressable onPress={() => router.push("/(user)/notifications")} hitSlop={8} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel={unread > 0 ? `Notifications, ${unread} non lues` : "Notifications"}>
             <Ionicons name="notifications-outline" size={24} color={colors.text} />
             {unread > 0 && (
               <View style={styles.badge}><Text style={styles.badgeText}>{unread > 99 ? "99+" : unread}</Text></View>
             )}
           </Pressable>
-          <Pressable onPress={() => router.push("/(user)/profile")} hitSlop={8} style={styles.iconBtn}>
+          <Pressable onPress={() => router.push("/(user)/profile")} hitSlop={8} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Mon profil">
             <Ionicons name="heart-outline" size={24} color={colors.primary} />
           </Pressable>
         </View>

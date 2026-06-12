@@ -73,7 +73,7 @@ export default function PatientChat() {
       sending={sending}
       onSend={handleSend}
       composerAction={
-        <Pressable onPress={shareCycle} disabled={sending} style={styles.shareBtn} accessibilityLabel="Partager mon suivi de cycle">
+        <Pressable onPress={shareCycle} disabled={sending} style={styles.shareBtn} accessibilityRole="button" accessibilityLabel="Partager mon suivi de cycle">
           <Ionicons name="pulse-outline" size={20} color={colors.primary} />
         </Pressable>
       }

@@ -28,7 +28,7 @@ export function AdminHeader({ title, right }: { title: string; right?: ReactNode
     <View>
       {!isDesktop && (
         <View style={styles.appBar}>
-          <Pressable onPress={openDrawer} hitSlop={10} style={styles.iconBtn} accessibilityLabel="Ouvrir le menu">
+          <Pressable onPress={openDrawer} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Ouvrir le menu">
             <Ionicons name="menu" size={26} color={colors.text} />
           </Pressable>
           <View style={styles.brandBlock}>
@@ -37,7 +37,7 @@ export function AdminHeader({ title, right }: { title: string; right?: ReactNode
             </Text>
             <Text style={styles.date} numberOfLines={1}>{todayLabel()}</Text>
           </View>
-          <Pressable hitSlop={10} style={styles.iconBtn} accessibilityLabel="Notifications">
+          <Pressable hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Notifications">
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
           </Pressable>
           <View style={styles.avatar}>

@@ -5,7 +5,7 @@ import { colors, spacing } from "@/theme";
 // Bouton « Exporter CSV » (sobre) pour l'en-tête des listes admin.
 export function ExportButton({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} hitSlop={8} style={styles.btn} accessibilityLabel="Exporter en CSV">
+    <Pressable onPress={onPress} hitSlop={8} style={styles.btn} accessibilityRole="button" accessibilityLabel="Exporter en CSV">
       <Ionicons name="download-outline" size={22} color={colors.text} />
     </Pressable>
   );
