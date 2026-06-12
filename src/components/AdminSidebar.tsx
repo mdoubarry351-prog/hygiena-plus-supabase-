@@ -43,6 +43,7 @@ const GROUPS: Group[] = [
     title: "Communauté",
     items: [
       { seg: "community", label: "Modération", href: "/(admin)/community" },
+      { seg: "banned-words", label: "Mots interdits", href: "/(admin)/banned-words" },
     ],
   },
   {

@@ -9,6 +9,7 @@ import type {
   UserSuspension,
   AppSettings,
   StoreSettings,
+  BannedWord,
   UserRole,
   OrderStatus,
   Json,
@@ -422,6 +423,45 @@ export const adminService = {
     const { error } = await supabase.from("community_posts").delete().eq("id", id);
     if (error) throw error;
     await logAction(adminId, "delete_post", "community_posts", id);
+  },
+
+  // ---------------- 7b. Mots interdits (modération) ----------------
+  // Les triggers SQL bloquent l'insertion de tout contenu contenant un mot
+  // ACTIF. Ici : gestion de la liste (lecture/ajout/activation/suppression).
+  async getBannedWords(): Promise<BannedWord[]> {
+    const { data, error } = await supabase
+      .from("banned_words")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async addBannedWord(adminId: string, word: string, severity: number): Promise<BannedWord> {
+    const payload: TablesInsert<"banned_words"> = {
+      word: word.trim().toLowerCase(),
+      severity,
+    };
+    const { data, error } = await supabase
+      .from("banned_words")
+      .insert(payload)
+      .select("*")
+      .single();
+    if (error) throw error;
+    await logAction(adminId, "add_banned_word", "banned_words", data.id, { word: data.word, severity });
+    return data;
+  },
+
+  async setBannedWordActive(adminId: string, id: string, active: boolean): Promise<void> {
+    const { error } = await supabase.from("banned_words").update({ is_active: active }).eq("id", id);
+    if (error) throw error;
+    await logAction(adminId, "toggle_banned_word", "banned_words", id, { is_active: active });
+  },
+
+  async deleteBannedWord(adminId: string, id: string): Promise<void> {
+    const { error } = await supabase.from("banned_words").delete().eq("id", id);
+    if (error) throw error;
+    await logAction(adminId, "delete_banned_word", "banned_words", id);
   },
 
   // ---------------- 8. Signalements ----------------

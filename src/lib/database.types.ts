@@ -869,6 +869,34 @@ export type Database = {
       };
 
       // =================================================
+      // 11a. banned_words (filtre de modération — community_posts/comments)
+      // =================================================
+      banned_words: {
+        Row: {
+          id: string;
+          word: string;
+          severity: number;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          word: string;
+          severity?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          word?: string;
+          severity?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+
+      // =================================================
       // 11b. store_settings (paramètres de la boutique — ligne unique)
       // =================================================
       store_settings: {
@@ -1147,6 +1175,7 @@ export type CommunityLike = Tables<"community_likes">;
 export type AppSettings = Tables<"app_settings">;
 export type StoreSettings = Tables<"store_settings">;
 export type AdminLog = Tables<"admin_logs">;
+export type BannedWord = Tables<"banned_words">;
 export type UserReport = Tables<"user_reports">;
 export type UserSuspension = Tables<"user_suspensions">;
 export type Notification = Tables<"notifications">;

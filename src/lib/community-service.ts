@@ -158,6 +158,23 @@ async function enrichSafePosts(rows: CommunityPostSafe[]): Promise<CommunityPost
     }));
 }
 
+// Message affiché quand un trigger SQL rejette le contenu (mot interdit actif).
+export const BANNED_WORD_MESSAGE =
+  "Votre message contient un terme non autorisé. Merci de le reformuler.";
+
+// Le trigger BEFORE INSERT lève l'exception `banned_word_detected` ; on la
+// repère dans l'erreur Postgrest (message/details/code) renvoyée par l'insert.
+function isBannedWordError(error: unknown): boolean {
+  if (!error) return false;
+  let blob = error instanceof Error ? error.message : "";
+  try {
+    blob += JSON.stringify(error);
+  } catch {
+    // erreur non sérialisable : on garde le message seul
+  }
+  return blob.toLowerCase().includes("banned_word_detected");
+}
+
 export const communityService = {
   // Fil d'actualité : lecture via la vue sécurisée community_posts_safe
   // (anonymat garanti côté SQL), puis fusion des auteurs côté JS.
@@ -226,7 +243,10 @@ export const communityService = {
       .insert(payload)
       .select("*")
       .single();
-    if (error) throw error;
+    if (error) {
+      if (isBannedWordError(error)) throw new Error(BANNED_WORD_MESSAGE);
+      throw error;
+    }
     return data;
   },
 
@@ -320,7 +340,10 @@ export const communityService = {
       .insert(payload)
       .select("*")
       .single();
-    if (error) throw error;
+    if (error) {
+      if (isBannedWordError(error)) throw new Error(BANNED_WORD_MESSAGE);
+      throw error;
+    }
     return data;
   },
 
