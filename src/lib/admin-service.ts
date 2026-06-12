@@ -10,6 +10,7 @@ import type {
   AppSettings,
   StoreSettings,
   BannedWord,
+  Article,
   UserRole,
   OrderStatus,
   Json,
@@ -17,6 +18,7 @@ import type {
   TablesInsert,
   TablesUpdate,
 } from "@/lib/database.types";
+import type { ArticleInput } from "@/lib/articles-service";
 
 // =====================================================
 // Logging centralisé de toute action sensible dans admin_logs.
@@ -462,6 +464,64 @@ export const adminService = {
     const { error } = await supabase.from("banned_words").delete().eq("id", id);
     if (error) throw error;
     await logAction(adminId, "delete_banned_word", "banned_words", id);
+  },
+
+  // ---------------- 7c. Articles (bibliothèque de contenu) ----------------
+  // Admin : voit TOUS les articles (publiés + brouillons).
+  async getAllArticles(): Promise<Article[]> {
+    const { data, error } = await supabase
+      .from("articles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async createArticle(adminId: string, input: ArticleInput): Promise<Article> {
+    const payload: TablesInsert<"articles"> = {
+      title: input.title,
+      category: input.category,
+      excerpt: input.excerpt,
+      content: input.content,
+      cover_image_url: input.coverImageUrl,
+      is_published: input.isPublished,
+      created_by: adminId,
+    };
+    const { data, error } = await supabase.from("articles").insert(payload).select("*").single();
+    if (error) throw error;
+    await logAction(adminId, "create_article", "articles", data.id, { title: input.title });
+    return data;
+  },
+
+  async updateArticle(adminId: string, id: string, input: ArticleInput): Promise<Article> {
+    const patch: TablesUpdate<"articles"> = {
+      title: input.title,
+      category: input.category,
+      excerpt: input.excerpt,
+      content: input.content,
+      cover_image_url: input.coverImageUrl,
+      is_published: input.isPublished,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase.from("articles").update(patch).eq("id", id).select("*").single();
+    if (error) throw error;
+    await logAction(adminId, "update_article", "articles", id, { title: input.title });
+    return data;
+  },
+
+  async setArticlePublished(adminId: string, id: string, published: boolean): Promise<void> {
+    const { error } = await supabase
+      .from("articles")
+      .update({ is_published: published, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw error;
+    await logAction(adminId, "publish_article", "articles", id, { is_published: published });
+  },
+
+  async deleteArticle(adminId: string, id: string): Promise<void> {
+    const { error } = await supabase.from("articles").delete().eq("id", id);
+    if (error) throw error;
+    await logAction(adminId, "delete_article", "articles", id);
   },
 
   // ---------------- 8. Signalements ----------------

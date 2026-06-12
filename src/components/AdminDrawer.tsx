@@ -68,6 +68,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { label: "Modération", icon: "chatbubbles-outline", href: "/(admin)/community", seg: "community" },
       { label: "Mots interdits", icon: "ban-outline", href: "/(admin)/banned-words", seg: "banned-words" },
+      { label: "Articles", icon: "newspaper-outline", href: "/(admin)/articles", seg: "articles" },
     ],
   },
   {

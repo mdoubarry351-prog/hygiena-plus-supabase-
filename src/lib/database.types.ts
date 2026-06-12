@@ -903,6 +903,56 @@ export type Database = {
       };
 
       // =================================================
+      // 11c. articles (bibliothèque de contenu — « Conseils & infos »)
+      // =================================================
+      articles: {
+        Row: {
+          id: string;
+          title: string;
+          category: string;
+          excerpt: string | null;
+          content: string;
+          cover_image_url: string | null;
+          is_published: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          category: string;
+          excerpt?: string | null;
+          content: string;
+          cover_image_url?: string | null;
+          is_published?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          category?: string;
+          excerpt?: string | null;
+          content?: string;
+          cover_image_url?: string | null;
+          is_published?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "articles_created_by_fkey";
+            columns: ["created_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      // =================================================
       // 11b. store_settings (paramètres de la boutique — ligne unique)
       // =================================================
       store_settings: {
@@ -1192,6 +1242,7 @@ export type AppSettings = Tables<"app_settings">;
 export type StoreSettings = Tables<"store_settings">;
 export type AdminLog = Tables<"admin_logs">;
 export type BannedWord = Tables<"banned_words">;
+export type Article = Tables<"articles">;
 export type UserReport = Tables<"user_reports">;
 export type UserSuspension = Tables<"user_suspensions">;
 export type Notification = Tables<"notifications">;

@@ -93,6 +93,7 @@ export default function CycleHome() {
     ...(!isDoctor ? [{ emoji: "🌼", title: "Consultations", sub: "Médecins vérifiées", href: "/(user)/appointments" as Href, module: "doctors" as const }] : []),
     { emoji: "🛍️", title: "Boutique", sub: "Produits santé", href: "/(user)/marketplace", module: "marketplace" },
     { emoji: "💬", title: "Forum", sub: "Communauté", href: "/(user)/community" },
+    { emoji: "📚", title: "Conseils & infos", sub: "Articles santé", href: "/(user)/library" },
   ];
 
   // Bloque la navigation vers un module désactivé par l'admin (message au tap).
