@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -12,11 +13,47 @@ import { formatRelativeTime } from "@/lib/community-service";
 import type { Notification } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
+// Icône + couleur selon le type de notification.
+type NotifMeta = { icon: keyof typeof Ionicons.glyphMap; color: string };
+const TYPE_META: Record<string, NotifMeta> = {
+  community_comment: { icon: "chatbubble", color: colors.primary },
+  community_like: { icon: "heart", color: colors.danger },
+  appointment_new: { icon: "medkit", color: colors.secondary },
+  appointment_status: { icon: "calendar", color: colors.primary },
+  appointment_reminder: { icon: "alarm", color: colors.secondary },
+  cycle_period_soon: { icon: "water", color: colors.danger },
+  cycle_fertile: { icon: "leaf", color: colors.primary },
+  cycle_ovulation: { icon: "ellipse", color: colors.secondary },
+};
+const DEFAULT_META: NotifMeta = { icon: "notifications", color: colors.primary };
+function metaFor(type: string | null): NotifMeta {
+  return (type && TYPE_META[type]) || DEFAULT_META;
+}
+
+// Contexte de navigation transporté par la notification (colonne data jsonb).
+type NotifData = { kind?: string; postId?: string; appointmentId?: string } | null;
+
 export default function Notifications() {
   const { notifications, unreadCount, loading, reload, markAsRead, markAllAsRead } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
+  const router = useRouter();
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
+
+  // Marque comme lue + navigue selon data.kind (si présent).
+  function handlePress(n: Notification) {
+    if (!n.is_read) markAsRead(n.id);
+    const data = (n.data ?? null) as unknown as NotifData;
+    const kind = data?.kind;
+    if (kind === "post" && data?.postId) {
+      router.push({ pathname: "/(user)/community/[id]", params: { id: data.postId } });
+    } else if (kind === "my_appointments") {
+      router.push("/(user)/appointments/mine");
+    } else if (kind === "doctor_appointments") {
+      router.push("/(doctor)/appointments");
+    }
+    // Pas de data exploitable → on se contente de marquer comme lu.
+  }
 
   async function onRefresh() {
     setRefreshing(true);
@@ -53,7 +90,7 @@ export default function Notifications() {
           />
         ) : (
           notifications.map((n) => (
-            <NotificationRow key={n.id} notification={n} onPress={() => { if (!n.is_read) markAsRead(n.id); }} />
+            <NotificationRow key={n.id} notification={n} meta={metaFor(n.type)} onPress={() => handlePress(n)} />
           ))
         )}
       </ScrollView>
@@ -61,18 +98,14 @@ export default function Notifications() {
   );
 }
 
-function NotificationRow({ notification, onPress }: { notification: Notification; onPress: () => void }) {
+function NotificationRow({ notification, meta, onPress }: { notification: Notification; meta: NotifMeta; onPress: () => void }) {
   const unread = !notification.is_read;
   return (
     <Pressable onPress={onPress}>
       <Card style={[styles.row, unread && styles.rowUnread]}>
         <View style={styles.iconCol}>
           <View style={[styles.iconWrap, unread && styles.iconWrapUnread]}>
-            <Ionicons
-              name={unread ? "notifications" : "notifications-outline"}
-              size={18}
-              color={unread ? colors.primary : colors.textMuted}
-            />
+            <Ionicons name={meta.icon} size={18} color={meta.color} />
           </View>
           {unread && <View style={styles.dot} />}
         </View>

@@ -802,6 +802,7 @@ export type Database = {
           title: string;
           message: string;
           type: string | null;
+          data: Json | null;
           is_read: boolean;
           created_at: string;
         };
@@ -811,6 +812,7 @@ export type Database = {
           title: string;
           message: string;
           type?: string | null;
+          data?: Json | null;
           is_read?: boolean;
           created_at?: string;
         };
@@ -820,6 +822,7 @@ export type Database = {
           title?: string;
           message?: string;
           type?: string | null;
+          data?: Json | null;
           is_read?: boolean;
           created_at?: string;
         };
