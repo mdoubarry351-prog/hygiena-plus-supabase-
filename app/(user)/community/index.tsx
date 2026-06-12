@@ -11,14 +11,17 @@ import { useCommunity } from "@/hooks/useCommunity";
 import {
   authorDisplayName,
   formatRelativeTime,
+  COMMUNITY_CATEGORIES,
   type CommunityPostWithAuthor,
 } from "@/lib/community-service";
+import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { colors, radius, spacing, typography } from "@/theme";
 
 export default function CommunityHome() {
   const { posts, likedIds, loading, reload, toggleLike } = useCommunity();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const [activeCat, setActiveCat] = useState<string>("all");
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
@@ -44,28 +47,43 @@ export default function CommunityHome() {
         </Pressable>
       </View>
 
+      {/* Filtres par catégorie */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
+        {["all", ...COMMUNITY_CATEGORIES].map((c) => {
+          const active = activeCat === c;
+          return (
+            <Pressable key={c} onPress={() => setActiveCat(c)} style={[styles.filterChip, active && styles.filterChipActive]}>
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{c === "all" ? "Toutes" : c}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        {posts.length === 0 ? (
-          <EmptyState
-            emoji="💬"
-            title="Aucune publication"
-            message="Soyez la première à partager quelque chose avec la communauté."
-          />
-        ) : (
-          posts.map((post) => (
-            <PostRow
-              key={post.id}
-              post={post}
-              liked={likedIds.has(post.id)}
-              onPress={() => router.push(`/(user)/community/${post.id}`)}
-              onLike={() => toggleLike(post.id)}
+        {(() => {
+          const visible = activeCat === "all" ? posts : posts.filter((p) => p.category === activeCat);
+          return visible.length === 0 ? (
+            <EmptyState
+              emoji="💬"
+              title="Aucune publication"
+              message={activeCat === "all" ? "Soyez la première à partager quelque chose avec la communauté." : "Aucune publication dans cette catégorie."}
             />
-          ))
-        )}
+          ) : (
+            visible.map((post) => (
+              <PostRow
+                key={post.id}
+                post={post}
+                liked={likedIds.has(post.id)}
+                onPress={() => router.push(`/(user)/community/${post.id}`)}
+                onLike={() => toggleLike(post.id)}
+              />
+            ))
+          );
+        })()}
       </ScrollView>
     </Screen>
   );
@@ -95,9 +113,13 @@ function PostRow({
             />
           </View>
           <View style={styles.headInfo}>
-            <Text style={styles.author}>{name}</Text>
+            <View style={styles.authorRow}>
+              <Text style={styles.author}>{name}</Text>
+              {!post.is_anonymous && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
+            </View>
             <Text style={styles.time}>{formatRelativeTime(post.created_at)}</Text>
           </View>
+          <CategoryTag category={post.category} />
         </View>
 
         <Text style={styles.body} numberOfLines={5}>{post.content}</Text>
@@ -142,8 +164,14 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   headInfo: { flex: 1 },
+  authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
   author: { ...typography.name },
   time: { ...typography.caption, color: colors.textMuted },
+  filterChips: { gap: spacing.xs, paddingTop: spacing.sm, paddingBottom: spacing.xs },
+  filterChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border },
+  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterChipText: { ...typography.caption, fontWeight: "700", color: colors.text },
+  filterChipTextActive: { color: colors.white },
   body: { ...typography.body, color: colors.text, lineHeight: 21 },
   postFoot: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },

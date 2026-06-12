@@ -7,8 +7,21 @@ import type {
   TablesInsert,
 } from "@/lib/database.types";
 
+// Catégories de la communauté (liste fixe, FR). Défaut = « Général ».
+export const COMMUNITY_CATEGORIES = [
+  "Cycle",
+  "Grossesse",
+  "Santé sexuelle",
+  "Nutrition",
+  "Bien-être",
+  "Général",
+] as const;
+export type CommunityCategory = (typeof COMMUNITY_CATEGORIES)[number];
+export const DEFAULT_CATEGORY: CommunityCategory = "Général";
+
 // Infos d'auteur jointes depuis profiles (uniquement ce dont l'UI a besoin).
-export type PostAuthor = Pick<Profile, "full_name" | "avatar_url">;
+// `isVerifiedDoctor` : auteur médecin validé (badge « Médecin vérifié »).
+export type PostAuthor = Pick<Profile, "full_name" | "avatar_url"> & { isVerifiedDoctor: boolean };
 
 // Publication enrichie avec son auteur. Lue depuis la vue sécurisée
 // `community_posts_safe` → user_id peut être null (post anonyme d'autrui),
@@ -39,27 +52,46 @@ async function countComments(ids: string[]): Promise<Map<string, number>> {
 // Récupère les profils auteurs UNIQUEMENT pour des user_id non nuls
 // (donc jamais pour les posts anonymes), en une requête séparée — une vue
 // n'ayant pas de clé étrangère, on ne peut pas embarquer profiles directement.
+// Sous-ensemble des user_id qui sont des médecins VALIDÉS (badge vérifié).
+// Requête séparée sur `doctors` (RLS doctors_select_validated l'autorise).
+async function fetchVerifiedDoctorIds(ids: (string | null)[]): Promise<Set<string>> {
+  const set = new Set<string>();
+  const unique = Array.from(new Set(ids.filter((x): x is string => !!x)));
+  if (unique.length === 0) return set;
+  const { data, error } = await supabase
+    .from("doctors")
+    .select("user_id")
+    .in("user_id", unique)
+    .eq("is_validated", true);
+  if (error) throw error;
+  for (const d of data ?? []) set.add(d.user_id);
+  return set;
+}
+
 async function fetchAuthors(ids: (string | null)[]): Promise<Map<string, PostAuthor>> {
   const map = new Map<string, PostAuthor>();
   const unique = Array.from(new Set(ids.filter((x): x is string => !!x)));
   if (unique.length === 0) return map;
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, avatar_url")
-    .in("id", unique);
-  if (error) throw error;
-  for (const p of data ?? []) {
-    map.set(p.id, { full_name: p.full_name, avatar_url: p.avatar_url });
+  const [profilesRes, verified] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, avatar_url").in("id", unique),
+    fetchVerifiedDoctorIds(unique),
+  ]);
+  if (profilesRes.error) throw profilesRes.error;
+  for (const p of profilesRes.data ?? []) {
+    map.set(p.id, { full_name: p.full_name, avatar_url: p.avatar_url, isVerifiedDoctor: verified.has(p.id) });
   }
   return map;
 }
 
-// Commentaire enrichi avec son auteur.
-export type CommunityCommentWithAuthor = CommunityComment & { author: PostAuthor | null };
+// Commentaire enrichi avec son auteur + statut médecin vérifié.
+export type CommunityCommentWithAuthor = CommunityComment & {
+  author: Pick<Profile, "full_name" | "avatar_url"> | null;
+  isVerifiedDoctor: boolean;
+};
 
 // Nom à afficher : "Anonyme" si la publication est anonyme, sinon le nom
 // de l'auteur (avec repli sur "Utilisatrice" si le profil est incomplet).
-export function authorDisplayName(isAnonymous: boolean, author: PostAuthor | null): string {
+export function authorDisplayName(isAnonymous: boolean, author: { full_name: string | null } | null): string {
   if (isAnonymous) return "Anonyme";
   return author?.full_name?.trim() || "Utilisatrice";
 }
@@ -122,11 +154,13 @@ export const communityService = {
     userId: string;
     content: string;
     isAnonymous: boolean;
+    category: string;
   }): Promise<CommunityPost> {
     const payload: TablesInsert<"community_posts"> = {
       user_id: input.userId,
       content: input.content,
       is_anonymous: input.isAnonymous,
+      category: input.category,
     };
     const { data, error } = await supabase
       .from("community_posts")
@@ -196,7 +230,12 @@ export const communityService = {
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
     if (error) throw error;
-    return (data ?? []) as CommunityCommentWithAuthor[];
+    const rows = (data ?? []) as (CommunityComment & {
+      author: Pick<Profile, "full_name" | "avatar_url"> | null;
+    })[];
+    // Badge « médecin vérifié » : requête séparée sur les auteurs.
+    const verified = await fetchVerifiedDoctorIds(rows.map((r) => r.user_id));
+    return rows.map((r) => ({ ...r, isVerifiedDoctor: r.user_id ? verified.has(r.user_id) : false }));
   },
 
   // Ajoute un commentaire à une publication.

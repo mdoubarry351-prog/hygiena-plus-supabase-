@@ -26,6 +26,7 @@ import {
   type CommunityPostWithAuthor,
   type CommunityCommentWithAuthor,
 } from "@/lib/community-service";
+import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 export default function PostDetail() {
@@ -120,9 +121,13 @@ export default function PostDetail() {
                 />
               </View>
               <View style={styles.headInfo}>
-                <Text style={styles.author}>{authorDisplayName(post.is_anonymous, post.author)}</Text>
+                <View style={styles.authorRow}>
+                  <Text style={styles.author}>{authorDisplayName(post.is_anonymous, post.author)}</Text>
+                  {!post.is_anonymous && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
+                </View>
                 <Text style={styles.time}>{formatRelativeTime(post.created_at)}</Text>
               </View>
+              <CategoryTag category={post.category} />
             </View>
 
             <Text style={styles.body}>{post.content}</Text>
@@ -161,9 +166,12 @@ export default function PostDetail() {
                 </View>
                 <View style={styles.commentBody}>
                   <View style={styles.commentHead}>
-                    <Text style={styles.commentAuthor}>
-                      {authorDisplayName(c.is_anonymous, c.author)}
-                    </Text>
+                    <View style={styles.authorRow}>
+                      <Text style={styles.commentAuthor}>
+                        {authorDisplayName(c.is_anonymous, c.author)}
+                      </Text>
+                      {!c.is_anonymous && c.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
+                    </View>
                     <Text style={styles.commentTime}>{formatRelativeTime(c.created_at)}</Text>
                   </View>
                   <Text style={styles.commentText}>{c.content}</Text>
@@ -211,6 +219,7 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   headInfo: { flex: 1 },
+  authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
   author: { ...typography.name },
   time: { ...typography.caption, color: colors.textMuted },
   body: { ...typography.body, color: colors.text, lineHeight: 22 },

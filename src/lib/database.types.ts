@@ -422,6 +422,7 @@ export type Database = {
           user_id: string;
           content: string;
           is_anonymous: boolean;
+          category: string | null;
           likes_count: number;
           created_at: string;
           updated_at: string;
@@ -431,6 +432,7 @@ export type Database = {
           user_id: string;
           content: string;
           is_anonymous?: boolean;
+          category?: string | null;
           likes_count?: number;
           created_at?: string;
           updated_at?: string;
@@ -440,6 +442,7 @@ export type Database = {
           user_id?: string;
           content?: string;
           is_anonymous?: boolean;
+          category?: string | null;
           likes_count?: number;
           created_at?: string;
           updated_at?: string;
@@ -845,6 +848,7 @@ export type Database = {
           user_id: string | null;
           content: string;
           is_anonymous: boolean;
+          category: string | null;
           likes_count: number;
           created_at: string;
           updated_at: string;
