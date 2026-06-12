@@ -13,6 +13,7 @@ import {
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
 import { AppLockProvider, useAppLock } from "@/providers/AppLockProvider";
 import { LockScreen } from "@/components/LockScreen";
+import { Onboarding } from "@/components/Onboarding";
 
 // Garde l'écran de démarrage visible tant que les polices ne sont pas chargées.
 SplashScreen.preventAutoHideAsync();
@@ -24,6 +25,14 @@ function AppLockGate() {
   const { session } = useAuth();
   const { enabled, locked } = useAppLock();
   if (session && enabled && locked) return <LockScreen />;
+  return null;
+}
+
+// Onboarding première ouverture : seulement pour une utilisatrice ('user')
+// connectée qui ne l'a pas encore terminé. Rôles doctor/admin : jamais.
+function OnboardingGate() {
+  const { session, profile, role } = useAuth();
+  if (session && role === "user" && profile && !profile.onboarding_completed) return <Onboarding />;
   return null;
 }
 
@@ -49,6 +58,8 @@ export default function RootLayout() {
         <AppLockProvider>
           <StatusBar style="dark" />
           <Slot />
+          {/* Onboarding par-dessus l'app ; le verrou reste au-dessus de tout. */}
+          <OnboardingGate />
           <AppLockGate />
         </AppLockProvider>
       </AuthProvider>

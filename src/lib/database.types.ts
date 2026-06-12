@@ -49,6 +49,7 @@ export type Database = {
           role: UserRole;
           is_premium: boolean;
           date_of_birth: string | null;
+          onboarding_completed: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -63,6 +64,7 @@ export type Database = {
           role?: UserRole;
           is_premium?: boolean;
           date_of_birth?: string | null;
+          onboarding_completed?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -77,6 +79,7 @@ export type Database = {
           role?: UserRole;
           is_premium?: boolean;
           date_of_birth?: string | null;
+          onboarding_completed?: boolean;
           created_at?: string;
           updated_at?: string;
         };
