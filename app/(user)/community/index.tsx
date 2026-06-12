@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,9 +8,11 @@ import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useCommunity } from "@/hooks/useCommunity";
+import { useAuth } from "@/providers/AuthProvider";
 import {
   authorDisplayName,
   formatRelativeTime,
+  communityService,
   COMMUNITY_CATEGORIES,
   type CommunityPostWithAuthor,
 } from "@/lib/community-service";
@@ -19,11 +21,32 @@ import { colors, radius, spacing, typography } from "@/theme";
 
 export default function CommunityHome() {
   const { posts, likedIds, loading, reload, toggleLike } = useCommunity();
+  const { session } = useAuth();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [activeCat, setActiveCat] = useState<string>("all");
+  const meId = session?.user?.id;
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
+
+  // Bloque l'auteur d'une publication → ses contenus disparaissent du fil.
+  function blockAuthor(userId: string) {
+    Alert.alert("Bloquer cet utilisateur ?", "Vous ne verrez plus les publications de cette personne.", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Bloquer",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await communityService.blockUser(userId);
+            await reload();
+          } catch (e) {
+            Alert.alert("Erreur", e instanceof Error ? e.message : "Action impossible");
+          }
+        },
+      },
+    ]);
+  }
 
   async function onRefresh() {
     setRefreshing(true);
@@ -78,6 +101,8 @@ export default function CommunityHome() {
                 key={post.id}
                 post={post}
                 liked={likedIds.has(post.id)}
+                canBlock={!post.is_anonymous && !!post.user_id && post.user_id !== meId}
+                onBlock={() => post.user_id && blockAuthor(post.user_id)}
                 onPress={() => router.push(`/(user)/community/${post.id}`)}
                 onLike={() => toggleLike(post.id)}
               />
@@ -92,11 +117,15 @@ export default function CommunityHome() {
 function PostRow({
   post,
   liked,
+  canBlock,
+  onBlock,
   onPress,
   onLike,
 }: {
   post: CommunityPostWithAuthor;
   liked: boolean;
+  canBlock: boolean;
+  onBlock: () => void;
   onPress: () => void;
   onLike: () => void;
 }) {
@@ -120,6 +149,11 @@ function PostRow({
             <Text style={styles.time}>{formatRelativeTime(post.created_at)}</Text>
           </View>
           <CategoryTag category={post.category} />
+          {canBlock ? (
+            <Pressable onPress={onBlock} hitSlop={10} style={styles.blockBtn}>
+              <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
+            </Pressable>
+          ) : null}
         </View>
 
         <Text style={styles.body} numberOfLines={5}>{post.content}</Text>
@@ -165,6 +199,7 @@ const styles = StyleSheet.create({
   },
   headInfo: { flex: 1 },
   authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
+  blockBtn: { padding: spacing.xs },
   author: { ...typography.name },
   time: { ...typography.caption, color: colors.textMuted },
   filterChips: { gap: spacing.xs, paddingTop: spacing.sm, paddingBottom: spacing.xs },

@@ -68,6 +68,21 @@ async function fetchVerifiedDoctorIds(ids: (string | null)[]): Promise<Set<strin
   return set;
 }
 
+// Identifiant de l'utilisatrice courante (session locale).
+async function currentUserId(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
+}
+
+// Ensemble des user_id bloqués par l'utilisatrice (best-effort, non bloquant).
+async function fetchBlockedIds(): Promise<Set<string>> {
+  const me = await currentUserId();
+  if (!me) return new Set();
+  const { data, error } = await supabase.from("user_blocks").select("blocked_id").eq("blocker_id", me);
+  if (error) return new Set();
+  return new Set((data ?? []).map((r) => r.blocked_id));
+}
+
 async function fetchAuthors(ids: (string | null)[]): Promise<Map<string, PostAuthor>> {
   const map = new Map<string, PostAuthor>();
   const unique = Array.from(new Set(ids.filter((x): x is string => !!x)));
@@ -119,15 +134,19 @@ export const communityService = {
       .order("created_at", { ascending: false });
     if (error) throw error;
     const rows = data ?? [];
-    const [authors, comments] = await Promise.all([
+    const [authors, comments, blocked] = await Promise.all([
       fetchAuthors(rows.map((r) => r.user_id)),
       countComments(rows.map((r) => r.id)),
+      fetchBlockedIds(),
     ]);
-    return rows.map((r) => ({
-      ...r,
-      author: r.user_id ? authors.get(r.user_id) ?? null : null,
-      comments_count: comments.get(r.id) ?? 0,
-    }));
+    // Exclut les publications des auteurs bloqués (les anonymes restent : user_id null).
+    return rows
+      .filter((r) => !(r.user_id && blocked.has(r.user_id)))
+      .map((r) => ({
+        ...r,
+        author: r.user_id ? authors.get(r.user_id) ?? null : null,
+        comments_count: comments.get(r.id) ?? 0,
+      }));
   },
 
   // Détail d'une publication (lecture via la vue sécurisée).
@@ -138,10 +157,13 @@ export const communityService = {
       .eq("id", id)
       .single();
     if (error) throw error;
-    const [authors, comments] = await Promise.all([
+    const [authors, comments, blocked] = await Promise.all([
       fetchAuthors([data.user_id]),
       countComments([data.id]),
+      fetchBlockedIds(),
     ]);
+    // Auteur bloqué → publication traitée comme introuvable.
+    if (data.user_id && blocked.has(data.user_id)) return null;
     return {
       ...data,
       author: data.user_id ? authors.get(data.user_id) ?? null : null,
@@ -233,9 +255,14 @@ export const communityService = {
     const rows = (data ?? []) as (CommunityComment & {
       author: Pick<Profile, "full_name" | "avatar_url"> | null;
     })[];
-    // Badge « médecin vérifié » : requête séparée sur les auteurs.
-    const verified = await fetchVerifiedDoctorIds(rows.map((r) => r.user_id));
-    return rows.map((r) => ({ ...r, isVerifiedDoctor: r.user_id ? verified.has(r.user_id) : false }));
+    // Badge « médecin vérifié » + exclusion des commentaires d'auteurs bloqués.
+    const [verified, blocked] = await Promise.all([
+      fetchVerifiedDoctorIds(rows.map((r) => r.user_id)),
+      fetchBlockedIds(),
+    ]);
+    return rows
+      .filter((r) => !(r.user_id && blocked.has(r.user_id)))
+      .map((r) => ({ ...r, isVerifiedDoctor: r.user_id ? verified.has(r.user_id) : false }));
   },
 
   // Ajoute un commentaire à une publication.
@@ -258,5 +285,45 @@ export const communityService = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  // ---------------- Blocage d'utilisateurs ----------------
+  async getBlockedIds(): Promise<Set<string>> {
+    return fetchBlockedIds();
+  },
+
+  // Liste des comptes bloqués (avec nom) pour l'écran de déblocage.
+  async getBlockedUsers(): Promise<{ id: string; name: string }[]> {
+    const me = await currentUserId();
+    if (!me) return [];
+    const { data, error } = await supabase
+      .from("user_blocks")
+      .select("blocked_id, created_at")
+      .eq("blocker_id", me)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    const ids = (data ?? []).map((r) => r.blocked_id);
+    if (ids.length === 0) return [];
+    const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+    const nameById = new Map((profs ?? []).map((p) => [p.id, p.full_name?.trim() || "Utilisatrice"]));
+    return ids.map((id) => ({ id, name: nameById.get(id) ?? "Utilisatrice" }));
+  },
+
+  async blockUser(userId: string): Promise<void> {
+    const me = await currentUserId();
+    if (!me) throw new Error("Vous devez être connectée.");
+    const { error } = await supabase.from("user_blocks").insert({ blocker_id: me, blocked_id: userId });
+    if (error && error.code !== "23505") throw error; // ignore le doublon (unique)
+  },
+
+  async unblockUser(userId: string): Promise<void> {
+    const me = await currentUserId();
+    if (!me) throw new Error("Vous devez être connectée.");
+    const { error } = await supabase
+      .from("user_blocks")
+      .delete()
+      .eq("blocker_id", me)
+      .eq("blocked_id", userId);
+    if (error) throw error;
   },
 };

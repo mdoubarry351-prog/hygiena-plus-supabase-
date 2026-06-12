@@ -100,6 +100,27 @@ export default function PostDetail() {
     }
   }
 
+  const meId = session?.user?.id;
+
+  // Bloque un utilisateur (auteur d'un post ou d'un commentaire).
+  function confirmBlock(userId: string, afterBlock: () => void) {
+    Alert.alert("Bloquer cet utilisateur ?", "Vous ne verrez plus les publications de cette personne.", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Bloquer",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await communityService.blockUser(userId);
+            afterBlock();
+          } catch (e) {
+            Alert.alert("Erreur", e instanceof Error ? e.message : "Action impossible");
+          }
+        },
+      },
+    ]);
+  }
+
   if (loading) return <Loading />;
   if (!post) return null;
 
@@ -128,6 +149,11 @@ export default function PostDetail() {
                 <Text style={styles.time}>{formatRelativeTime(post.created_at)}</Text>
               </View>
               <CategoryTag category={post.category} />
+              {!post.is_anonymous && post.user_id && post.user_id !== meId ? (
+                <Pressable onPress={() => confirmBlock(post.user_id!, () => router.back())} hitSlop={10} style={styles.blockBtn}>
+                  <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
+                </Pressable>
+              ) : null}
             </View>
 
             <Text style={styles.body}>{post.content}</Text>
@@ -172,7 +198,14 @@ export default function PostDetail() {
                       </Text>
                       {!c.is_anonymous && c.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
                     </View>
-                    <Text style={styles.commentTime}>{formatRelativeTime(c.created_at)}</Text>
+                    <View style={styles.commentRight}>
+                      <Text style={styles.commentTime}>{formatRelativeTime(c.created_at)}</Text>
+                      {!c.is_anonymous && c.user_id !== meId ? (
+                        <Pressable onPress={() => confirmBlock(c.user_id, () => load())} hitSlop={8} style={styles.blockBtn}>
+                          <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
+                        </Pressable>
+                      ) : null}
+                    </View>
                   </View>
                   <Text style={styles.commentText}>{c.content}</Text>
                 </View>
@@ -220,6 +253,8 @@ const styles = StyleSheet.create({
   },
   headInfo: { flex: 1 },
   authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
+  blockBtn: { padding: spacing.xs },
+  commentRight: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   author: { ...typography.name },
   time: { ...typography.caption, color: colors.textMuted },
   body: { ...typography.body, color: colors.text, lineHeight: 22 },
