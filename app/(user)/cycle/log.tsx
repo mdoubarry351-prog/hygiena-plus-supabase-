@@ -7,7 +7,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { useAuth } from "@/providers/AuthProvider";
-import { cycleService, SYMPTOMS } from "@/lib/cycle-service";
+import { cycleService, SYMPTOMS, FLOW_OPTIONS, MOOD_OPTIONS } from "@/lib/cycle-service";
 import { colors, radius, spacing, typography } from "@/theme";
 
 // Helper: format date en YYYY-MM-DD (format attendu par Postgres "date")
@@ -22,6 +22,8 @@ export default function LogCycle() {
   const [startDate, setStartDate] = useState(toISODate(new Date()));
   const [endDate, setEndDate] = useState("");
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+  const [flow, setFlow] = useState<string | null>(null);
+  const [mood, setMood] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -30,6 +32,9 @@ export default function LogCycle() {
       prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
     );
   }
+
+  // Sélection unique désélectionnable (flux / humeur).
+  const pickSingle = (current: string | null, value: string) => (current === value ? null : value);
 
   async function handleSave() {
     if (!session?.user) return;
@@ -44,6 +49,8 @@ export default function LogCycle() {
         period_start: startDate,
         period_end: endDate.trim() ? endDate.trim() : null,
         symptoms: selectedSymptoms.length ? selectedSymptoms : null,
+        flow,
+        mood,
         notes: notes.trim() ? notes.trim() : null,
       });
       Alert.alert("Enregistré", "Vos règles ont été enregistrées.", [
@@ -75,6 +82,30 @@ export default function LogCycle() {
           placeholder="2026-06-12"
           autoCapitalize="none"
         />
+
+        <Text style={[typography.h3, styles.sectionTitle]}>Flux</Text>
+        <View style={styles.chips}>
+          {FLOW_OPTIONS.map((f) => {
+            const active = flow === f;
+            return (
+              <Pressable key={f} onPress={() => setFlow((c) => pickSingle(c, f))} style={[styles.chip, active && styles.chipActive]}>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{f}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text style={[typography.h3, styles.sectionTitle]}>Humeur</Text>
+        <View style={styles.chips}>
+          {MOOD_OPTIONS.map((m) => {
+            const active = mood === m;
+            return (
+              <Pressable key={m} onPress={() => setMood((c) => pickSingle(c, m))} style={[styles.chip, active && styles.chipActive]}>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{m}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
         <Text style={[typography.h3, styles.sectionTitle]}>Symptômes</Text>
         <View style={styles.chips}>

@@ -66,6 +66,15 @@ export default function CycleSummary() {
   for (const c of cycles) for (const s of c.symptoms ?? []) counts.set(s, (counts.get(s) ?? 0) + 1);
   const topSymptoms = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
 
+  // Flux habituel (valeur la plus fréquente) + humeurs fréquentes (top 1-2).
+  const flowCounts = new Map<string, number>();
+  for (const c of cycles) if (c.flow) flowCounts.set(c.flow, (flowCounts.get(c.flow) ?? 0) + 1);
+  const topFlow = [...flowCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
+  const moodCounts = new Map<string, number>();
+  for (const c of cycles) if (c.mood) moodCounts.set(c.mood, (moodCounts.get(c.mood) ?? 0) + 1);
+  const topMoods = [...moodCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map((e) => e[0]);
+
   // Régularité (variance des durées de cycle ; ≥ 2 écarts requis).
   const std = stddev(cycleLengths);
   const canAssessRegularity = cycleLengths.length >= 2;
@@ -109,6 +118,18 @@ export default function CycleSummary() {
           <StatRow icon="calendar-outline" label="Cycles enregistrés" value={`${cycles.length}`} />
           <StatRow icon="time-outline" label="Période couverte" value={`${formatDay(firstStart)} → ${formatDay(lastStart)}`} last />
         </Card>
+
+        {/* Flux & humeur (affiché seulement si des données existent) */}
+        {(topFlow || topMoods.length > 0) ? (
+          <Card style={styles.statsCard}>
+            {topFlow ? (
+              <StatRow icon="water-outline" label="Flux habituel" value={topFlow} last={topMoods.length === 0} />
+            ) : null}
+            {topMoods.length > 0 ? (
+              <StatRow icon="happy-outline" label="Humeur fréquente" value={topMoods.join(", ")} last />
+            ) : null}
+          </Card>
+        ) : null}
 
         {/* Régularité */}
         {canAssessRegularity ? (

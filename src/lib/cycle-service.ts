@@ -7,6 +7,12 @@ export const SYMPTOMS = [
   "Insomnie", "Anxiété", "Irritabilité", "Baisse de libido", "Hausse de libido",
 ] as const;
 
+// Flux menstruel (sélection unique, désélectionnable).
+export const FLOW_OPTIONS = ["Léger", "Moyen", "Abondant"] as const;
+
+// Humeur du jour (sélection unique, désélectionnable).
+export const MOOD_OPTIONS = ["Bien", "Fatiguée", "Irritable", "Triste", "Anxieuse", "Énergique"] as const;
+
 export type CyclePrediction = {
   averageCycleLength: number;
   averagePeriodLength: number;

@@ -102,6 +102,8 @@ export type Database = {
           ovulation_date: string | null;
           cycle_length: number | null;
           symptoms: string[] | null;
+          flow: string | null;
+          mood: string | null;
           notes: string | null;
           created_at: string;
           updated_at: string;
@@ -114,6 +116,8 @@ export type Database = {
           ovulation_date?: string | null;
           cycle_length?: number | null;
           symptoms?: string[] | null;
+          flow?: string | null;
+          mood?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -126,6 +130,8 @@ export type Database = {
           ovulation_date?: string | null;
           cycle_length?: number | null;
           symptoms?: string[] | null;
+          flow?: string | null;
+          mood?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
