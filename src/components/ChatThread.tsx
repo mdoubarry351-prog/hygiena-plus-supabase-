@@ -19,6 +19,7 @@ type Props = {
   title: string;
   subtitle?: string;
   note?: string; // bandeau d'info (ex. « conseils — pour une consultation, prenez RDV »)
+  banner?: ReactNode; // bandeau personnalisé en haut du fil (ex. <MedicalDisclaimer/>) — prioritaire sur `note`
   messages: ChatMessage[];
   currentRole: "patient" | "doctor";
   loading?: boolean;
@@ -28,7 +29,7 @@ type Props = {
 };
 
 // Fil de discussion réutilisable (patient ↔ médecin) : bulles + champ de saisie.
-export function ChatThread({ title, subtitle, note, messages, currentRole, loading, sending, onSend, composerAction }: Props) {
+export function ChatThread({ title, subtitle, note, banner, messages, currentRole, loading, sending, onSend, composerAction }: Props) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<ScrollView>(null);
@@ -53,7 +54,9 @@ export function ChatThread({ title, subtitle, note, messages, currentRole, loadi
         </View>
       </View>
 
-      {note ? (
+      {banner ? (
+        <View style={styles.bannerWrap}>{banner}</View>
+      ) : note ? (
         <View style={styles.noteBar}>
           <Ionicons name="information-circle-outline" size={16} color={colors.primaryDark} />
           <Text style={styles.noteText}>{note}</Text>
@@ -123,6 +126,7 @@ const styles = StyleSheet.create({
   headerText: { flex: 1 },
   title: { ...typography.name },
   subtitle: { ...typography.caption, color: colors.textMuted },
+  bannerWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   noteBar: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.primaryLight, paddingHorizontal: spacing.lg, paddingVertical: spacing.xs },
   noteText: { ...typography.caption, color: colors.primaryDark, flex: 1 },
   messages: { padding: spacing.lg, gap: spacing.sm },

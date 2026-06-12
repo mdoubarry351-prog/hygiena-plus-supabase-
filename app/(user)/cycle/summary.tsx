@@ -7,6 +7,7 @@ import { CycleRing } from "@/components/CycleRing";
 import { Loading } from "@/components/Loading";
 import { EmptyState } from "@/components/EmptyState";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
 import { useCycles } from "@/hooks/useCycles";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -169,6 +170,8 @@ export default function CycleSummary() {
             ))}
           </Card>
         ) : null}
+
+        <MedicalDisclaimer text="Les prédictions sont des estimations indicatives et ne constituent pas un avis médical." />
       </ScrollView>
     </Screen>
   );

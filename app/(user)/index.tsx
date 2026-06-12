@@ -8,6 +8,7 @@ import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
 import { CycleRing } from "@/components/CycleRing";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
 import { useCycles } from "@/hooks/useCycles";
 import { currentPhase, getDailyTip, PHASE_LABEL } from "@/lib/cycle-tips";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
@@ -157,6 +158,7 @@ export default function CycleHome() {
             <View style={styles.tipBody}>
               <Text style={styles.tipTitle}>Conseil du jour · {PHASE_LABEL[phase]}</Text>
               <Text style={styles.tipText}>{dailyTip}</Text>
+              <MedicalDisclaimer text="Conseils bien-être, pas un avis médical." compact />
             </View>
           </Card>
         ) : null}
@@ -231,6 +233,11 @@ export default function CycleHome() {
             <PredCard label="OVULATION ESTIMÉE" value={formatShort(prediction?.nextOvulation)} />
             <PredCard label="FENÊTRE FERTILE" value={`${formatShort(fertileStart)} → ${formatShort(fertileEnd)}`} />
           </View>
+        ) : null}
+
+        {/* Rappel : les prédictions sont indicatives, pas un avis médical. */}
+        {hasData ? (
+          <MedicalDisclaimer text="Les prédictions sont des estimations indicatives et ne constituent pas un avis médical." />
         ) : null}
       </ScrollView>
     </Screen>

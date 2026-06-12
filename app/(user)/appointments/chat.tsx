@@ -4,6 +4,7 @@ import { Redirect, useLocalSearchParams } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { ChatThread, type ChatMessage } from "@/components/ChatThread";
+import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
 import { useAuth } from "@/providers/AuthProvider";
 import { useCycles } from "@/hooks/useCycles";
 import { messagesService } from "@/lib/messages-service";
@@ -66,7 +67,9 @@ export default function PatientChat() {
     <ChatThread
       title={doctorName || "Médecin"}
       subtitle="Conseils en ligne"
-      note="Messagerie de conseils. Pour une consultation, prenez rendez-vous."
+      banner={
+        <MedicalDisclaimer text="Ces échanges sont des conseils généraux et ne remplacent pas une consultation. En cas d'urgence, consultez un médecin ou rendez-vous aux urgences." />
+      }
       messages={messages}
       currentRole="patient"
       loading={loading}

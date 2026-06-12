@@ -10,6 +10,7 @@ import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
 import { ReviewsSection } from "@/components/ReviewsSection";
+import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import {
@@ -250,6 +251,8 @@ export default function BookAppointment() {
             ) : null}
           </View>
         </Card>
+
+        <MedicalDisclaimer text="La consultation se fait en clinique ; la messagerie en ligne ne remplace pas un examen médical." />
 
         {/* À propos */}
         {doctor.bio ? (
