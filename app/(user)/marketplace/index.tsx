@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,7 +17,7 @@ import type { MarketplaceProduct } from "@/lib/database.types";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 export default function MarketplaceHome() {
-  const { products, loading, reload } = useProducts();
+  const { products, loading, loadingMore, hasMore, reload, loadMore } = useProducts();
   const { marketplace_enabled } = useAppSettings();
   const { favIds, toggle } = useFavorites();
   const { count } = useCart();
@@ -30,6 +30,11 @@ export default function MarketplaceHome() {
     setRefreshing(true);
     await reload();
     setRefreshing(false);
+  }
+
+  function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 220) loadMore();
   }
 
   if (loading && products.length === 0) return <Loading />;
@@ -71,6 +76,8 @@ export default function MarketplaceHome() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
+        onScroll={handleScroll}
+        scrollEventThrottle={400}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {products.length === 0 ? (
@@ -80,15 +87,28 @@ export default function MarketplaceHome() {
             message="Revenez plus tard, de nouveaux produits arrivent bientôt."
           />
         ) : (
-          products.map((p) => (
-            <ProductRow
-              key={p.id}
-              product={p}
-              isFav={favIds.has(p.id)}
-              onToggleFav={() => toggle(p.id)}
-              onPress={() => router.push(`/(user)/marketplace/${p.id}`)}
-            />
-          ))
+          <>
+            {products.map((p) => (
+              <ProductRow
+                key={p.id}
+                product={p}
+                isFav={favIds.has(p.id)}
+                onToggleFav={() => toggle(p.id)}
+                onPress={() => router.push(`/(user)/marketplace/${p.id}`)}
+              />
+            ))}
+            {hasMore ? (
+              <View style={styles.footer}>
+                {loadingMore ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <Pressable onPress={loadMore} style={styles.loadMore}>
+                    <Text style={styles.loadMoreText}>Charger plus</Text>
+                  </Pressable>
+                )}
+              </View>
+            ) : null}
+          </>
         )}
       </ScrollView>
     </Screen>
@@ -144,6 +164,9 @@ const styles = StyleSheet.create({
   },
   cartBadgeText: { color: colors.white, fontSize: 11, fontWeight: "700", fontFamily: fonts.bodyBold },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  footer: { alignItems: "center", paddingVertical: spacing.sm },
+  loadMore: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.primary },
+  loadMoreText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
   empty: { gap: spacing.sm },
   muted: { color: colors.textMuted },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md },

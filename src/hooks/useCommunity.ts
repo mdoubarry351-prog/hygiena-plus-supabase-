@@ -1,21 +1,29 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { communityService, type CommunityPostWithAuthor } from "@/lib/community-service";
 import { hapticLight } from "@/lib/haptics";
+
+const PAGE_SIZE = 20;
 
 export function useCommunity() {
   const { session } = useAuth();
   const [posts, setPosts] = useState<CommunityPostWithAuthor[]>([]);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const offsetRef = useRef(0);
 
+  // (Re)charge la première page (au focus).
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await communityService.getPosts();
-      setPosts(data);
+      const { posts: page, rawCount } = await communityService.getPostsPage({ limit: PAGE_SIZE, offset: 0 });
+      setPosts(page);
+      offsetRef.current = PAGE_SIZE;
+      setHasMore(rawCount === PAGE_SIZE);
       if (session?.user) {
         const ids = await communityService.getLikedPostIds(session.user.id);
         setLikedIds(new Set(ids));
@@ -28,6 +36,25 @@ export function useCommunity() {
       setLoading(false);
     }
   }, [session?.user]);
+
+  // Page suivante (append), avec déduplication par id.
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const { posts: page, rawCount } = await communityService.getPostsPage({ limit: PAGE_SIZE, offset: offsetRef.current });
+      setPosts((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...page.filter((p) => !seen.has(p.id))];
+      });
+      offsetRef.current += PAGE_SIZE;
+      setHasMore(rawCount === PAGE_SIZE);
+    } catch {
+      // garde l'état courant
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -54,5 +81,5 @@ export function useCommunity() {
     [session?.user]
   );
 
-  return { posts, likedIds, loading, error, reload: load, toggleLike };
+  return { posts, likedIds, loading, loadingMore, hasMore, error, reload: load, loadMore, toggleLike };
 }

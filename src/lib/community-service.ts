@@ -170,6 +170,22 @@ export const communityService = {
     return enrichSafePosts(data ?? []);
   },
 
+  // Fil paginé (taille de page côté écran) : lit une tranche via .range(),
+  // enrichit comme getPosts, et renvoie le nombre de lignes BRUTES lues
+  // (pour savoir s'il reste des pages, indépendamment du filtrage anti-bloqué).
+  async getPostsPage(opts?: { limit?: number; offset?: number }): Promise<{ posts: CommunityPostWithAuthor[]; rawCount: number }> {
+    const limit = opts?.limit ?? 20;
+    const offset = opts?.offset ?? 0;
+    const { data, error } = await supabase
+      .from("community_posts_safe")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (error) throw error;
+    const rows = data ?? [];
+    return { posts: await enrichSafePosts(rows), rawCount: rows.length };
+  },
+
   // Détail d'une publication (lecture via la vue sécurisée).
   async getPost(id: string): Promise<CommunityPostWithAuthor | null> {
     const { data, error } = await supabase

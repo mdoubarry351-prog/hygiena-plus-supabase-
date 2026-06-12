@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -28,7 +28,7 @@ function norm(s: string): string {
 }
 
 export default function CommunityHome() {
-  const { posts, likedIds, loading, reload, toggleLike } = useCommunity();
+  const { posts, likedIds, loading, loadingMore, hasMore, reload, loadMore, toggleLike } = useCommunity();
   const { savedIds, toggle: toggleSave } = useBookmarks();
   const { session } = useAuth();
   const router = useRouter();
@@ -63,6 +63,12 @@ export default function CommunityHome() {
     setRefreshing(true);
     await reload();
     setRefreshing(false);
+  }
+
+  // Charge la page suivante quand on approche du bas.
+  function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 220) loadMore();
   }
 
   if (loading && posts.length === 0) return <Loading />;
@@ -129,6 +135,8 @@ export default function CommunityHome() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
+        onScroll={handleScroll}
+        scrollEventThrottle={400}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {(() => {
@@ -172,6 +180,18 @@ export default function CommunityHome() {
             </>
           );
         })()}
+
+        {hasMore ? (
+          <View style={styles.footer}>
+            {loadingMore ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <Pressable onPress={loadMore} style={styles.loadMore}>
+                <Text style={styles.loadMoreText}>Charger plus</Text>
+              </Pressable>
+            )}
+          </View>
+        ) : null}
       </ScrollView>
     </Screen>
   );
@@ -288,6 +308,9 @@ const styles = StyleSheet.create({
   segText: { fontSize: 13, fontWeight: "700", color: colors.text },
   segTextActive: { color: colors.white },
   count: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
+  footer: { alignItems: "center", paddingVertical: spacing.md },
+  loadMore: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.primary },
+  loadMoreText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
   filterBar: { flexGrow: 0, flexShrink: 0 },
   filterChips: { gap: spacing.xs, alignItems: "center", paddingVertical: spacing.sm },
   filterChip: {

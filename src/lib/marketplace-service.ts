@@ -49,6 +49,20 @@ export const marketplaceService = {
     return data ?? [];
   },
 
+  // Produits actifs paginés (.range), même ordre/filtre que getProducts.
+  async getProductsPage(opts?: { limit?: number; offset?: number }): Promise<MarketplaceProduct[]> {
+    const limit = opts?.limit ?? 20;
+    const offset = opts?.offset ?? 0;
+    const { data, error } = await supabase
+      .from("marketplace_products")
+      .select("*")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (error) throw error;
+    return data ?? [];
+  },
+
   // Détail d'un produit (actif uniquement).
   async getProduct(id: string): Promise<MarketplaceProduct | null> {
     const { data, error } = await supabase
