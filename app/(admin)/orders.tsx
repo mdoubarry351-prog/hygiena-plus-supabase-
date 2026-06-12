@@ -6,8 +6,10 @@ import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { ExportButton } from "@/components/ExportButton";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
+import { exportCsv } from "@/lib/csv-export";
 import { formatPrice, type OrderItem } from "@/lib/marketplace-service";
 import type { MarketplaceOrder, OrderStatus } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -60,6 +62,29 @@ export default function AdminOrders() {
     setRefreshing(false);
   }
 
+  async function handleExport() {
+    try {
+      const rows = orders.map((o) => ({
+        numero: o.id.slice(0, 8),
+        cliente: o.phone,
+        articles: String(itemCount(o.items)),
+        montant: formatPrice(o.total_amount),
+        statut: STATUS_LABELS[o.status],
+        date: new Date(o.created_at).toLocaleDateString("fr-FR"),
+      }));
+      await exportCsv("commandes", rows, [
+        { key: "numero", label: "N°" },
+        { key: "cliente", label: "Cliente (téléphone)" },
+        { key: "articles", label: "Articles" },
+        { key: "montant", label: "Montant" },
+        { key: "statut", label: "Statut" },
+        { key: "date", label: "Date" },
+      ]);
+    } catch (e) {
+      Alert.alert("Export impossible", e instanceof Error ? e.message : "Réessayez.");
+    }
+  }
+
   function changeStatus(order: MarketplaceOrder) {
     if (!session?.user) return;
     Alert.alert("Changer le statut", `Commande du ${new Date(order.created_at).toLocaleDateString("fr-FR")}`,
@@ -85,7 +110,7 @@ export default function AdminOrders() {
 
   return (
     <Screen>
-      <AdminHeader title="Commandes" />
+      <AdminHeader title="Commandes" right={<ExportButton onPress={handleExport} />} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}

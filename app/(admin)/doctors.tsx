@@ -9,9 +9,11 @@ import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { ExportButton } from "@/components/ExportButton";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, type DoctorRow } from "@/lib/admin-service";
 import { uploadAvatar } from "@/lib/storage";
+import { exportCsv } from "@/lib/csv-export";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -66,6 +68,29 @@ export default function AdminDoctors() {
     setRefreshing(true);
     await load();
     setRefreshing(false);
+  }
+
+  async function handleExport() {
+    try {
+      const rows = doctors.map((d) => ({
+        nom: d.profile?.full_name ?? "",
+        specialite: d.specialty,
+        valide: d.is_validated ? "Oui" : "Non",
+        note: d.rating_count > 0 ? d.rating_avg.toFixed(1) : "—",
+        avis: String(d.rating_count),
+        tarif: d.consultation_fee != null ? formatPrice(d.consultation_fee) : "",
+      }));
+      await exportCsv("medecins", rows, [
+        { key: "nom", label: "Nom" },
+        { key: "specialite", label: "Spécialité" },
+        { key: "valide", label: "Validé" },
+        { key: "note", label: "Note" },
+        { key: "avis", label: "Nbre d'avis" },
+        { key: "tarif", label: "Tarif" },
+      ]);
+    } catch (e) {
+      Alert.alert("Export impossible", e instanceof Error ? e.message : "Réessayez.");
+    }
   }
 
   function resetAdd() {
@@ -230,7 +255,7 @@ export default function AdminDoctors() {
 
   return (
     <Screen>
-      <AdminHeader title="Médecins" />
+      <AdminHeader title="Médecins" right={<ExportButton onPress={handleExport} />} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}

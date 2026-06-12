@@ -7,8 +7,10 @@ import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { ExportButton } from "@/components/ExportButton";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
+import { exportCsv } from "@/lib/csv-export";
 import type { Profile, UserRole } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -44,6 +46,29 @@ export default function AdminUsers() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  async function handleExport() {
+    try {
+      const rows = users.map((u) => ({
+        nom: u.full_name ?? "",
+        email: u.email ?? "",
+        telephone: u.phone ?? "",
+        role: ROLE_LABELS[u.role],
+        statut: suspendedMap[u.id] ? "Suspendu" : "Actif",
+        inscription: new Date(u.created_at).toLocaleDateString("fr-FR"),
+      }));
+      await exportCsv("utilisateurs", rows, [
+        { key: "nom", label: "Nom" },
+        { key: "email", label: "Email" },
+        { key: "telephone", label: "Téléphone" },
+        { key: "role", label: "Rôle" },
+        { key: "statut", label: "Statut" },
+        { key: "inscription", label: "Inscription" },
+      ]);
+    } catch (e) {
+      Alert.alert("Export impossible", e instanceof Error ? e.message : "Réessayez.");
+    }
+  }
 
   const targetLabel = (u: Profile) => u.full_name ?? u.email ?? "cet utilisateur";
 
@@ -136,7 +161,7 @@ export default function AdminUsers() {
 
   return (
     <Screen>
-      <AdminHeader title="Utilisateurs" />
+      <AdminHeader title="Utilisateurs" right={<ExportButton onPress={handleExport} />} />
       <View style={styles.searchRow}>
         <Input
           value={search}

@@ -9,9 +9,11 @@ import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { ExportButton } from "@/components/ExportButton";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import { uploadProductImage } from "@/lib/storage";
+import { exportCsv } from "@/lib/csv-export";
 import { formatPrice } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -36,6 +38,29 @@ export default function AdminProducts() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  async function handleExport() {
+    try {
+      const rows = products.map((p) => ({
+        nom: p.name,
+        prix: formatPrice(p.price),
+        stock: String(p.stock),
+        statut: p.is_active ? "Actif" : "Inactif",
+        note: p.rating_count > 0 ? p.rating_avg.toFixed(1) : "—",
+        avis: String(p.rating_count),
+      }));
+      await exportCsv("produits", rows, [
+        { key: "nom", label: "Nom" },
+        { key: "prix", label: "Prix" },
+        { key: "stock", label: "Stock" },
+        { key: "statut", label: "Statut" },
+        { key: "note", label: "Note" },
+        { key: "avis", label: "Nbre d'avis" },
+      ]);
+    } catch (e) {
+      Alert.alert("Export impossible", e instanceof Error ? e.message : "Réessayez.");
+    }
+  }
 
   async function toggleActive(p: MarketplaceProduct) {
     if (!session?.user) return;
@@ -65,9 +90,12 @@ export default function AdminProducts() {
       <AdminHeader
         title="Produits"
         right={
-          <Pressable onPress={() => setEditing("new")} hitSlop={8} style={styles.addBtn}>
-            <Ionicons name="add" size={20} color={colors.white} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <ExportButton onPress={handleExport} />
+            <Pressable onPress={() => setEditing("new")} hitSlop={8} style={styles.addBtn}>
+              <Ionicons name="add" size={20} color={colors.white} />
+            </Pressable>
+          </View>
         }
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -238,6 +266,7 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
 }
 
 const styles = StyleSheet.create({
+  headerActions: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   addBtn: { width: 36, height: 36, borderRadius: radius.pill, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
   empty: { alignItems: "center" },
