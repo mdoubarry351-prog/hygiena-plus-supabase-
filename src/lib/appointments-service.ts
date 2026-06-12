@@ -3,8 +3,59 @@ import type {
   Doctor,
   Appointment,
   Profile,
+  Json,
   TablesInsert,
 } from "@/lib/database.types";
+
+// =====================================================
+// Disponibilités du médecin (doctors.availability jsonb) :
+// { monday: { enabled, hours: "09:00 - 13:00" }, ... } (clés monday..sunday).
+// =====================================================
+// getDay() : 0 = dimanche … 6 = samedi → clés correspondantes.
+const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
+
+export type DayAvailability = { start: string; end: string };
+
+// Clé de jour (« monday »…) pour une date ISO « YYYY-MM-DD ».
+export function dayKeyForDate(dateISO: string): string {
+  return DAY_KEYS[new Date(`${dateISO}T12:00:00`).getDay()];
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+// Parse « 09:00 - 13:00 » (espaces optionnels) → { start, end } normalisés.
+function parseHours(hours: string): DayAvailability | null {
+  const m = hours.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  return { start: `${pad2(+m[1])}:${m[2]}`, end: `${pad2(+m[3])}:${m[4]}` };
+}
+
+// Disponibilité d'un jour donné (null si non travaillé / mal formé).
+export function dayAvailability(availability: Json | null, dayKey: string): DayAvailability | null {
+  if (!availability || typeof availability !== "object" || Array.isArray(availability)) return null;
+  const day = (availability as Record<string, unknown>)[dayKey];
+  if (!day || typeof day !== "object") return null;
+  const obj = day as { enabled?: boolean; hours?: string };
+  if (!obj.enabled || !obj.hours) return null;
+  return parseHours(obj.hours);
+}
+
+// Le médecin a-t-il au moins un jour de disponibilité défini ?
+export function hasAnyAvailability(availability: Json | null): boolean {
+  return DAY_KEYS.some((k) => dayAvailability(availability, k) !== null);
+}
+
+// Génère les créneaux de `stepMin` minutes entre start et end (« HH:MM »).
+export function generateSlots(start: string, end: string, stepMin = 30): string[] {
+  const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const fromMin = (x: number) => `${pad2(Math.floor(x / 60))}:${pad2(x % 60)}`;
+  const s = toMin(start), e = toMin(end);
+  const out: string[] = [];
+  for (let t = s; t + stepMin <= e; t += stepMin) out.push(fromMin(t));
+  return out;
+}
 
 // Infos de profil jointes pour un médecin (uniquement ce dont l'UI a besoin).
 export type DoctorProfile = Pick<Profile, "full_name" | "avatar_url">;
@@ -126,6 +177,18 @@ export const appointmentsService = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  // Créneaux OCCUPÉS d'un médecin sur une plage de dates (via RPC sécurisée,
+  // aucune info patiente exposée). Renvoie une liste { date, time(HH:MM) }.
+  async getBookedSlots(doctorId: string, from: string, to: string): Promise<{ date: string; time: string }[]> {
+    const { data, error } = await supabase.rpc("doctor_booked_slots", {
+      p_doctor: doctorId,
+      p_from: from,
+      p_to: to,
+    });
+    if (error) throw error;
+    return (data ?? []).map((r) => ({ date: r.appointment_date, time: r.appointment_time.slice(0, 5) }));
   },
 
   // Rendez-vous unique avec médecin + clinique, pour l'écran reçu.

@@ -967,6 +967,11 @@ export type Database = {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      // Créneaux OCCUPÉS d'un médecin (sans aucune info patiente).
+      doctor_booked_slots: {
+        Args: { p_doctor: string; p_from: string; p_to: string };
+        Returns: { appointment_date: string; appointment_time: string }[];
+      };
     };
     Enums: {
       user_role: UserRole;

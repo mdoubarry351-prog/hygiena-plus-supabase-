@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,35 +17,43 @@ import {
   doctorDisplayName,
   formatAppointmentDate,
   generateReceiptNumber,
+  dayKeyForDate,
+  dayAvailability,
+  hasAnyAvailability,
+  generateSlots,
   type DoctorWithProfile,
 } from "@/lib/appointments-service";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
-// Créneaux horaires proposés (toutes les 30 min, matin et après-midi).
-const TIME_SLOTS = [
-  "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-  "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
-];
-
-// Construit les 14 prochains jours sélectionnables, à partir de demain.
+// Construit les 14 prochains jours (à partir d'aujourd'hui).
 type DayOption = { date: string; weekday: string; day: string; month: string };
+
+function toISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 function buildDays(): DayOption[] {
   const days: DayOption[] = [];
   const today = new Date();
-  for (let i = 1; i <= 14; i++) {
+  for (let i = 0; i < 14; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     days.push({
-      date: iso,
+      date: toISO(d),
       weekday: d.toLocaleDateString("fr-FR", { weekday: "short" }),
       day: String(d.getDate()),
       month: d.toLocaleDateString("fr-FR", { month: "short" }),
     });
   }
   return days;
+}
+
+// Violation de l'index unique anti double-réservation (créneau pris entre-temps).
+function isSlotConflict(e: unknown): boolean {
+  const code = (e as { code?: string } | null)?.code;
+  const msg = e instanceof Error ? e.message : "";
+  return code === "23505" || /duplicate key|unique constraint/i.test(msg);
 }
 
 export default function BookAppointment() {
@@ -62,6 +70,35 @@ export default function BookAppointment() {
   const [saving, setSaving] = useState(false);
 
   const days = useMemo(buildDays, []);
+  const todayISO = useMemo(() => toISO(new Date()), []);
+  const [bookedSet, setBookedSet] = useState<Set<string>>(new Set());
+
+  // Récupère les créneaux occupés du médecin sur la plage affichée.
+  const refreshSlots = useCallback(async () => {
+    if (days.length === 0) return;
+    try {
+      const slots = await appointmentsService.getBookedSlots(id, days[0].date, days[days.length - 1].date);
+      setBookedSet(new Set(slots.map((s) => `${s.date}|${s.time}`)));
+    } catch {
+      setBookedSet(new Set());
+    }
+  }, [days, id]);
+
+  useEffect(() => { refreshSlots(); }, [refreshSlots]);
+
+  // Créneaux proposés pour la date choisie : disponibilité du jour − occupés − passés.
+  const selectedSlots = useMemo(() => {
+    if (!selectedDate || !doctor) return [];
+    const avail = dayAvailability(doctor.availability, dayKeyForDate(selectedDate));
+    if (!avail) return [];
+    let slots = generateSlots(avail.start, avail.end).filter((t) => !bookedSet.has(`${selectedDate}|${t}`));
+    if (selectedDate === todayISO) {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      slots = slots.filter((t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m > nowMin; });
+    }
+    return slots;
+  }, [selectedDate, doctor, bookedSet, todayISO]);
 
   // Rafraîchit la note moyenne du médecin après un avis.
   async function reloadDoctor() {
@@ -97,6 +134,7 @@ export default function BookAppointment() {
   if (!doctor) return null;
 
   const name = doctorDisplayName(doctor.profile);
+  const availabilityDefined = hasAnyAvailability(doctor.availability);
   const canBook = !!selectedDate && !!selectedTime;
 
   async function handleBook() {
@@ -117,7 +155,13 @@ export default function BookAppointment() {
         [{ text: "OK", onPress: () => router.replace("/(user)/appointments/mine") }]
       );
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Prise de rendez-vous échouée");
+      if (isSlotConflict(e)) {
+        await refreshSlots();
+        setSelectedTime(null);
+        Alert.alert("Créneau indisponible", "Ce créneau vient d'être réservé, choisissez-en un autre.");
+      } else {
+        Alert.alert("Erreur", e instanceof Error ? e.message : "Prise de rendez-vous échouée");
+      }
     } finally {
       setSaving(false);
     }
@@ -150,7 +194,13 @@ export default function BookAppointment() {
       });
       router.replace({ pathname: "/(user)/appointments/receipt", params: { id: created.id } });
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Paiement échoué");
+      if (isSlotConflict(e)) {
+        await refreshSlots();
+        setSelectedTime(null);
+        Alert.alert("Créneau indisponible", "Ce créneau vient d'être réservé, choisissez-en un autre.");
+      } else {
+        Alert.alert("Erreur", e instanceof Error ? e.message : "Paiement échoué");
+      }
     } finally {
       setSaving(false);
     }
@@ -194,31 +244,52 @@ export default function BookAppointment() {
           Conseils en ligne (Premium). Pour une consultation, prenez rendez-vous ci-dessous.
         </Text>
 
-        <Text style={[typography.h3, styles.sectionTitle]}>Choisir une date</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayRow}>
-          {days.map((d) => {
-            const active = selectedDate === d.date;
-            return (
-              <Pressable key={d.date} onPress={() => setSelectedDate(d.date)} style={[styles.dayChip, active && styles.chipActive]}>
-                <Text style={[styles.dayWeekday, active && styles.chipTextActive]}>{d.weekday}</Text>
-                <Text style={[styles.dayNumber, active && styles.chipTextActive]}>{d.day}</Text>
-                <Text style={[styles.dayMonth, active && styles.chipTextActive]}>{d.month}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        {!availabilityDefined ? (
+          <Card style={styles.noAvailCard}>
+            <Ionicons name="calendar-outline" size={20} color={colors.textMuted} />
+            <Text style={styles.noAvailText}>Ce médecin n'a pas encore défini ses disponibilités.</Text>
+          </Card>
+        ) : (
+          <>
+            <Text style={[typography.h3, styles.sectionTitle]}>Choisir une date</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayRow}>
+              {days.map((d) => {
+                const available = dayAvailability(doctor.availability, dayKeyForDate(d.date)) !== null;
+                const active = selectedDate === d.date;
+                return (
+                  <Pressable
+                    key={d.date}
+                    disabled={!available}
+                    onPress={() => { setSelectedDate(d.date); setSelectedTime(null); }}
+                    style={[styles.dayChip, active && styles.chipActive, !available && styles.dayChipDisabled]}
+                  >
+                    <Text style={[styles.dayWeekday, active && styles.chipTextActive, !available && styles.dayTextDisabled]}>{d.weekday}</Text>
+                    <Text style={[styles.dayNumber, active && styles.chipTextActive, !available && styles.dayTextDisabled]}>{d.day}</Text>
+                    <Text style={[styles.dayMonth, active && styles.chipTextActive, !available && styles.dayTextDisabled]}>{d.month}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
 
-        <Text style={[typography.h3, styles.sectionTitle]}>Choisir une heure</Text>
-        <View style={styles.timeGrid}>
-          {TIME_SLOTS.map((t) => {
-            const active = selectedTime === t;
-            return (
-              <Pressable key={t} onPress={() => setSelectedTime(t)} style={[styles.timeChip, active && styles.chipActive]}>
-                <Text style={[styles.timeText, active && styles.chipTextActive]}>{t}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+            <Text style={[typography.h3, styles.sectionTitle]}>Choisir une heure</Text>
+            {!selectedDate ? (
+              <Text style={styles.slotHint}>Choisissez d'abord une date.</Text>
+            ) : selectedSlots.length === 0 ? (
+              <Text style={styles.slotHint}>Aucun créneau disponible ce jour. Essayez une autre date.</Text>
+            ) : (
+              <View style={styles.timeGrid}>
+                {selectedSlots.map((t) => {
+                  const active = selectedTime === t;
+                  return (
+                    <Pressable key={t} onPress={() => setSelectedTime(t)} style={[styles.timeChip, active && styles.chipActive]}>
+                      <Text style={[styles.timeText, active && styles.chipTextActive]}>{t}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </>
+        )}
 
         <Input
           label="Motif (facultatif)"
@@ -286,9 +357,14 @@ const styles = StyleSheet.create({
     width: 64, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border,
     backgroundColor: colors.surface, alignItems: "center", gap: 2,
   },
+  dayChipDisabled: { opacity: 0.4, backgroundColor: colors.surface, borderColor: colors.border },
   dayWeekday: { ...typography.caption, color: colors.textMuted, textTransform: "capitalize" },
   dayNumber: { ...typography.h3 },
   dayMonth: { ...typography.caption, color: colors.textMuted, textTransform: "capitalize" },
+  dayTextDisabled: { color: colors.textMuted },
+  slotHint: { ...typography.caption, color: colors.textMuted },
+  noAvailCard: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  noAvailText: { ...typography.body, color: colors.textMuted, flex: 1 },
   timeGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   timeChip: {
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5,
