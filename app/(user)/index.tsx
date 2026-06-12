@@ -9,6 +9,7 @@ import { Loading } from "@/components/Loading";
 import { CycleRing } from "@/components/CycleRing";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useCycles } from "@/hooks/useCycles";
+import { currentPhase, getDailyTip, PHASE_LABEL } from "@/lib/cycle-tips";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { useAuth } from "@/providers/AuthProvider";
 import { notificationsService } from "@/lib/notifications-service";
@@ -73,6 +74,10 @@ export default function CycleHome() {
   const ovulationDay = Math.max(periodLen + 1, ringN - 14);
   const fertileStartDay = Math.max(periodLen + 1, ovulationDay - 5);
   const fertileEndDay = Math.min(ringN, ovulationDay + 1);
+
+  // Phase courante (même logique que l'anneau) + conseil du jour déterministe.
+  const phase = hasData ? currentPhase({ day, periodLen, fertileStartDay, fertileEndDay, ovulationDay }) : null;
+  const dailyTip = phase ? getDailyTip(phase) : null;
 
   // Niveau de confiance dérivé du nombre de cycles enregistrés (présentation).
   const conf = cycles.length >= 4
@@ -142,6 +147,19 @@ export default function CycleHome() {
           </View>
           <Ionicons name="arrow-forward" size={20} color={colors.white} />
         </Pressable>
+
+        {/* 3a · Conseil du jour selon la phase (masqué si phase inconnue) */}
+        {dailyTip && phase ? (
+          <Card style={styles.tipCard}>
+            <View style={styles.tipIcon}>
+              <Ionicons name="bulb-outline" size={20} color={colors.primaryDark} />
+            </View>
+            <View style={styles.tipBody}>
+              <Text style={styles.tipTitle}>Conseil du jour · {PHASE_LABEL[phase]}</Text>
+              <Text style={styles.tipText}>{dailyTip}</Text>
+            </View>
+          </Card>
+        ) : null}
 
         {/* 3b · Promotion Premium (masquée si déjà premium) */}
         {profile?.is_premium ? (
@@ -265,6 +283,13 @@ const styles = StyleSheet.create({
   premiumSub: { ...typography.caption, color: colors.textMuted },
   premiumActive: { flexDirection: "row", alignItems: "center", gap: spacing.xs, alignSelf: "flex-start", backgroundColor: colors.primaryLight, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill },
   premiumActiveText: { ...typography.caption, color: colors.primaryDark, fontFamily: fonts.bodySemiBold },
+
+  // Conseil du jour
+  tipCard: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md, backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  tipIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" },
+  tipBody: { flex: 1, gap: 2 },
+  tipTitle: { ...typography.name, color: colors.primaryDark },
+  tipText: { ...typography.caption, color: colors.primaryDark, lineHeight: 18 },
 
   // Accès rapide
   sectionTitle: { marginTop: spacing.xs },
