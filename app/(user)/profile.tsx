@@ -128,6 +128,19 @@ export default function Profile() {
           </Card>
         </Pressable>
 
+        <Pressable onPress={() => router.push("/(user)/referral")}>
+          <Card style={styles.proCard}>
+            <View style={styles.proIcon}>
+              <Ionicons name="gift-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.proText}>
+              <Text style={styles.proTitle}>Parrainer une amie</Text>
+              <Text style={styles.proSub}>Partagez votre code, recevez le Premium</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
         <Text style={[typography.h3, styles.sectionTitle]}>Aide & informations</Text>
 
         <Pressable onPress={() => router.push("/(user)/help")}>

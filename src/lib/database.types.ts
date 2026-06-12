@@ -50,6 +50,8 @@ export type Database = {
           is_premium: boolean;
           date_of_birth: string | null;
           onboarding_completed: boolean;
+          referral_code: string | null;
+          referred_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -65,6 +67,8 @@ export type Database = {
           is_premium?: boolean;
           date_of_birth?: string | null;
           onboarding_completed?: boolean;
+          referral_code?: string | null;
+          referred_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -80,6 +84,8 @@ export type Database = {
           is_premium?: boolean;
           date_of_birth?: string | null;
           onboarding_completed?: boolean;
+          referral_code?: string | null;
+          referred_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1134,6 +1140,16 @@ export type Database = {
       doctor_booked_slots: {
         Args: { p_doctor: string; p_from: string; p_to: string };
         Returns: { appointment_date: string; appointment_time: string }[];
+      };
+      // Parrainage : applique un code (une seule fois) et récompense le parrain.
+      apply_referral: {
+        Args: { p_code: string };
+        Returns: { ok: boolean; error?: string };
+      };
+      // Nombre d'amies parrainées par l'utilisatrice courante.
+      my_referral_count: {
+        Args: Record<string, never>;
+        Returns: number;
       };
     };
     Enums: {
