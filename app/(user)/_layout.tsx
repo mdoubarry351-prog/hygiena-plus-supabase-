@@ -40,6 +40,7 @@ export default function UserLayout() {
 
           {/* Écrans accessibles mais cachés de la barre d'onglets */}
           <Tabs.Screen name="cycle/log" options={{ href: null }} />
+          <Tabs.Screen name="cycle/summary" options={{ href: null }} />
           <Tabs.Screen name="marketplace/[id]" options={{ href: null }} />
           <Tabs.Screen name="marketplace/cart" options={{ href: null }} />
           <Tabs.Screen name="marketplace/checkout" options={{ href: null }} />

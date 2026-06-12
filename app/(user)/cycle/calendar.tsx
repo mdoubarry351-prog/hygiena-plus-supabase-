@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
@@ -21,6 +23,7 @@ function sameDay(a: Date, b: Date): boolean {
 export default function CalendarScreen() {
   const { cycles, prediction, loading } = useCycles();
   const [viewDate, setViewDate] = useState(new Date());
+  const router = useRouter();
 
   // Construit l'ensemble des jours marqués
   const dayTypes = useMemo(() => {
@@ -87,6 +90,19 @@ export default function CalendarScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <Text style={typography.h2}>Mon cycle</Text>
 
+        <Pressable onPress={() => router.push("/(user)/cycle/summary")}>
+          <Card style={styles.summaryCard}>
+            <View style={styles.summaryIcon}>
+              <Ionicons name="stats-chart-outline" size={20} color={colors.primaryDark} />
+            </View>
+            <View style={styles.summaryText}>
+              <Text style={styles.summaryTitle}>Voir mon résumé</Text>
+              <Text style={styles.summarySub}>Durée moyenne, régularité, symptômes</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
         <Card style={styles.calCard}>
           <View style={styles.header}>
             <Pressable onPress={() => changeMonth(-1)} hitSlop={12}><Text style={styles.nav}>‹</Text></Pressable>
@@ -149,6 +165,11 @@ function LegendItem({ color, label, borderColor }: { color: string; label: strin
 
 const styles = StyleSheet.create({
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+  summaryCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  summaryIcon: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  summaryText: { flex: 1, gap: 2 },
+  summaryTitle: { ...typography.name, color: colors.primaryDark },
+  summarySub: { ...typography.caption, color: colors.textMuted },
   calCard: { gap: spacing.md },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   nav: { fontSize: 28, color: colors.primary, fontWeight: "600", paddingHorizontal: spacing.md },
