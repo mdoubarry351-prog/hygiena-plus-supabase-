@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +8,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
+import { RescheduleModal } from "@/components/RescheduleModal";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   appointmentsService,
@@ -33,12 +34,23 @@ const STATUS_COLORS: Record<AppointmentStatus, string> = {
   completed: colors.success,
 };
 
+function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Actions autorisées : RDV actif (en attente/confirmé) et à venir (date ≥ aujourd'hui).
+function isEligible(a: AppointmentWithDoctor): boolean {
+  return (a.status === "pending" || a.status === "confirmed") && a.appointment_date >= todayISO();
+}
+
 export default function MyAppointments() {
   const { session, role } = useAuth();
   const router = useRouter();
   const [appointments, setAppointments] = useState<AppointmentWithDoctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [rescheduling, setRescheduling] = useState<AppointmentWithDoctor | null>(null);
 
   const load = useCallback(async () => {
     if (!session?.user) return;
@@ -60,6 +72,24 @@ export default function MyAppointments() {
     setRefreshing(true);
     await load();
     setRefreshing(false);
+  }
+
+  function cancelAppt(a: AppointmentWithDoctor) {
+    Alert.alert("Annuler ce rendez-vous ?", "Cette action est définitive.", [
+      { text: "Non", style: "cancel" },
+      {
+        text: "Annuler le RDV",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await appointmentsService.cancelAppointment(a.id);
+            await load();
+          } catch (e) {
+            Alert.alert("Erreur", e instanceof Error ? e.message : "Annulation échouée");
+          }
+        },
+      },
+    ]);
   }
 
   // Un médecin n'a pas de RDV patient ici (il les reçoit via l'espace pro).
@@ -118,11 +148,35 @@ export default function MyAppointments() {
                     <Text style={styles.receiptBtnText}>Voir le reçu</Text>
                   </Pressable>
                 ) : null}
+
+                {isEligible(a) ? (
+                  <View style={styles.actions}>
+                    <Pressable onPress={() => setRescheduling(a)} style={[styles.actionBtn, styles.actionReschedule]}>
+                      <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                      <Text style={[styles.actionText, { color: colors.primary }]}>Reporter</Text>
+                    </Pressable>
+                    <Pressable onPress={() => cancelAppt(a)} style={[styles.actionBtn, styles.actionCancel]}>
+                      <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+                      <Text style={[styles.actionText, { color: colors.danger }]}>Annuler le rendez-vous</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </Card>
             );
           })
         )}
       </ScrollView>
+
+      {rescheduling ? (
+        <RescheduleModal
+          appointmentId={rescheduling.id}
+          doctorId={rescheduling.doctor_id}
+          currentDate={rescheduling.appointment_date}
+          currentTime={rescheduling.appointment_time}
+          onClose={() => setRescheduling(null)}
+          onDone={async () => { setRescheduling(null); await load(); }}
+        />
+      ) : null}
     </Screen>
   );
 }
@@ -149,4 +203,9 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   meta: { ...typography.caption, color: colors.textMuted, textTransform: "capitalize" },
   reason: { ...typography.body, color: colors.text },
+  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
+  actionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5 },
+  actionReschedule: { borderColor: colors.primary },
+  actionCancel: { borderColor: colors.danger },
+  actionText: { ...typography.caption, fontWeight: "700" },
 });

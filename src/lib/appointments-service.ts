@@ -202,6 +202,21 @@ export const appointmentsService = {
     return (data ?? []).map((r) => ({ date: r.appointment_date, time: r.appointment_time.slice(0, 5) }));
   },
 
+  // La patiente annule son propre rendez-vous (RLS appointments_update_patient).
+  async cancelAppointment(id: string): Promise<void> {
+    const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", id);
+    if (error) throw error;
+  },
+
+  // La patiente reporte son rendez-vous (nouvelle date/heure → repasse en attente).
+  async rescheduleAppointment(id: string, date: string, time: string): Promise<void> {
+    const { error } = await supabase
+      .from("appointments")
+      .update({ appointment_date: date, appointment_time: time, status: "pending" })
+      .eq("id", id);
+    if (error) throw error;
+  },
+
   // Rendez-vous unique avec médecin + clinique, pour l'écran reçu.
   async getAppointmentReceipt(id: string): Promise<AppointmentReceipt | null> {
     const { data, error } = await supabase
