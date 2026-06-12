@@ -107,6 +107,14 @@ export type MonthlySeries = {
   months: string[];
   signups: number[];
   orders: number[];
+  appointments: number[];
+};
+
+export type RevenueStats = {
+  marketplaceRevenue: number;
+  consultationRevenue: number;
+  totalRevenue: number;
+  premiumCount: number;
 };
 
 export type DashboardStats = {
@@ -192,14 +200,16 @@ export const adminService = {
   },
 
   // ---------------- 2. Statistiques ----------------
-  // Créations par mois sur les 6 derniers mois (inscriptions + commandes).
+  // Créations par mois sur les 6 derniers mois (inscriptions + commandes + RDV).
   async getMonthlySeries(): Promise<MonthlySeries> {
-    const [profsRes, ordersRes] = await Promise.all([
+    const [profsRes, ordersRes, apptRes] = await Promise.all([
       supabase.from("profiles").select("created_at"),
       supabase.from("marketplace_orders").select("created_at"),
+      supabase.from("appointments").select("created_at"),
     ]);
     if (profsRes.error) throw profsRes.error;
     if (ordersRes.error) throw ordersRes.error;
+    if (apptRes.error) throw apptRes.error;
 
     const now = new Date();
     const buckets: { key: string; label: string }[] = [];
@@ -215,6 +225,7 @@ export const adminService = {
 
     const signups = new Array(6).fill(0);
     const orders = new Array(6).fill(0);
+    const appointments = new Array(6).fill(0);
     for (const p of profsRes.data ?? []) {
       const k = (p.created_at ?? "").slice(0, 7);
       if (k in index) signups[index[k]] += 1;
@@ -223,7 +234,32 @@ export const adminService = {
       const k = (o.created_at ?? "").slice(0, 7);
       if (k in index) orders[index[k]] += 1;
     }
-    return { months: buckets.map((b) => b.label), signups, orders };
+    for (const a of apptRes.data ?? []) {
+      const k = (a.created_at ?? "").slice(0, 7);
+      if (k in index) appointments[index[k]] += 1;
+    }
+    return { months: buckets.map((b) => b.label), signups, orders, appointments };
+  },
+
+  // Revenus (marketplace livré + consultations payées) + nb d'abonnées premium.
+  async getRevenueStats(): Promise<RevenueStats> {
+    const [ordersRes, apptRes, premiumRes] = await Promise.all([
+      supabase.from("marketplace_orders").select("total_amount").eq("status", "completed"),
+      supabase.from("appointments").select("amount_paid").eq("is_paid", true),
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("is_premium", true),
+    ]);
+    if (ordersRes.error) throw ordersRes.error;
+    if (apptRes.error) throw apptRes.error;
+    if (premiumRes.error) throw premiumRes.error;
+
+    const marketplaceRevenue = (ordersRes.data ?? []).reduce((s, o) => s + (o.total_amount ?? 0), 0);
+    const consultationRevenue = (apptRes.data ?? []).reduce((s, a) => s + (a.amount_paid ?? 0), 0);
+    return {
+      marketplaceRevenue,
+      consultationRevenue,
+      totalRevenue: marketplaceRevenue + consultationRevenue,
+      premiumCount: premiumRes.count ?? 0,
+    };
   },
 
   // ---------------- 3. Utilisateurs ----------------
