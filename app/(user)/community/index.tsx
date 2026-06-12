@@ -9,6 +9,7 @@ import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useCommunity } from "@/hooks/useCommunity";
+import { useBookmarks } from "@/hooks/useBookmarks";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   authorDisplayName,
@@ -28,6 +29,7 @@ function norm(s: string): string {
 
 export default function CommunityHome() {
   const { posts, likedIds, loading, reload, toggleLike } = useCommunity();
+  const { savedIds, toggle: toggleSave } = useBookmarks();
   const { session } = useAuth();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
@@ -69,14 +71,19 @@ export default function CommunityHome() {
     <Screen>
       <View style={styles.topBar}>
         <Text style={typography.h2}>Communauté</Text>
-        <Pressable
-          onPress={() => router.push("/(user)/community/new")}
-          hitSlop={10}
-          style={styles.newBtn}
-        >
-          <Ionicons name="create-outline" size={18} color={colors.white} />
-          <Text style={styles.newBtnText}>Publier</Text>
-        </Pressable>
+        <View style={styles.topActions}>
+          <Pressable onPress={() => router.push("/(user)/community/saved")} hitSlop={10} style={styles.iconBtn}>
+            <Ionicons name="bookmark-outline" size={22} color={colors.text} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/(user)/community/new")}
+            hitSlop={10}
+            style={styles.newBtn}
+          >
+            <Ionicons name="create-outline" size={18} color={colors.white} />
+            <Text style={styles.newBtnText}>Publier</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Recherche */}
@@ -154,6 +161,8 @@ export default function CommunityHome() {
                   key={post.id}
                   post={post}
                   liked={likedIds.has(post.id)}
+                  saved={savedIds.has(post.id)}
+                  onToggleSave={() => toggleSave(post.id)}
                   canBlock={!post.is_anonymous && !!post.user_id && post.user_id !== meId}
                   onBlock={() => post.user_id && blockAuthor(post.user_id)}
                   onPress={() => router.push(`/(user)/community/${post.id}`)}
@@ -171,6 +180,8 @@ export default function CommunityHome() {
 function PostRow({
   post,
   liked,
+  saved,
+  onToggleSave,
   canBlock,
   onBlock,
   onPress,
@@ -178,6 +189,8 @@ function PostRow({
 }: {
   post: CommunityPostWithAuthor;
   liked: boolean;
+  saved: boolean;
+  onToggleSave: () => void;
   canBlock: boolean;
   onBlock: () => void;
   onPress: () => void;
@@ -227,6 +240,13 @@ function PostRow({
             <Ionicons name="chatbubble-outline" size={20} color={colors.textMuted} />
             <Text style={styles.likeCount}>{post.comments_count}</Text>
           </View>
+          <Pressable onPress={onToggleSave} hitSlop={8} style={styles.bookmarkBtn}>
+            <Ionicons
+              name={saved ? "bookmark" : "bookmark-outline"}
+              size={20}
+              color={saved ? colors.primary : colors.textMuted}
+            />
+          </Pressable>
         </View>
       </Card>
     </Pressable>
@@ -235,6 +255,9 @@ function PostRow({
 
 const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
+  topActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  iconBtn: { padding: spacing.xs },
+  bookmarkBtn: { marginLeft: "auto", padding: spacing.xs },
   newBtn: {
     flexDirection: "row", alignItems: "center", gap: spacing.xs,
     backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,

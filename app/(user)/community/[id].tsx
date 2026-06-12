@@ -27,12 +27,14 @@ import {
   type CommunityCommentWithAuthor,
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
+import { useBookmarks } from "@/hooks/useBookmarks";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 export default function PostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session } = useAuth();
+  const { savedIds, toggle: toggleSave } = useBookmarks();
 
   const [post, setPost] = useState<CommunityPostWithAuthor | null>(null);
   const [comments, setComments] = useState<CommunityCommentWithAuthor[]>([]);
@@ -169,6 +171,13 @@ export default function PostDetail() {
                   {post.likes_count}
                 </Text>
               </Pressable>
+              <Pressable onPress={() => toggleSave(post.id)} hitSlop={8} style={styles.bookmarkBtn}>
+                <Ionicons
+                  name={savedIds.has(post.id) ? "bookmark" : "bookmark-outline"}
+                  size={22}
+                  color={savedIds.has(post.id) ? colors.primary : colors.textMuted}
+                />
+              </Pressable>
             </View>
           </Card>
 
@@ -260,6 +269,7 @@ const styles = StyleSheet.create({
   body: { ...typography.body, color: colors.text, lineHeight: 22 },
   postFoot: { flexDirection: "row", alignItems: "center", marginTop: spacing.xs },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  bookmarkBtn: { marginLeft: "auto", padding: spacing.xs },
   likeCount: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
   likeCountActive: { color: colors.primary },
   sectionTitle: { marginTop: spacing.sm },

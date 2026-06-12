@@ -385,6 +385,44 @@ export type Database = {
       // product_reviews
       // =================================================
       // =================================================
+      // post_bookmarks (publications enregistrées)
+      // =================================================
+      post_bookmarks: {
+        Row: {
+          id: string;
+          user_id: string;
+          post_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          post_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          post_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "post_bookmarks_post_id_fkey";
+            columns: ["post_id"];
+            referencedRelation: "community_posts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "post_bookmarks_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      // =================================================
       // user_blocks (blocage communauté)
       // =================================================
       user_blocks: {

@@ -141,6 +141,23 @@ export function formatRelativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 }
 
+// Enrichit des lignes de la vue sécurisée : auteur résolu + nb commentaires,
+// et exclusion des auteurs bloqués (anonymes user_id null conservés).
+async function enrichSafePosts(rows: CommunityPostSafe[]): Promise<CommunityPostWithAuthor[]> {
+  const [authors, comments, blocked] = await Promise.all([
+    fetchAuthors(rows.map((r) => r.user_id)),
+    countComments(rows.map((r) => r.id)),
+    fetchBlockedIds(),
+  ]);
+  return rows
+    .filter((r) => !(r.user_id && blocked.has(r.user_id)))
+    .map((r) => ({
+      ...r,
+      author: r.user_id ? authors.get(r.user_id) ?? null : null,
+      comments_count: comments.get(r.id) ?? 0,
+    }));
+}
+
 export const communityService = {
   // Fil d'actualité : lecture via la vue sécurisée community_posts_safe
   // (anonymat garanti côté SQL), puis fusion des auteurs côté JS.
@@ -150,20 +167,7 @@ export const communityService = {
       .select("*")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    const rows = data ?? [];
-    const [authors, comments, blocked] = await Promise.all([
-      fetchAuthors(rows.map((r) => r.user_id)),
-      countComments(rows.map((r) => r.id)),
-      fetchBlockedIds(),
-    ]);
-    // Exclut les publications des auteurs bloqués (les anonymes restent : user_id null).
-    return rows
-      .filter((r) => !(r.user_id && blocked.has(r.user_id)))
-      .map((r) => ({
-        ...r,
-        author: r.user_id ? authors.get(r.user_id) ?? null : null,
-        comments_count: comments.get(r.id) ?? 0,
-      }));
+    return enrichSafePosts(data ?? []);
   },
 
   // Détail d'une publication (lecture via la vue sécurisée).
@@ -342,5 +346,54 @@ export const communityService = {
       .eq("blocker_id", me)
       .eq("blocked_id", userId);
     if (error) throw error;
+  },
+
+  // ---------------- Publications enregistrées (signets) ----------------
+  async getBookmarkedPostIds(): Promise<Set<string>> {
+    const me = await currentUserId();
+    if (!me) return new Set();
+    const { data, error } = await supabase.from("post_bookmarks").select("post_id").eq("user_id", me);
+    if (error) throw error;
+    return new Set((data ?? []).map((r) => r.post_id));
+  },
+
+  // Publications enregistrées complètes (vue sécurisée + même enrichissement),
+  // dans l'ordre d'enregistrement (récentes d'abord).
+  async getBookmarkedPosts(): Promise<CommunityPostWithAuthor[]> {
+    const me = await currentUserId();
+    if (!me) return [];
+    const { data: bm, error: bmErr } = await supabase
+      .from("post_bookmarks")
+      .select("post_id, created_at")
+      .eq("user_id", me)
+      .order("created_at", { ascending: false });
+    if (bmErr) throw bmErr;
+    const ids = (bm ?? []).map((r) => r.post_id);
+    if (ids.length === 0) return [];
+    const { data, error } = await supabase.from("community_posts_safe").select("*").in("id", ids);
+    if (error) throw error;
+    const enriched = await enrichSafePosts(data ?? []);
+    const byId = new Map(enriched.map((p) => [p.id, p]));
+    return ids.map((id) => byId.get(id)).filter((p): p is CommunityPostWithAuthor => !!p);
+  },
+
+  async addBookmark(postId: string): Promise<void> {
+    const me = await currentUserId();
+    if (!me) throw new Error("Vous devez être connectée.");
+    const { error } = await supabase.from("post_bookmarks").insert({ user_id: me, post_id: postId });
+    if (error && error.code !== "23505") throw error; // ignore le doublon (unique)
+  },
+
+  async removeBookmark(postId: string): Promise<void> {
+    const me = await currentUserId();
+    if (!me) throw new Error("Vous devez être connectée.");
+    const { error } = await supabase.from("post_bookmarks").delete().eq("user_id", me).eq("post_id", postId);
+    if (error) throw error;
+  },
+
+  // isSaved = état actuel : true → retire, false → ajoute.
+  async toggleBookmark(postId: string, isSaved: boolean): Promise<void> {
+    if (isSaved) await this.removeBookmark(postId);
+    else await this.addBookmark(postId);
   },
 };
