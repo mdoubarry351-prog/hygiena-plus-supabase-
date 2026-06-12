@@ -21,6 +21,7 @@ const TYPE_META: Record<string, NotifMeta> = {
   appointment_new: { icon: "medkit", color: colors.secondary },
   appointment_status: { icon: "calendar", color: colors.primary },
   appointment_reminder: { icon: "alarm", color: colors.secondary },
+  order_status: { icon: "cube", color: colors.primary },
   cycle_period_soon: { icon: "water", color: colors.danger },
   cycle_fertile: { icon: "leaf", color: colors.primary },
   cycle_ovulation: { icon: "ellipse", color: colors.secondary },
@@ -51,6 +52,8 @@ export default function Notifications() {
       router.push("/(user)/appointments/mine");
     } else if (kind === "doctor_appointments") {
       router.push("/(doctor)/appointments");
+    } else if (kind === "orders") {
+      router.push("/(user)/marketplace/orders");
     }
     // Pas de data exploitable → on se contente de marquer comme lu.
   }
