@@ -30,6 +30,13 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   cancelled: colors.danger,
 };
 
+const PAYMENT_LABELS: Record<string, string> = {
+  orange_money: "Orange Money",
+  mtn: "MTN Money",
+  cod: "Paiement à la livraison",
+  whatsapp: "WhatsApp",
+};
+
 // Étapes de progression (cancelled exclu — état distinct).
 const STEPS: { key: OrderStatus; label: string }[] = [
   { key: "pending", label: "En attente" },
@@ -146,6 +153,14 @@ export default function Orders() {
                   </Text>
                 </View>
                 <OrderTimeline status={o.status} />
+                {o.payment_method ? (
+                  <View style={styles.payRow}>
+                    <Ionicons name={o.is_paid ? "checkmark-circle" : "cash-outline"} size={14} color={o.is_paid ? colors.success : colors.textMuted} />
+                    <Text style={styles.payText}>
+                      {PAYMENT_LABELS[o.payment_method] ?? o.payment_method} · {o.is_paid ? "Payé" : "À la livraison"}
+                    </Text>
+                  </View>
+                ) : null}
                 <View style={styles.orderFoot}>
                   <Text style={styles.count}>{count} article{count > 1 ? "s" : ""}</Text>
                   <Text style={styles.total}>{formatPrice(o.total_amount)}</Text>
@@ -176,6 +191,8 @@ const styles = StyleSheet.create({
   },
   count: { ...typography.body, color: colors.textMuted },
   total: { ...typography.h3, color: colors.primary },
+  payRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  payText: { ...typography.caption, color: colors.textMuted },
   // Timeline / stepper
   timeline: { gap: spacing.xs },
   stepper: { flexDirection: "row", alignItems: "center" },

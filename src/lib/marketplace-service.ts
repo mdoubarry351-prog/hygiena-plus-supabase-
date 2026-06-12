@@ -18,6 +18,18 @@ export type OrderInput = {
   instructions: string | null;
   items: OrderItem[];
   totalAmount: number;
+  paymentMethod: string | null;
+  paymentPhone: string | null;
+  isPaid: boolean;
+};
+
+// Réglages de paiement boutique utiles au checkout (lecture best-effort :
+// si la RLS bloque la lecture côté utilisatrice, on renvoie null).
+export type StorePaymentSettings = {
+  cod_enabled: boolean;
+  cod_max_amount: number | null;
+  whatsapp_enabled: boolean;
+  whatsapp_number: string | null;
 };
 
 // Formatage prix en francs guinéens, ex. "50 000GNF".
@@ -60,7 +72,7 @@ export const marketplaceService = {
     return data ?? [];
   },
 
-  // Crée une commande dans marketplace_orders.
+  // Crée une commande dans marketplace_orders (avec infos de paiement).
   async createOrder(input: OrderInput): Promise<MarketplaceOrder> {
     const payload: TablesInsert<"marketplace_orders"> = {
       user_id: input.userId,
@@ -70,6 +82,10 @@ export const marketplaceService = {
       instructions: input.instructions,
       items: input.items,
       total_amount: input.totalAmount,
+      payment_method: input.paymentMethod,
+      payment_phone: input.paymentPhone,
+      is_paid: input.isPaid,
+      paid_at: input.isPaid ? new Date().toISOString() : null,
     };
     const { data, error } = await supabase
       .from("marketplace_orders")
@@ -78,5 +94,20 @@ export const marketplaceService = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  // Réglages de paiement boutique (best-effort ; null si non lisible/absent).
+  async getStorePaymentSettings(): Promise<StorePaymentSettings | null> {
+    try {
+      const { data, error } = await supabase
+        .from("store_settings")
+        .select("cod_enabled, cod_max_amount, whatsapp_enabled, whatsapp_number")
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data;
+    } catch {
+      return null;
+    }
   },
 };

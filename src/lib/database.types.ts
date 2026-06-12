@@ -562,6 +562,10 @@ export type Database = {
           total_amount: number;
           status: OrderStatus;
           items: Json;
+          payment_method: string | null;
+          payment_phone: string | null;
+          is_paid: boolean;
+          paid_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -575,6 +579,10 @@ export type Database = {
           total_amount?: number;
           status?: OrderStatus;
           items?: Json;
+          payment_method?: string | null;
+          payment_phone?: string | null;
+          is_paid?: boolean;
+          paid_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -588,6 +596,10 @@ export type Database = {
           total_amount?: number;
           status?: OrderStatus;
           items?: Json;
+          payment_method?: string | null;
+          payment_phone?: string | null;
+          is_paid?: boolean;
+          paid_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
