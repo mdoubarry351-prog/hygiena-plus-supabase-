@@ -8,7 +8,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { useAuth } from "@/providers/AuthProvider";
-import { communityService, COMMUNITY_CATEGORIES, DEFAULT_CATEGORY } from "@/lib/community-service";
+import { communityService, COMMUNITY_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "@/lib/community-service";
 import { colors, radius, spacing, typography } from "@/theme";
 
 export default function NewPost() {
@@ -66,7 +66,7 @@ export default function NewPost() {
             const active = category === c;
             return (
               <Pressable key={c} onPress={() => setCategory(c)} style={[styles.chip, active && styles.chipActive]}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{c}</Text>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{categoryLabel(c)}</Text>
               </Pressable>
             );
           })}

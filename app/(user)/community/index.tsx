@@ -14,6 +14,7 @@ import {
   formatRelativeTime,
   communityService,
   COMMUNITY_CATEGORIES,
+  categoryLabel,
   type CommunityPostWithAuthor,
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
@@ -71,12 +72,17 @@ export default function CommunityHome() {
       </View>
 
       {/* Filtres par catégorie */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterBar}
+        contentContainerStyle={styles.filterChips}
+      >
         {["all", ...COMMUNITY_CATEGORIES].map((c) => {
           const active = activeCat === c;
           return (
             <Pressable key={c} onPress={() => setActiveCat(c)} style={[styles.filterChip, active && styles.filterChipActive]}>
-              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{c === "all" ? "Toutes" : c}</Text>
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{c === "all" ? "✨ Toutes" : categoryLabel(c)}</Text>
             </Pressable>
           );
         })}
@@ -202,10 +208,15 @@ const styles = StyleSheet.create({
   blockBtn: { padding: spacing.xs },
   author: { ...typography.name },
   time: { ...typography.caption, color: colors.textMuted },
-  filterChips: { gap: spacing.xs, paddingTop: spacing.sm, paddingBottom: spacing.xs },
-  filterChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border },
+  // La ScrollView ne doit pas s'étirer verticalement (sinon les chips se déforment).
+  filterBar: { flexGrow: 0, flexShrink: 0 },
+  filterChips: { gap: spacing.xs, alignItems: "center", paddingVertical: spacing.sm },
+  filterChip: {
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5,
+    borderColor: colors.border, backgroundColor: colors.surface,
+  },
   filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterChipText: { ...typography.caption, fontWeight: "700", color: colors.text },
+  filterChipText: { fontSize: 13, fontWeight: "700", color: colors.text },
   filterChipTextActive: { color: colors.white },
   body: { ...typography.body, color: colors.text, lineHeight: 21 },
   postFoot: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },

@@ -19,6 +19,23 @@ export const COMMUNITY_CATEGORIES = [
 export type CommunityCategory = (typeof COMMUNITY_CATEGORIES)[number];
 export const DEFAULT_CATEGORY: CommunityCategory = "Général";
 
+// Emoji par catégorie (AFFICHAGE seulement — la valeur stockée reste le libellé texte).
+export const CATEGORY_EMOJI: Record<string, string> = {
+  Cycle: "🩸",
+  Grossesse: "🤰",
+  "Santé sexuelle": "💗",
+  Nutrition: "🥗",
+  "Bien-être": "🌿",
+  Général: "💬",
+};
+
+// « {emoji} {libellé} » pour l'affichage (sans emoji si catégorie inconnue/nulle).
+export function categoryLabel(category: string | null | undefined): string {
+  if (!category) return "";
+  const emoji = CATEGORY_EMOJI[category];
+  return emoji ? `${emoji} ${category}` : category;
+}
+
 // Infos d'auteur jointes depuis profiles (uniquement ce dont l'UI a besoin).
 // `isVerifiedDoctor` : auteur médecin validé (badge « Médecin vérifié »).
 export type PostAuthor = Pick<Profile, "full_name" | "avatar_url"> & { isVerifiedDoctor: boolean };

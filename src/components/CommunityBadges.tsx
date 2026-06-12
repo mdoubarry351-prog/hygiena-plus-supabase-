@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { categoryLabel } from "@/lib/community-service";
 import { colors, radius, spacing, typography } from "@/theme";
 
 // Badge « Médecin vérifié » (auteur médecin validé, non anonyme).
@@ -17,7 +18,7 @@ export function CategoryTag({ category }: { category: string | null }) {
   if (!category) return null;
   return (
     <View style={styles.tag}>
-      <Text style={styles.tagText}>{category}</Text>
+      <Text style={styles.tagText}>{categoryLabel(category)}</Text>
     </View>
   );
 }
