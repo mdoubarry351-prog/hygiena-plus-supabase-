@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -10,6 +10,7 @@ import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { ExportButton } from "@/components/ExportButton";
+import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import { uploadProductImage } from "@/lib/storage";
@@ -24,18 +25,43 @@ export default function AdminProducts() {
   const { session } = useAuth();
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [editing, setEditing] = useState<Editing>(null);
+  const offsetRef = useRef(0);
+  const PAGE = 20;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setProducts(await adminService.getProducts());
+      const data = await adminService.getProductsPage(PAGE, 0);
+      setProducts(data);
+      offsetRef.current = PAGE;
+      setHasMore(data.length === PAGE);
     } catch {
       setProducts([]);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await adminService.getProductsPage(PAGE, offsetRef.current);
+      setProducts((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...data.filter((p) => !seen.has(p.id))];
+      });
+      offsetRef.current += PAGE;
+      setHasMore(data.length === PAGE);
+    } catch {
+      // garde l'état
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -98,36 +124,44 @@ export default function AdminProducts() {
           </View>
         }
       />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => { if (isNearBottom(e)) loadMore(); }}
+        scrollEventThrottle={400}
+      >
         {products.length === 0 ? (
           <EmptyState icon="bag-handle-outline" title="Aucun produit" message="Touchez + pour en créer un." />
         ) : (
-          products.map((p) => (
-            <Card key={p.id} style={styles.row}>
-              <Pressable style={styles.rowMain} onPress={() => setEditing(p)}>
-                {p.image_url ? (
-                  <Image source={{ uri: p.image_url }} style={styles.adminThumb} resizeMode="cover" />
-                ) : (
-                  <View style={[styles.adminThumb, styles.adminThumbPlaceholder]}>
-                    <Ionicons name="image-outline" size={22} color={colors.textMuted} />
+          <>
+            {products.map((p) => (
+              <Card key={p.id} style={styles.row}>
+                <Pressable style={styles.rowMain} onPress={() => setEditing(p)}>
+                  {p.image_url ? (
+                    <Image source={{ uri: p.image_url }} style={styles.adminThumb} resizeMode="cover" />
+                  ) : (
+                    <View style={[styles.adminThumb, styles.adminThumbPlaceholder]}>
+                      <Ionicons name="image-outline" size={22} color={colors.textMuted} />
+                    </View>
+                  )}
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.name} numberOfLines={1}>{p.name}</Text>
+                    <Text style={styles.meta}>{formatPrice(p.price)} · stock {p.stock}</Text>
                   </View>
-                )}
-                <View style={styles.rowInfo}>
-                  <Text style={styles.name} numberOfLines={1}>{p.name}</Text>
-                  <Text style={styles.meta}>{formatPrice(p.price)} · stock {p.stock}</Text>
+                </Pressable>
+                <View style={styles.rowActions}>
+                  <Text style={[styles.badge, p.is_active ? styles.badgeOn : styles.badgeOff]}>{p.is_active ? "Actif" : "Inactif"}</Text>
+                  <Switch
+                    value={p.is_active}
+                    onValueChange={() => toggleActive(p)}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor={colors.white}
+                  />
                 </View>
-              </Pressable>
-              <View style={styles.rowActions}>
-                <Text style={[styles.badge, p.is_active ? styles.badgeOn : styles.badgeOff]}>{p.is_active ? "Actif" : "Inactif"}</Text>
-                <Switch
-                  value={p.is_active}
-                  onValueChange={() => toggleActive(p)}
-                  trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor={colors.white}
-                />
-              </View>
-            </Card>
-          ))
+              </Card>
+            ))}
+            <LoadMoreFooter hasMore={hasMore} loadingMore={loadingMore} onLoadMore={loadMore} />
+          </>
         )}
       </ScrollView>
     </Screen>

@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -10,6 +10,7 @@ import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { ExportButton } from "@/components/ExportButton";
+import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, type DoctorRow } from "@/lib/admin-service";
 import { uploadAvatar } from "@/lib/storage";
@@ -35,7 +36,11 @@ export default function AdminDoctors() {
   const { session } = useAuth();
   const [doctors, setDoctors] = useState<DoctorRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const offsetRef = useRef(0);
+  const PAGE = 20;
 
   // Flux "Ajouter un médecin" (création complète, compte de connexion inclus)
   const [adding, setAdding] = useState(false);
@@ -55,13 +60,34 @@ export default function AdminDoctors() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setDoctors(await adminService.getDoctors());
+      const data = await adminService.getDoctorsPage(PAGE, 0);
+      setDoctors(data);
+      offsetRef.current = PAGE;
+      setHasMore(data.length === PAGE);
     } catch {
       setDoctors([]);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await adminService.getDoctorsPage(PAGE, offsetRef.current);
+      setDoctors((prev) => {
+        const seen = new Set(prev.map((d) => d.id));
+        return [...prev, ...data.filter((d) => !seen.has(d.id))];
+      });
+      offsetRef.current += PAGE;
+      setHasMore(data.length === PAGE);
+    } catch {
+      // garde l'état
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -261,6 +287,8 @@ export default function AdminDoctors() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
+        onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => { if (isNearBottom(e)) loadMore(); }}
+        scrollEventThrottle={400}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {adding ? (
@@ -348,7 +376,8 @@ export default function AdminDoctors() {
         {doctors.length === 0 ? (
           <EmptyState icon="medkit-outline" title="Aucun médecin enregistré" />
         ) : (
-          doctors.map((d) => {
+          <>
+          {doctors.map((d) => {
             const isSelf = session?.user?.id === d.user_id;
             return (
             <Card key={d.id} style={styles.card}>
@@ -396,7 +425,9 @@ export default function AdminDoctors() {
               )}
             </Card>
             );
-          })
+          })}
+          <LoadMoreFooter hasMore={hasMore} loadingMore={loadingMore} onLoadMore={loadMore} />
+          </>
         )}
       </ScrollView>
     </Screen>

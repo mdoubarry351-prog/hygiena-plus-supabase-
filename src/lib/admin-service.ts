@@ -272,6 +272,17 @@ export const adminService = {
     return data ?? [];
   },
 
+  // Profils paginés (.range) — recherche/filtres faits côté client sur le chargé.
+  async getUsersPage(limit: number, offset: number): Promise<Profile[]> {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (error) throw error;
+    return data ?? [];
+  },
+
   async updateUserRole(adminId: string, userId: string, role: UserRole): Promise<void> {
     const { error } = await supabase.from("profiles").update({ role }).eq("id", userId);
     if (error) throw error;
@@ -284,6 +295,16 @@ export const adminService = {
       .from("doctors")
       .select("*, profile:profiles!doctors_user_id_fkey(full_name, email)")
       .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as DoctorRow[];
+  },
+
+  async getDoctorsPage(limit: number, offset: number): Promise<DoctorRow[]> {
+    const { data, error } = await supabase
+      .from("doctors")
+      .select("*, profile:profiles!doctors_user_id_fkey(full_name, email)")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
     if (error) throw error;
     return (data ?? []) as DoctorRow[];
   },
@@ -310,6 +331,16 @@ export const adminService = {
       .from("marketplace_products")
       .select("*")
       .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async getProductsPage(limit: number, offset: number): Promise<MarketplaceProduct[]> {
+    const { data, error } = await supabase
+      .from("marketplace_products")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
     if (error) throw error;
     return data ?? [];
   },
@@ -358,6 +389,16 @@ export const adminService = {
       .from("marketplace_orders")
       .select("*")
       .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async getOrdersPage(limit: number, offset: number): Promise<MarketplaceOrder[]> {
+    const { data, error } = await supabase
+      .from("marketplace_orders")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
     if (error) throw error;
     return data ?? [];
   },

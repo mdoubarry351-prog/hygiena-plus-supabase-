@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -7,6 +7,7 @@ import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { ExportButton } from "@/components/ExportButton";
+import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import { exportCsv } from "@/lib/csv-export";
@@ -41,18 +42,43 @@ export default function AdminOrders() {
   const { session } = useAuth();
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const offsetRef = useRef(0);
+  const PAGE = 20;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setOrders(await adminService.getOrders());
+      const data = await adminService.getOrdersPage(PAGE, 0);
+      setOrders(data);
+      offsetRef.current = PAGE;
+      setHasMore(data.length === PAGE);
     } catch {
       setOrders([]);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await adminService.getOrdersPage(PAGE, offsetRef.current);
+      setOrders((prev) => {
+        const seen = new Set(prev.map((o) => o.id));
+        return [...prev, ...data.filter((o) => !seen.has(o.id))];
+      });
+      offsetRef.current += PAGE;
+      setHasMore(data.length === PAGE);
+    } catch {
+      // garde l'état
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -114,30 +140,35 @@ export default function AdminOrders() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
+        onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => { if (isNearBottom(e)) loadMore(); }}
+        scrollEventThrottle={400}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {orders.length === 0 ? (
           <EmptyState icon="receipt-outline" title="Aucune commande" />
         ) : (
-          orders.map((o) => {
-            const count = itemCount(o.items);
-            return (
-              <Card key={o.id} style={styles.card}>
-                <View style={styles.head}>
-                  <Text style={styles.date}>{new Date(o.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</Text>
-                  <Text style={[styles.badge, { backgroundColor: STATUS_COLORS[o.status] }]}>{STATUS_LABELS[o.status]}</Text>
-                </View>
-                <Text style={styles.meta}>{o.phone} · {o.delivery_mode === "delivery" ? "Livraison" : "Retrait"}{o.neighborhood ? ` · ${o.neighborhood}` : ""}</Text>
-                <View style={styles.foot}>
-                  <Text style={styles.count}>{count} article{count > 1 ? "s" : ""} · {formatPrice(o.total_amount)}</Text>
-                  <Pressable onPress={() => changeStatus(o)} style={styles.statusBtn}>
-                    <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
-                    <Text style={styles.statusBtnText}>Statut</Text>
-                  </Pressable>
-                </View>
-              </Card>
-            );
-          })
+          <>
+            {orders.map((o) => {
+              const count = itemCount(o.items);
+              return (
+                <Card key={o.id} style={styles.card}>
+                  <View style={styles.head}>
+                    <Text style={styles.date}>{new Date(o.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</Text>
+                    <Text style={[styles.badge, { backgroundColor: STATUS_COLORS[o.status] }]}>{STATUS_LABELS[o.status]}</Text>
+                  </View>
+                  <Text style={styles.meta}>{o.phone} · {o.delivery_mode === "delivery" ? "Livraison" : "Retrait"}{o.neighborhood ? ` · ${o.neighborhood}` : ""}</Text>
+                  <View style={styles.foot}>
+                    <Text style={styles.count}>{count} article{count > 1 ? "s" : ""} · {formatPrice(o.total_amount)}</Text>
+                    <Pressable onPress={() => changeStatus(o)} style={styles.statusBtn}>
+                      <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
+                      <Text style={styles.statusBtnText}>Statut</Text>
+                    </Pressable>
+                  </View>
+                </Card>
+              );
+            })}
+            <LoadMoreFooter hasMore={hasMore} loadingMore={loadingMore} onLoadMore={loadMore} />
+          </>
         )}
       </ScrollView>
     </Screen>

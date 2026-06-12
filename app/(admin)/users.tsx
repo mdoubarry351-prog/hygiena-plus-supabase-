@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -8,6 +8,7 @@ import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { ExportButton } from "@/components/ExportButton";
+import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import { exportCsv } from "@/lib/csv-export";
@@ -23,18 +24,24 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [selected, setSelected] = useState<Profile | null>(null);
   // userId -> id de la ligne user_suspensions active (pour la réactivation)
   const [suspendedMap, setSuspendedMap] = useState<Record<string, string>>({});
+  const offsetRef = useRef(0);
+  const PAGE = 20;
 
-  const load = useCallback(async (q?: string) => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [us, sus] = await Promise.all([
-        adminService.getUsers(q),
+        adminService.getUsersPage(PAGE, 0),
         adminService.getSuspensions(),
       ]);
       setUsers(us);
+      offsetRef.current = PAGE;
+      setHasMore(us.length === PAGE);
       const map: Record<string, string> = {};
       for (const s of sus) if (s.is_active) map[s.user_id] = s.id;
       setSuspendedMap(map);
@@ -45,11 +52,39 @@ export default function AdminUsers() {
     }
   }, []);
 
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await adminService.getUsersPage(PAGE, offsetRef.current);
+      setUsers((prev) => {
+        const seen = new Set(prev.map((u) => u.id));
+        return [...prev, ...data.filter((u) => !seen.has(u.id))];
+      });
+      offsetRef.current += PAGE;
+      setHasMore(data.length === PAGE);
+    } catch {
+      // garde l'état
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore]);
+
   useEffect(() => { load(); }, [load]);
+
+  // Recherche client sur le jeu déjà chargé (nom ou email).
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) =>
+      (u.full_name ?? "").toLowerCase().includes(q) || (u.email ?? "").toLowerCase().includes(q)
+    );
+  }, [users, search]);
 
   async function handleExport() {
     try {
-      const rows = users.map((u) => ({
+      // Export = ce qui est chargé/filtré (les pages déjà récupérées).
+      const rows = filtered.map((u) => ({
         nom: u.full_name ?? "",
         email: u.email ?? "",
         telephone: u.phone ?? "",
@@ -85,7 +120,7 @@ export default function AdminUsers() {
           onPress: async () => {
             try {
               await adminService.suspendUser(session.user.id, u.id, null, null);
-              await load(search.trim() || undefined);
+              await load();
               Alert.alert("Suspendu", "Le compte a été suspendu.");
             } catch (e) {
               Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
@@ -106,7 +141,7 @@ export default function AdminUsers() {
         onPress: async () => {
           try {
             await adminService.liftSuspension(session.user.id, sid, u.id);
-            await load(search.trim() || undefined);
+            await load();
           } catch (e) {
             Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
           }
@@ -170,18 +205,22 @@ export default function AdminUsers() {
           autoCapitalize="none"
           style={styles.searchInput}
           returnKeyType="search"
-          onSubmitEditing={() => load(search)}
         />
       </View>
 
       {loading && users.length === 0 ? (
         <Loading />
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-          {users.length === 0 ? (
-            <EmptyState icon="people-outline" title="Aucun utilisateur" />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => { if (isNearBottom(e)) loadMore(); }}
+          scrollEventThrottle={400}
+        >
+          {filtered.length === 0 ? (
+            <EmptyState icon="people-outline" title={search.trim() ? "Aucun résultat" : "Aucun utilisateur"} />
           ) : (
-            users.map((u) => {
+            filtered.map((u) => {
               const open = selected?.id === u.id;
               const isSuspended = !!suspendedMap[u.id];
               const isSelf = session?.user?.id === u.id;
@@ -241,6 +280,7 @@ export default function AdminUsers() {
               );
             })
           )}
+          <LoadMoreFooter hasMore={hasMore} loadingMore={loadingMore} onLoadMore={loadMore} />
         </ScrollView>
       )}
     </Screen>

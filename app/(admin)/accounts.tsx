@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -7,6 +7,7 @@ import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, type DoctorRow } from "@/lib/admin-service";
 import type { Profile, UserRole } from "@/lib/database.types";
@@ -29,6 +30,10 @@ export default function AdminAccounts() {
   const [doctorByUser, setDoctorByUser] = useState<Record<string, DoctorRow>>({});
   const [suspendedByUser, setSuspendedByUser] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const offsetRef = useRef(0);
+  const PAGE = 20;
 
   const [tab, setTab] = useState<UserRole>("user");
   const [search, setSearch] = useState("");
@@ -38,12 +43,15 @@ export default function AdminAccounts() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      // Profils paginés ; les fiches médecins et suspensions (peu nombreuses) sont chargées en entier pour les maps.
       const [us, docs, sus] = await Promise.all([
-        adminService.getUsers(),
+        adminService.getUsersPage(PAGE, 0),
         adminService.getDoctors(),
         adminService.getSuspensions(),
       ]);
       setProfiles(us);
+      offsetRef.current = PAGE;
+      setHasMore(us.length === PAGE);
       const dmap: Record<string, DoctorRow> = {};
       for (const d of docs) dmap[d.user_id] = d;
       setDoctorByUser(dmap);
@@ -56,6 +64,24 @@ export default function AdminAccounts() {
       setLoading(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await adminService.getUsersPage(PAGE, offsetRef.current);
+      setProfiles((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...data.filter((p) => !seen.has(p.id))];
+      });
+      offsetRef.current += PAGE;
+      setHasMore(data.length === PAGE);
+    } catch {
+      // garde l'état
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -202,7 +228,12 @@ export default function AdminAccounts() {
   return (
     <Screen>
       <AdminHeader title="Gestion des comptes" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => { if (isNearBottom(e)) loadMore(); }}
+        scrollEventThrottle={400}
+      >
         <Text style={styles.subtitle}>Recherchez, filtrez et gérez tous les comptes.</Text>
 
         {/* Onglets par rôle */}
@@ -246,7 +277,8 @@ export default function AdminAccounts() {
         {list.length === 0 ? (
           <EmptyState icon="people-outline" title="Aucun compte" message="Aucun compte ne correspond à ces critères." />
         ) : (
-          list.map((p) => {
+          <>
+          {list.map((p) => {
             const open = expandedId === p.id;
             const isSuspended = !!suspendedByUser[p.id];
             const isSelf = session?.user?.id === p.id;
@@ -332,7 +364,9 @@ export default function AdminAccounts() {
                 )}
               </Pressable>
             );
-          })
+          })}
+          <LoadMoreFooter hasMore={hasMore} loadingMore={loadingMore} onLoadMore={loadMore} />
+          </>
         )}
       </ScrollView>
     </Screen>
