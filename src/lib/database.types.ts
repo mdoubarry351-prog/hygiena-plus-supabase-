@@ -375,6 +375,44 @@ export type Database = {
       // =================================================
       // product_reviews
       // =================================================
+      // =================================================
+      // product_favorites (liste de souhaits)
+      // =================================================
+      product_favorites: {
+        Row: {
+          id: string;
+          user_id: string;
+          product_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          product_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          product_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "product_favorites_product_id_fkey";
+            columns: ["product_id"];
+            referencedRelation: "marketplace_products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_favorites_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
       product_reviews: {
         Row: {
           id: string;

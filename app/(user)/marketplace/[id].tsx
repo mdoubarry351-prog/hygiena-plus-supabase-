@@ -9,6 +9,7 @@ import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
 import { ReviewsSection } from "@/components/ReviewsSection";
+import { useFavorites } from "@/hooks/useFavorites";
 import { useCart } from "@/providers/CartProvider";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
@@ -18,6 +19,7 @@ export default function ProductDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { addItem } = useCart();
+  const { favIds, toggle } = useFavorites();
 
   const [product, setProduct] = useState<MarketplaceProduct | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,7 +69,17 @@ export default function ProductDetail() {
 
   return (
     <Screen>
-      <ScreenHeader />
+      <ScreenHeader
+        right={
+          <Pressable onPress={() => toggle(product.id)} hitSlop={10}>
+            <Ionicons
+              name={favIds.has(product.id) ? "heart" : "heart-outline"}
+              size={24}
+              color={favIds.has(product.id) ? colors.danger : colors.text}
+            />
+          </Pressable>
+        }
+      />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {product.image_url ? (
           <Image source={{ uri: product.image_url }} style={styles.image} resizeMode="cover" />

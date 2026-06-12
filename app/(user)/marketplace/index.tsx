@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
 import { useProducts } from "@/hooks/useProducts";
+import { useFavorites } from "@/hooks/useFavorites";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useCart } from "@/providers/CartProvider";
 import { formatPrice } from "@/lib/marketplace-service";
@@ -18,6 +19,7 @@ import { colors, fonts, radius, spacing, typography } from "@/theme";
 export default function MarketplaceHome() {
   const { products, loading, reload } = useProducts();
   const { marketplace_enabled } = useAppSettings();
+  const { favIds, toggle } = useFavorites();
   const { count } = useCart();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
@@ -49,6 +51,9 @@ export default function MarketplaceHome() {
       <View style={styles.topBar}>
         <Text style={typography.h2}>Hygiena+ Store</Text>
         <View style={styles.actions}>
+          <Pressable onPress={() => router.push("/(user)/marketplace/favorites")} hitSlop={10} style={styles.iconBtn}>
+            <Ionicons name="heart-outline" size={25} color={colors.text} />
+          </Pressable>
           <Pressable onPress={() => router.push("/(user)/marketplace/orders")} hitSlop={10} style={styles.iconBtn}>
             <Ionicons name="receipt-outline" size={25} color={colors.text} />
           </Pressable>
@@ -79,6 +84,8 @@ export default function MarketplaceHome() {
             <ProductRow
               key={p.id}
               product={p}
+              isFav={favIds.has(p.id)}
+              onToggleFav={() => toggle(p.id)}
               onPress={() => router.push(`/(user)/marketplace/${p.id}`)}
             />
           ))
@@ -88,7 +95,7 @@ export default function MarketplaceHome() {
   );
 }
 
-function ProductRow({ product, onPress }: { product: MarketplaceProduct; onPress: () => void }) {
+function ProductRow({ product, isFav, onToggleFav, onPress }: { product: MarketplaceProduct; isFav: boolean; onToggleFav: () => void; onPress: () => void }) {
   const outOfStock = product.stock <= 0;
   return (
     <Pressable onPress={onPress}>
@@ -113,7 +120,13 @@ function ProductRow({ product, onPress }: { product: MarketplaceProduct; onPress
             {outOfStock && <Text style={styles.outOfStock}>Rupture</Text>}
           </View>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        <Pressable onPress={onToggleFav} hitSlop={10} style={styles.favBtn}>
+          <Ionicons
+            name={isFav ? "heart" : "heart-outline"}
+            size={22}
+            color={isFav ? colors.danger : colors.textMuted}
+          />
+        </Pressable>
       </Card>
     </Pressable>
   );
@@ -121,6 +134,7 @@ function ProductRow({ product, onPress }: { product: MarketplaceProduct; onPress
 
 const THUMB = 96;
 const styles = StyleSheet.create({
+  favBtn: { padding: spacing.xs },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
   actions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   iconBtn: { padding: spacing.xs },
