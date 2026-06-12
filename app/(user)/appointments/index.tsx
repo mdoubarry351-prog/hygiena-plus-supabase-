@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
+import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
@@ -16,12 +17,20 @@ import { doctorDisplayName, type DoctorWithProfile } from "@/lib/appointments-se
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
+// Minuscules + suppression des accents pour une recherche tolérante.
+function norm(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
 export default function AppointmentsHome() {
   const { role } = useAuth();
   const { doctors, loading, reload } = useDoctors();
   const { doctors_enabled } = useAppSettings();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [activeSpec, setActiveSpec] = useState<string>("all");
+  const [sortBest, setSortBest] = useState(false);
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
@@ -46,6 +55,23 @@ export default function AppointmentsHome() {
     );
   }
 
+  // Spécialités réellement présentes (pour les chips de filtre).
+  const specialties = Array.from(new Set(doctors.map((d) => d.specialty))).sort();
+
+  // Recherche (nom / spécialité / clinique) + filtre spécialité + tri optionnel.
+  const q = norm(search.trim());
+  let list = doctors
+    .filter((d) => activeSpec === "all" || d.specialty === activeSpec)
+    .filter((d) => {
+      if (!q) return true;
+      return (
+        norm(doctorDisplayName(d.profile)).includes(q) ||
+        norm(d.specialty).includes(q) ||
+        norm(d.clinic_name ?? "").includes(q)
+      );
+    });
+  if (sortBest) list = [...list].sort((a, b) => b.rating_avg - a.rating_avg);
+
   return (
     <Screen>
       <ScreenHeader
@@ -65,6 +91,7 @@ export default function AppointmentsHome() {
         <Card style={styles.verified}>
           <Text style={styles.verifiedText}>✅ Toutes nos médecins sont vérifiées</Text>
         </Card>
+
         {doctors.length === 0 ? (
           <EmptyState
             icon="medkit-outline"
@@ -72,13 +99,47 @@ export default function AppointmentsHome() {
             message="Revenez plus tard, de nouveaux praticiens arrivent bientôt."
           />
         ) : (
-          doctors.map((d) => (
-            <DoctorRow
-              key={d.id}
-              doctor={d}
-              onPress={() => router.push(`/(user)/appointments/${d.id}`)}
+          <>
+            <Input
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Rechercher (nom, spécialité, clinique)…"
+              autoCapitalize="none"
+              style={styles.searchInput}
             />
-          ))
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipsBar}
+              contentContainerStyle={styles.chips}
+            >
+              {["all", ...specialties].map((s) => {
+                const active = activeSpec === s;
+                return (
+                  <Pressable key={s} onPress={() => setActiveSpec(s)} style={[styles.chip, active && styles.chipActive]}>
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{s === "all" ? "Toutes" : s}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <View style={styles.toolbar}>
+              <Text style={styles.count}>{list.length} médecin{list.length > 1 ? "s" : ""}</Text>
+              <Pressable onPress={() => setSortBest((v) => !v)} style={[styles.sortChip, sortBest && styles.sortChipActive]}>
+                <Ionicons name="star" size={13} color={sortBest ? colors.white : colors.accent} />
+                <Text style={[styles.sortText, sortBest && styles.sortTextActive]}>Mieux notés</Text>
+              </Pressable>
+            </View>
+
+            {list.length === 0 ? (
+              <EmptyState icon="search-outline" title="Aucun médecin trouvé" message="Essayez un autre nom ou une autre spécialité." />
+            ) : (
+              list.map((d) => (
+                <DoctorRow key={d.id} doctor={d} onPress={() => router.push(`/(user)/appointments/${d.id}`)} />
+              ))
+            )}
+          </>
         )}
       </ScrollView>
     </Screen>
@@ -124,6 +185,25 @@ const styles = StyleSheet.create({
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   verified: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   verifiedText: { ...typography.body, color: colors.primaryDark, fontFamily: fonts.bodySemiBold, fontWeight: "700" },
+  searchInput: { marginBottom: 0 },
+  chipsBar: { flexGrow: 0, flexShrink: 0 },
+  chips: { gap: spacing.xs, alignItems: "center", paddingVertical: spacing.xs },
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5,
+    borderColor: colors.border, backgroundColor: colors.surface,
+  },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 13, fontWeight: "700", color: colors.text },
+  chipTextActive: { color: colors.white },
+  toolbar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  count: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
+  sortChip: {
+    flexDirection: "row", alignItems: "center", gap: spacing.xs,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border,
+  },
+  sortChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  sortText: { fontSize: 13, fontWeight: "700", color: colors.text },
+  sortTextActive: { color: colors.white },
   empty: { alignItems: "center", gap: spacing.sm },
   muted: { color: colors.textMuted, textAlign: "center" },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
