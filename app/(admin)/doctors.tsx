@@ -15,6 +15,7 @@ import { adminService, type DoctorRow } from "@/lib/admin-service";
 import { uploadAvatar } from "@/lib/storage";
 import { exportCsv } from "@/lib/csv-export";
 import { formatPrice } from "@/lib/marketplace-service";
+import { hapticSuccess } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
 const SPECIALTIES = [
@@ -166,6 +167,7 @@ export default function AdminDoctors() {
       if (!res.email) lines.push("\nAstuce : ajoutez un email pour une connexion immédiate (email + mot de passe).");
       resetAdd();
       await load();
+      hapticSuccess();
       Alert.alert("Médecin créé ✅", lines.join("\n"));
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Création échouée");

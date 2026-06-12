@@ -26,6 +26,7 @@ import {
 } from "@/lib/appointments-service";
 import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
 import { formatPrice } from "@/lib/marketplace-service";
+import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 // Construit les 14 prochains jours (à partir d'aujourd'hui).
@@ -151,6 +152,7 @@ export default function BookAppointment() {
         time: selectedTime,
         reason: reason.trim() || null,
       });
+      hapticSuccess();
       Alert.alert(
         "Rendez-vous demandé",
         `Votre demande avec ${name} le ${formatAppointmentDate(selectedDate)} à ${selectedTime} a été envoyée. Vous serez notifiée dès sa confirmation.`,
@@ -158,6 +160,7 @@ export default function BookAppointment() {
       );
     } catch (e) {
       if (isSlotConflict(e)) {
+        hapticError();
         await refreshSlots();
         setSelectedTime(null);
         Alert.alert("Créneau indisponible", "Ce créneau vient d'être réservé, choisissez-en un autre.");
@@ -194,9 +197,11 @@ export default function BookAppointment() {
         reason: reason.trim() || null,
         payment: { amountPaid: doctor.consultation_fee ?? 0, receiptNumber: generateReceiptNumber() },
       });
+      hapticSuccess();
       router.replace({ pathname: "/(user)/appointments/receipt", params: { id: created.id } });
     } catch (e) {
       if (isSlotConflict(e)) {
+        hapticError();
         await refreshSlots();
         setSelectedTime(null);
         Alert.alert("Créneau indisponible", "Ce créneau vient d'être réservé, choisissez-en un autre.");
@@ -296,7 +301,7 @@ export default function BookAppointment() {
                   <Pressable
                     key={d.date}
                     disabled={!available}
-                    onPress={() => { setSelectedDate(d.date); setSelectedTime(null); }}
+                    onPress={() => { hapticLight(); setSelectedDate(d.date); setSelectedTime(null); }}
                     style={[styles.dayChip, active && styles.chipActive, !available && styles.dayChipDisabled]}
                   >
                     <Text style={[styles.dayWeekday, active && styles.chipTextActive, !available && styles.dayTextDisabled]}>{d.weekday}</Text>
@@ -317,7 +322,7 @@ export default function BookAppointment() {
                 {selectedSlots.map((t) => {
                   const active = selectedTime === t;
                   return (
-                    <Pressable key={t} onPress={() => setSelectedTime(t)} style={[styles.timeChip, active && styles.chipActive]}>
+                    <Pressable key={t} onPress={() => { hapticLight(); setSelectedTime(t); }} style={[styles.timeChip, active && styles.chipActive]}>
                       <Text style={[styles.timeText, active && styles.chipTextActive]}>{t}</Text>
                     </Pressable>
                   );

@@ -8,6 +8,7 @@ import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { hapticSuccess } from "@/lib/haptics";
 import { authService } from "@/lib/auth-service";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
@@ -29,6 +30,7 @@ export default function Premium() {
     try {
       await authService.updateProfile(session.user.id, { is_premium: next });
       await refreshProfile();
+      if (next) hapticSuccess();
       Alert.alert(
         next ? "Bienvenue en Premium 🌿" : "Premium désactivé",
         next ? "Vous pouvez maintenant écrire aux médecins." : "Votre abonnement a été désactivé."

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { communityService, type CommunityPostWithAuthor } from "@/lib/community-service";
+import { hapticLight } from "@/lib/haptics";
 
 export function useCommunity() {
   const { session } = useAuth();
@@ -34,6 +35,7 @@ export function useCommunity() {
   const toggleLike = useCallback(
     async (postId: string) => {
       if (!session?.user) return;
+      hapticLight();
       try {
         const { liked, likesCount } = await communityService.toggleLike(postId, session.user.id);
         setLikedIds((prev) => {

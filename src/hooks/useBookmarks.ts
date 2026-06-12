@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@/providers/AuthProvider";
 import { communityService } from "@/lib/community-service";
+import { hapticLight } from "@/lib/haptics";
 
 export function useBookmarks() {
   const { session } = useAuth();
@@ -21,6 +22,7 @@ export function useBookmarks() {
   // Toggle optimiste : met à jour l'UI immédiatement, resync en cas d'échec.
   const toggle = useCallback(async (postId: string) => {
     const isSaved = savedIds.has(postId);
+    hapticLight();
     setSavedIds((prev) => {
       const next = new Set(prev);
       if (isSaved) next.delete(postId); else next.add(postId);

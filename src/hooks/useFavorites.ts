@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@/providers/AuthProvider";
 import { favoritesService } from "@/lib/favorites-service";
+import { hapticLight } from "@/lib/haptics";
 
 export function useFavorites() {
   const { session } = useAuth();
@@ -21,6 +22,7 @@ export function useFavorites() {
   // Toggle optimiste : met à jour l'UI immédiatement, resync en cas d'échec.
   const toggle = useCallback(async (productId: string) => {
     const isFav = favIds.has(productId);
+    hapticLight();
     setFavIds((prev) => {
       const next = new Set(prev);
       if (isFav) next.delete(productId); else next.add(productId);

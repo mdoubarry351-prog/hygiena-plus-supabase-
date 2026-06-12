@@ -16,6 +16,7 @@ import {
   type StorePaymentSettings,
 } from "@/lib/marketplace-service";
 import type { DeliveryMode } from "@/lib/database.types";
+import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
 type PayMethod = "orange_money" | "mtn" | "cod" | "whatsapp";
@@ -102,6 +103,7 @@ export default function Checkout() {
         isPaid: isMobileMoney,
       });
       clear();
+      hapticSuccess();
       Alert.alert(
         isMobileMoney ? "Paiement réussi 🎉" : "Commande confirmée",
         isMobileMoney
@@ -110,6 +112,7 @@ export default function Checkout() {
         [{ text: "OK", onPress: () => router.replace("/(user)/marketplace") }]
       );
     } catch (e) {
+      hapticError();
       Alert.alert("Erreur", e instanceof Error ? e.message : "Commande échouée");
     } finally {
       setSubmitting(false);

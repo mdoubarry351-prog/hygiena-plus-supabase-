@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { RescheduleModal } from "@/components/RescheduleModal";
 import { useAuth } from "@/providers/AuthProvider";
+import { hapticWarning } from "@/lib/haptics";
 import {
   appointmentsService,
   doctorDisplayName,
@@ -83,6 +84,7 @@ export default function MyAppointments() {
         onPress: async () => {
           try {
             await appointmentsService.cancelAppointment(a.id);
+            hapticWarning();
             await load();
           } catch (e) {
             Alert.alert("Erreur", e instanceof Error ? e.message : "Annulation échouée");

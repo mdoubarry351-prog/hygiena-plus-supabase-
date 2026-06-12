@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { colors, fonts, phase as PHASE_COLOR, radius, spacing, typography } from "@/theme";
 
@@ -37,6 +38,16 @@ export function CycleRing({
   ovulationDay,
   size = 208,
 }: Props) {
+  // Apparition douce du chiffre central au montage (fade + léger scale).
+  const appear = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(appear, { toValue: 1, duration: 450, useNativeDriver: true }).start();
+  }, [appear]);
+  const appearStyle = {
+    opacity: appear,
+    transform: [{ scale: appear.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }],
+  };
+
   const N = Math.max(1, cycleLength);
   const stroke = 16;
   const cx = size / 2;
@@ -98,11 +109,11 @@ export function CycleRing({
 
         <View style={[styles.center, { width: size, height: size }]} pointerEvents="none">
           {currentDay != null ? (
-            <>
+            <Animated.View style={[styles.centerInner, appearStyle]}>
               <Text style={styles.jour}>JOUR</Text>
               <Text style={styles.day}>{currentDay}</Text>
               <Text style={styles.sub}>sur {N} jours</Text>
-            </>
+            </Animated.View>
           ) : (
             <Text style={styles.empty}>Enregistrez{"\n"}vos règles</Text>
           )}
@@ -133,6 +144,7 @@ const styles = StyleSheet.create({
   pillDot: { width: 8, height: 8, borderRadius: 4 },
   pillText: { ...typography.caption, fontFamily: fonts.bodySemiBold },
   center: { position: "absolute", top: 0, left: 0, alignItems: "center", justifyContent: "center" },
+  centerInner: { alignItems: "center" },
   jour: { ...typography.caption, color: colors.textMuted, letterSpacing: 2, fontSize: 11 },
   day: { fontFamily: fonts.titleBold, fontSize: 52, color: colors.text, lineHeight: 56 },
   sub: { ...typography.caption, color: colors.textMuted },

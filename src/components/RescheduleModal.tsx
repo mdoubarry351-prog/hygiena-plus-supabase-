@@ -13,6 +13,7 @@ import {
   formatAppointmentTime,
   type DoctorWithProfile,
 } from "@/lib/appointments-service";
+import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
 function toISO(d: Date): string {
@@ -105,9 +106,11 @@ export function RescheduleModal({
     setSaving(true);
     try {
       await appointmentsService.rescheduleAppointment(appointmentId, selectedDate, selectedTime);
+      hapticSuccess();
       onDone();
     } catch (e) {
       if (isSlotConflict(e)) {
+        hapticError();
         await refreshSlots();
         setSelectedTime(null);
         Alert.alert("Créneau indisponible", "Ce créneau vient d'être réservé, choisissez-en un autre.");

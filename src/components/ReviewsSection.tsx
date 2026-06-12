@@ -6,6 +6,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { StarRating, StarSelector } from "@/components/StarRating";
 import { reviewsService } from "@/lib/reviews-service";
+import { hapticSuccess } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
 type ReviewItem = { id: string; authorName: string; rating: number; comment: string | null; created_at: string };
@@ -80,6 +81,7 @@ export function ReviewsSection({
       else await reviewsService.upsertDoctorReview(targetId, myRating, myComment);
       await load();
       onChanged?.();
+      hapticSuccess();
       Alert.alert("Merci !", "Votre avis a été enregistré.");
     } catch (e) {
       Alert.alert("Action impossible", e instanceof Error ? e.message : "Réessayez plus tard.");
