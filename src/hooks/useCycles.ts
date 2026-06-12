@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/providers/AuthProvider";
 import { cycleService, type CyclePrediction } from "@/lib/cycle-service";
 import type { MenstrualCycle } from "@/lib/database.types";
+
+const cacheKey = (userId: string) => `cycles_cache_${userId}`;
+
+type CachePayload = { cachedAt: string; cycles: MenstrualCycle[] };
 
 export function useCycles() {
   const { session } = useAuth();
@@ -9,17 +14,42 @@ export function useCycles() {
   const [prediction, setPrediction] = useState<CyclePrediction | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Hors-ligne : on affiche des données issues du cache (avec la date de mise en cache).
+  const [offline, setOffline] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!session?.user) return;
+    const uid = session.user.id;
     setLoading(true);
     setError(null);
     try {
-      const data = await cycleService.getCycles(session.user.id);
+      const data = await cycleService.getCycles(uid);
       setCycles(data);
       setPrediction(cycleService.computePrediction(data));
+      setOffline(false);
+      setCachedAt(null);
+      // Met en cache les dernières données connues (best-effort).
+      const payload: CachePayload = { cachedAt: new Date().toISOString(), cycles: data };
+      AsyncStorage.setItem(cacheKey(uid), JSON.stringify(payload)).catch(() => {});
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur de chargement");
+      // Échec réseau → repli sur le cache si disponible.
+      try {
+        const raw = await AsyncStorage.getItem(cacheKey(uid));
+        if (raw) {
+          const parsed = JSON.parse(raw) as CachePayload;
+          const cached = parsed.cycles ?? [];
+          setCycles(cached);
+          setPrediction(cycleService.computePrediction(cached));
+          setOffline(true);
+          setCachedAt(parsed.cachedAt ?? null);
+          setError(null); // on a des données (du cache)
+        } else {
+          setError(e instanceof Error ? e.message : "Erreur de chargement");
+        }
+      } catch {
+        setError(e instanceof Error ? e.message : "Erreur de chargement");
+      }
     } finally {
       setLoading(false);
     }
@@ -27,5 +57,5 @@ export function useCycles() {
 
   useEffect(() => { load(); }, [load]);
 
-  return { cycles, prediction, loading, error, reload: load };
+  return { cycles, prediction, loading, error, offline, cachedAt, reload: load };
 }

@@ -6,6 +6,7 @@ import { Card } from "@/components/Card";
 import { CycleRing } from "@/components/CycleRing";
 import { Loading } from "@/components/Loading";
 import { EmptyState } from "@/components/EmptyState";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { useCycles } from "@/hooks/useCycles";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -23,7 +24,7 @@ function stddev(arr: number[]): number {
 }
 
 export default function CycleSummary() {
-  const { cycles, prediction, loading } = useCycles();
+  const { cycles, prediction, loading, offline, cachedAt } = useCycles();
 
   if (loading && cycles.length === 0) return <Loading />;
 
@@ -95,6 +96,8 @@ export default function CycleSummary() {
     <Screen>
       <ScreenHeader title="Résumé de mon cycle" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        {offline ? <OfflineBanner cachedAt={cachedAt} /> : null}
+
         {/* Anneau */}
         <Card style={styles.ringCard}>
           <CycleRing

@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { useCycles } from "@/hooks/useCycles";
 import { colors, fonts, phase, radius, spacing, typography } from "@/theme";
 
@@ -21,7 +22,7 @@ function sameDay(a: Date, b: Date): boolean {
 }
 
 export default function CalendarScreen() {
-  const { cycles, prediction, loading } = useCycles();
+  const { cycles, prediction, loading, offline, cachedAt } = useCycles();
   const [viewDate, setViewDate] = useState(new Date());
   const router = useRouter();
 
@@ -89,6 +90,8 @@ export default function CalendarScreen() {
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <Text style={typography.h2}>Mon cycle</Text>
+
+        {offline ? <OfflineBanner cachedAt={cachedAt} /> : null}
 
         <Pressable onPress={() => router.push("/(user)/cycle/summary")}>
           <Card style={styles.summaryCard}>

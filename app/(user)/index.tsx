@@ -7,6 +7,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
 import { CycleRing } from "@/components/CycleRing";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { useCycles } from "@/hooks/useCycles";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { useAuth } from "@/providers/AuthProvider";
@@ -29,7 +30,7 @@ function daysUntil(d: Date | null | undefined): number | null {
 
 export default function CycleHome() {
   const { profile, session, role } = useAuth();
-  const { cycles, prediction, loading, reload } = useCycles();
+  const { cycles, prediction, loading, reload, offline, cachedAt } = useCycles();
   const { marketplace_enabled, doctors_enabled, premium_enabled } = useAppSettings();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
@@ -121,6 +122,8 @@ export default function CycleHome() {
             <Ionicons name="heart-outline" size={24} color={colors.primary} />
           </Pressable>
         </View>
+
+        {offline ? <OfflineBanner cachedAt={cachedAt} /> : null}
 
         {/* 2 · Fenêtre fertile */}
         {fertileStart && fertileEnd ? (

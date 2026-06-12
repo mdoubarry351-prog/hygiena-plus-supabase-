@@ -57,7 +57,12 @@ export default function LogCycle() {
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Enregistrement échoué");
+      const msg = e instanceof Error ? e.message : "";
+      const isNetwork = /network request failed|fetch|timeout|offline/i.test(msg);
+      Alert.alert(
+        isNetwork ? "Pas de connexion" : "Erreur",
+        isNetwork ? "Pas de connexion — réessayez une fois en ligne." : (msg || "Enregistrement échoué")
+      );
     } finally {
       setSaving(false);
     }
