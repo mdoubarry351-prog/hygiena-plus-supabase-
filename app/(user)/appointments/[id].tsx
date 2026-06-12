@@ -21,8 +21,10 @@ import {
   dayAvailability,
   hasAnyAvailability,
   generateSlots,
+  WEEK_DAYS,
   type DoctorWithProfile,
 } from "@/lib/appointments-service";
+import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
@@ -210,17 +212,33 @@ export default function BookAppointment() {
     <Screen>
       <ScreenHeader title="Prendre rendez-vous" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        {/* En-tête profil */}
         <Card style={styles.doctorCard}>
           {doctor.profile?.avatar_url ? (
             <Image source={{ uri: doctor.profile.avatar_url }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Ionicons name="medkit-outline" size={28} color={colors.primary} />
+              <Text style={styles.avatarInitial}>{name.trim().charAt(0).toUpperCase()}</Text>
             </View>
           )}
           <View style={styles.doctorInfo}>
-            <Text style={typography.h3}>{name}</Text>
+            <View style={styles.nameRow}>
+              <Text style={typography.h3} numberOfLines={1}>{name}</Text>
+              {doctor.is_validated ? <VerifiedDoctorBadge /> : null}
+            </View>
             <Text style={styles.specialty}>{doctor.specialty}</Text>
+            {doctor.clinic_name ? (
+              <View style={styles.metaLine}>
+                <Ionicons name="business-outline" size={14} color={colors.textMuted} />
+                <Text style={styles.metaText} numberOfLines={1}>{doctor.clinic_name}</Text>
+              </View>
+            ) : null}
+            {doctor.years_experience > 0 ? (
+              <View style={styles.metaLine}>
+                <Ionicons name="ribbon-outline" size={14} color={colors.textMuted} />
+                <Text style={styles.metaText}>{doctor.years_experience} an{doctor.years_experience > 1 ? "s" : ""} d'expérience</Text>
+              </View>
+            ) : null}
             <StarRating value={doctor.rating_avg} count={doctor.rating_count} size={14} compact />
             {doctor.consultation_fee != null ? (
               <Text style={styles.fee}>{formatPrice(doctor.consultation_fee)}</Text>
@@ -228,10 +246,28 @@ export default function BookAppointment() {
           </View>
         </Card>
 
+        {/* À propos */}
         {doctor.bio ? (
           <Card style={styles.bioCard}>
             <Text style={typography.h3}>À propos</Text>
             <Text style={[typography.body, styles.muted]}>{doctor.bio}</Text>
+          </Card>
+        ) : null}
+
+        {/* Aperçu des disponibilités */}
+        {availabilityDefined ? (
+          <Card style={styles.bioCard}>
+            <Text style={typography.h3}>Disponibilités</Text>
+            {WEEK_DAYS.map((d) => {
+              const avail = dayAvailability(doctor.availability, d.key);
+              if (!avail) return null;
+              return (
+                <View key={d.key} style={styles.availRow}>
+                  <Text style={styles.availDay}>{d.label}</Text>
+                  <Text style={styles.availHours}>{avail.start}–{avail.end}</Text>
+                </View>
+              );
+            })}
           </Card>
         ) : null}
 
@@ -343,13 +379,20 @@ export default function BookAppointment() {
 const AVATAR = 64;
 const styles = StyleSheet.create({
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
-  doctorCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  doctorCard: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: radius.pill, backgroundColor: colors.primaryLight },
   avatarPlaceholder: { alignItems: "center", justifyContent: "center" },
-  doctorInfo: { flex: 1, gap: 2 },
+  avatarInitial: { fontSize: 26, fontWeight: "700", color: colors.primaryDark },
+  doctorInfo: { flex: 1, gap: 3 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
   specialty: { ...typography.caption, color: colors.secondary, fontWeight: "600" },
+  metaLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  metaText: { ...typography.caption, color: colors.textMuted, flex: 1 },
   fee: { ...typography.body, fontWeight: "700", color: colors.primary, marginTop: spacing.xs },
   bioCard: { gap: spacing.sm },
+  availRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 2 },
+  availDay: { ...typography.body, fontWeight: "600", color: colors.text },
+  availHours: { ...typography.body, color: colors.textMuted },
   muted: { color: colors.textMuted },
   sectionTitle: { marginTop: spacing.sm },
   dayRow: { gap: spacing.sm, paddingVertical: spacing.xs },

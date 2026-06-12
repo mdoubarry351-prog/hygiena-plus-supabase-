@@ -14,6 +14,17 @@ import type {
 // getDay() : 0 = dimanche … 6 = samedi → clés correspondantes.
 const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
 
+// Jours de la semaine ordonnés (Lun→Dim) avec libellé court, pour l'aperçu des dispos.
+export const WEEK_DAYS: { key: string; label: string }[] = [
+  { key: "monday", label: "Lun" },
+  { key: "tuesday", label: "Mar" },
+  { key: "wednesday", label: "Mer" },
+  { key: "thursday", label: "Jeu" },
+  { key: "friday", label: "Ven" },
+  { key: "saturday", label: "Sam" },
+  { key: "sunday", label: "Dim" },
+];
+
 export type DayAvailability = { start: string; end: string };
 
 // Clé de jour (« monday »…) pour une date ISO « YYYY-MM-DD ».
