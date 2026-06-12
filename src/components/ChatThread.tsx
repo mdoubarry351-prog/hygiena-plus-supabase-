@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from "react-native";
@@ -24,10 +24,11 @@ type Props = {
   loading?: boolean;
   sending?: boolean;
   onSend: (content: string) => void | Promise<void>;
+  composerAction?: ReactNode; // action optionnelle à gauche du champ (ex. partager le cycle)
 };
 
 // Fil de discussion réutilisable (patient ↔ médecin) : bulles + champ de saisie.
-export function ChatThread({ title, subtitle, note, messages, currentRole, loading, sending, onSend }: Props) {
+export function ChatThread({ title, subtitle, note, messages, currentRole, loading, sending, onSend, composerAction }: Props) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<ScrollView>(null);
@@ -92,6 +93,7 @@ export function ChatThread({ title, subtitle, note, messages, currentRole, loadi
         )}
 
         <View style={styles.composer}>
+          {composerAction ? <View style={styles.composerAction}>{composerAction}</View> : null}
           <TextInput
             value={draft}
             onChangeText={setDraft}
@@ -134,6 +136,7 @@ const styles = StyleSheet.create({
   bubbleText: { ...typography.body, color: colors.text },
   bubbleTextMine: { color: colors.white },
   composer: { flexDirection: "row", alignItems: "flex-end", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card },
+  composerAction: { alignSelf: "flex-end" },
   input: { flex: 1, maxHeight: 120, minHeight: 44, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm, fontSize: 15, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surface },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
   sendBtnDisabled: { opacity: 0.4 },

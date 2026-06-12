@@ -1,14 +1,19 @@
 import { useState, useCallback } from "react";
-import { Alert } from "react-native";
+import { Alert, Pressable, StyleSheet } from "react-native";
 import { Redirect, useLocalSearchParams } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import { ChatThread, type ChatMessage } from "@/components/ChatThread";
 import { useAuth } from "@/providers/AuthProvider";
+import { useCycles } from "@/hooks/useCycles";
 import { messagesService } from "@/lib/messages-service";
+import { buildCycleSummary } from "@/lib/cycle-service";
+import { colors } from "@/theme";
 
 export default function PatientChat() {
   const { doctorId, doctorName } = useLocalSearchParams<{ doctorId: string; doctorName?: string }>();
   const { session, profile, role } = useAuth();
+  const { cycles, prediction } = useCycles();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -44,6 +49,19 @@ export default function PatientChat() {
     }
   }
 
+  // Partage du suivi de cycle : génère le résumé, demande confirmation (aperçu), envoie.
+  function shareCycle() {
+    const summary = buildCycleSummary(cycles, prediction);
+    if (!summary) {
+      Alert.alert("Suivi indisponible", "Enregistre d'abord quelques cycles pour partager ton suivi.");
+      return;
+    }
+    Alert.alert("Partager ce résumé avec le médecin ?", summary, [
+      { text: "Annuler", style: "cancel" },
+      { text: "Partager", onPress: () => handleSend(summary) },
+    ]);
+  }
+
   return (
     <ChatThread
       title={doctorName || "Médecin"}
@@ -54,6 +72,15 @@ export default function PatientChat() {
       loading={loading}
       sending={sending}
       onSend={handleSend}
+      composerAction={
+        <Pressable onPress={shareCycle} disabled={sending} style={styles.shareBtn} accessibilityLabel="Partager mon suivi de cycle">
+          <Ionicons name="pulse-outline" size={20} color={colors.primary} />
+        </Pressable>
+      }
     />
   );
 }
+
+const styles = StyleSheet.create({
+  shareBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: colors.primary, alignItems: "center", justifyContent: "center" },
+});

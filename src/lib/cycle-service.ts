@@ -114,3 +114,58 @@ export const cycleService = {
     };
   },
 };
+
+function stddev(arr: number[]): number {
+  if (arr.length < 2) return 0;
+  const m = arr.reduce((s, n) => s + n, 0) / arr.length;
+  const v = arr.reduce((s, n) => s + (n - m) ** 2, 0) / arr.length;
+  return Math.sqrt(v);
+}
+function fmtDate(d: Date | null): string {
+  return d ? d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "—";
+}
+function fmtISODate(iso: string): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+}
+
+/**
+ * Construit un résumé TEXTE du suivi de cycle (pour partage en messagerie).
+ * Réutilise la prédiction + agrège symptômes/flux/humeur. Renvoie null si pas
+ * assez de cycles enregistrés (< 2).
+ */
+export function buildCycleSummary(cycles: MenstrualCycle[], prediction: CyclePrediction | null): string | null {
+  if (cycles.length < 2) return null;
+  const sorted = [...cycles].sort(
+    (a, b) => new Date(a.period_start).getTime() - new Date(b.period_start).getTime()
+  );
+
+  // Régularité (écarts entre débuts consécutifs).
+  const gaps: number[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const len = daysBetween(new Date(sorted[i - 1].period_start), new Date(sorted[i].period_start));
+    if (len >= 5 && len <= 90) gaps.push(len);
+  }
+  const periodLengthsCount = sorted.filter((c) => !!c.period_end).length;
+
+  // Symptômes / flux / humeur les plus fréquents.
+  const count = (vals: (string | null | undefined)[]) => {
+    const m = new Map<string, number>();
+    for (const v of vals) if (v) m.set(v, (m.get(v) ?? 0) + 1);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  };
+  const symptomCounts = count(cycles.flatMap((c) => c.symptoms ?? []));
+  const topSymptoms = symptomCounts.slice(0, 3).map((e) => e[0]);
+  const topFlow = count(cycles.map((c) => c.flow))[0]?.[0] ?? null;
+  const topMood = count(cycles.map((c) => c.mood))[0]?.[0] ?? null;
+
+  const lines: string[] = ["📋 Mon suivi de cycle"];
+  if (gaps.length >= 1) lines.push(`• Cycle moyen : ${prediction?.averageCycleLength ?? 28} j`);
+  if (periodLengthsCount >= 1) lines.push(`• Règles : ${prediction?.averagePeriodLength ?? 5} j`);
+  if (gaps.length >= 2) lines.push(`• Régularité : ${stddev(gaps) <= 3 ? "régulier" : "irrégulier"}`);
+  lines.push(`• Dernières règles : ${fmtISODate(sorted[sorted.length - 1].period_start)}`);
+  if (prediction?.nextPeriodStart) lines.push(`• Prochaines règles : ~ ${fmtDate(prediction.nextPeriodStart)}`);
+  if (topSymptoms.length) lines.push(`• Symptômes fréquents : ${topSymptoms.join(", ").toLowerCase()}`);
+  if (topFlow) lines.push(`• Flux habituel : ${topFlow}`);
+  if (topMood) lines.push(`• Humeur fréquente : ${topMood}`);
+  return lines.join("\n");
+}
