@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useCommunity } from "@/hooks/useCommunity";
@@ -20,12 +21,19 @@ import {
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { colors, radius, spacing, typography } from "@/theme";
 
+// Minuscules + suppression des accents pour une recherche tolérante.
+function norm(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
 export default function CommunityHome() {
   const { posts, likedIds, loading, reload, toggleLike } = useCommunity();
   const { session } = useAuth();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [activeCat, setActiveCat] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [sortMode, setSortMode] = useState<"recent" | "trending">("recent");
   const meId = session?.user?.id;
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
@@ -71,6 +79,29 @@ export default function CommunityHome() {
         </Pressable>
       </View>
 
+      {/* Recherche */}
+      <View style={styles.searchRow}>
+        <Input
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Rechercher une publication…"
+          autoCapitalize="none"
+          style={styles.searchInput}
+        />
+      </View>
+
+      {/* Tri : Récents / Tendances */}
+      <View style={styles.segment}>
+        <Pressable onPress={() => setSortMode("recent")} style={[styles.segBtn, sortMode === "recent" && styles.segBtnActive]}>
+          <Ionicons name="time-outline" size={15} color={sortMode === "recent" ? colors.white : colors.textMuted} />
+          <Text style={[styles.segText, sortMode === "recent" && styles.segTextActive]}>Récents</Text>
+        </Pressable>
+        <Pressable onPress={() => setSortMode("trending")} style={[styles.segBtn, sortMode === "trending" && styles.segBtnActive]}>
+          <Ionicons name="flame-outline" size={15} color={sortMode === "trending" ? colors.white : colors.accent} />
+          <Text style={[styles.segText, sortMode === "trending" && styles.segTextActive]}>Tendances</Text>
+        </Pressable>
+      </View>
+
       {/* Filtres par catégorie */}
       <ScrollView
         horizontal
@@ -94,25 +125,42 @@ export default function CommunityHome() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {(() => {
-          const visible = activeCat === "all" ? posts : posts.filter((p) => p.category === activeCat);
-          return visible.length === 0 ? (
-            <EmptyState
-              emoji="💬"
-              title="Aucune publication"
-              message={activeCat === "all" ? "Soyez la première à partager quelque chose avec la communauté." : "Aucune publication dans cette catégorie."}
-            />
-          ) : (
-            visible.map((post) => (
-              <PostRow
-                key={post.id}
-                post={post}
-                liked={likedIds.has(post.id)}
-                canBlock={!post.is_anonymous && !!post.user_id && post.user_id !== meId}
-                onBlock={() => post.user_id && blockAuthor(post.user_id)}
-                onPress={() => router.push(`/(user)/community/${post.id}`)}
-                onLike={() => toggleLike(post.id)}
+          // Catégorie + recherche (contenu) combinées, puis tri.
+          const q = norm(search.trim());
+          let visible = posts
+            .filter((p) => activeCat === "all" || p.category === activeCat)
+            .filter((p) => !q || norm(p.content).includes(q));
+          if (sortMode === "trending") {
+            visible = [...visible].sort(
+              (a, b) => (b.likes_count + b.comments_count) - (a.likes_count + a.comments_count)
+            );
+          }
+          const filtering = !!q || activeCat !== "all";
+
+          if (visible.length === 0) {
+            return (
+              <EmptyState
+                emoji="💬"
+                title={filtering ? "Aucune publication trouvée" : "Aucune publication"}
+                message={filtering ? "Essayez un autre mot-clé ou une autre catégorie." : "Soyez la première à partager quelque chose avec la communauté."}
               />
-            ))
+            );
+          }
+          return (
+            <>
+              <Text style={styles.count}>{visible.length} publication{visible.length > 1 ? "s" : ""}</Text>
+              {visible.map((post) => (
+                <PostRow
+                  key={post.id}
+                  post={post}
+                  liked={likedIds.has(post.id)}
+                  canBlock={!post.is_anonymous && !!post.user_id && post.user_id !== meId}
+                  onBlock={() => post.user_id && blockAuthor(post.user_id)}
+                  onPress={() => router.push(`/(user)/community/${post.id}`)}
+                  onLike={() => toggleLike(post.id)}
+                />
+              ))}
+            </>
           );
         })()}
       </ScrollView>
@@ -209,6 +257,14 @@ const styles = StyleSheet.create({
   author: { ...typography.name },
   time: { ...typography.caption, color: colors.textMuted },
   // La ScrollView ne doit pas s'étirer verticalement (sinon les chips se déforment).
+  searchRow: { paddingTop: spacing.sm },
+  searchInput: { marginBottom: 0 },
+  segment: { flexDirection: "row", gap: spacing.xs, marginTop: spacing.xs },
+  segBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border },
+  segBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  segText: { fontSize: 13, fontWeight: "700", color: colors.text },
+  segTextActive: { color: colors.white },
+  count: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
   filterBar: { flexGrow: 0, flexShrink: 0 },
   filterChips: { gap: spacing.xs, alignItems: "center", paddingVertical: spacing.sm },
   filterChip: {
