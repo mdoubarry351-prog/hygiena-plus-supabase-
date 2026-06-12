@@ -7,6 +7,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
+import { StarRating } from "@/components/StarRating";
 import { useProducts } from "@/hooks/useProducts";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useCart } from "@/providers/CartProvider";
@@ -101,6 +102,9 @@ function ProductRow({ product, onPress }: { product: MarketplaceProduct; onPress
         )}
         <View style={styles.rowInfo}>
           <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
+          {product.rating_count > 0 ? (
+            <StarRating value={product.rating_avg} count={product.rating_count} size={13} compact />
+          ) : null}
           {product.description ? (
             <Text style={styles.desc} numberOfLines={2}>{product.description}</Text>
           ) : null}

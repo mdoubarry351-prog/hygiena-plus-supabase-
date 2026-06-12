@@ -154,6 +154,8 @@ export type Database = {
           consultation_fee: number | null;
           clinic_name: string | null;
           years_experience: number;
+          rating_avg: number;
+          rating_count: number;
           is_validated: boolean;
           validated_by: string | null;
           validated_at: string | null;
@@ -170,6 +172,8 @@ export type Database = {
           consultation_fee?: number | null;
           clinic_name?: string | null;
           years_experience?: number;
+          rating_avg?: number;
+          rating_count?: number;
           is_validated?: boolean;
           validated_by?: string | null;
           validated_at?: string | null;
@@ -186,6 +190,8 @@ export type Database = {
           consultation_fee?: number | null;
           clinic_name?: string | null;
           years_experience?: number;
+          rating_avg?: number;
+          rating_count?: number;
           is_validated?: boolean;
           validated_by?: string | null;
           validated_at?: string | null;
@@ -332,6 +338,8 @@ export type Database = {
           stock: number;
           image_url: string | null;
           is_active: boolean;
+          rating_avg: number;
+          rating_count: number;
           created_at: string;
           updated_at: string;
         };
@@ -343,6 +351,8 @@ export type Database = {
           stock?: number;
           image_url?: string | null;
           is_active?: boolean;
+          rating_avg?: number;
+          rating_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -354,10 +364,106 @@ export type Database = {
           stock?: number;
           image_url?: string | null;
           is_active?: boolean;
+          rating_avg?: number;
+          rating_count?: number;
           created_at?: string;
           updated_at?: string;
         };
         Relationships: [];
+      };
+
+      // =================================================
+      // product_reviews
+      // =================================================
+      product_reviews: {
+        Row: {
+          id: string;
+          product_id: string;
+          user_id: string;
+          rating: number;
+          comment: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          user_id: string;
+          rating: number;
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          product_id?: string;
+          user_id?: string;
+          rating?: number;
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "product_reviews_product_id_fkey";
+            columns: ["product_id"];
+            referencedRelation: "marketplace_products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_reviews_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      // =================================================
+      // doctor_reviews
+      // =================================================
+      doctor_reviews: {
+        Row: {
+          id: string;
+          doctor_id: string;
+          patient_id: string;
+          rating: number;
+          comment: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          doctor_id: string;
+          patient_id: string;
+          rating: number;
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          doctor_id?: string;
+          patient_id?: string;
+          rating?: number;
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "doctor_reviews_doctor_id_fkey";
+            columns: ["doctor_id"];
+            referencedRelation: "doctors";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "doctor_reviews_patient_id_fkey";
+            columns: ["patient_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       // =================================================
@@ -892,6 +998,8 @@ export type Appointment = Tables<"appointments">;
 export type DoctorMessage = Tables<"doctor_messages">;
 export type MarketplaceProduct = Tables<"marketplace_products">;
 export type MarketplaceOrder = Tables<"marketplace_orders">;
+export type ProductReview = Tables<"product_reviews">;
+export type DoctorReview = Tables<"doctor_reviews">;
 export type CommunityPost = Tables<"community_posts">;
 export type CommunityPostSafe = Database["public"]["Views"]["community_posts_safe"]["Row"];
 export type CommunityComment = Tables<"community_comments">;

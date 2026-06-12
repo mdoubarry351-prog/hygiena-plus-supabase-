@@ -11,6 +11,7 @@ import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { useDoctors } from "@/hooks/useDoctors";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { StarRating } from "@/components/StarRating";
 import { doctorDisplayName, type DoctorWithProfile } from "@/lib/appointments-service";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
@@ -99,6 +100,9 @@ function DoctorRow({ doctor, onPress }: { doctor: DoctorWithProfile; onPress: ()
         <View style={styles.rowInfo}>
           <Text style={styles.name} numberOfLines={1}>{name}</Text>
           <Text style={styles.specialty} numberOfLines={1}>{doctor.specialty}</Text>
+          {doctor.rating_count > 0 ? (
+            <StarRating value={doctor.rating_avg} count={doctor.rating_count} size={13} compact />
+          ) : null}
           <View style={styles.rowFoot}>
             {doctor.consultation_fee != null ? (
               <Text style={styles.fee}>{formatPrice(doctor.consultation_fee)}</Text>

@@ -7,6 +7,8 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
+import { StarRating } from "@/components/StarRating";
+import { ReviewsSection } from "@/components/ReviewsSection";
 import { useCart } from "@/providers/CartProvider";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
@@ -20,6 +22,16 @@ export default function ProductDetail() {
   const [product, setProduct] = useState<MarketplaceProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+
+  // Rafraîchit la note moyenne après dépôt/suppression d'un avis.
+  async function reloadProduct() {
+    try {
+      const p = await marketplaceService.getProduct(id);
+      setProduct(p);
+    } catch {
+      // silencieux : on garde l'affichage courant
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -67,6 +79,7 @@ export default function ProductDetail() {
 
         <Text style={typography.h2}>{product.name}</Text>
         <Text style={styles.price}>{formatPrice(product.price)}</Text>
+        <StarRating value={product.rating_avg} count={product.rating_count} size={16} />
 
         {outOfStock ? (
           <Text style={styles.stockOut}>Rupture de stock</Text>
@@ -109,6 +122,14 @@ export default function ProductDetail() {
         ) : (
           <Button title={`Ajouter au panier · ${formatPrice(product.price * quantity)}`} onPress={handleAddToCart} />
         )}
+
+        <ReviewsSection
+          kind="product"
+          targetId={product.id}
+          ratingAvg={product.rating_avg}
+          ratingCount={product.rating_count}
+          onChanged={reloadProduct}
+        />
       </ScrollView>
     </Screen>
   );

@@ -8,6 +8,8 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
+import { StarRating } from "@/components/StarRating";
+import { ReviewsSection } from "@/components/ReviewsSection";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import {
@@ -60,6 +62,16 @@ export default function BookAppointment() {
   const [saving, setSaving] = useState(false);
 
   const days = useMemo(buildDays, []);
+
+  // Rafraîchit la note moyenne du médecin après un avis.
+  async function reloadDoctor() {
+    try {
+      const d = await appointmentsService.getDoctor(id);
+      setDoctor(d);
+    } catch {
+      // silencieux
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -159,6 +171,7 @@ export default function BookAppointment() {
           <View style={styles.doctorInfo}>
             <Text style={typography.h3}>{name}</Text>
             <Text style={styles.specialty}>{doctor.specialty}</Text>
+            <StarRating value={doctor.rating_avg} count={doctor.rating_count} size={14} compact />
             {doctor.consultation_fee != null ? (
               <Text style={styles.fee}>{formatPrice(doctor.consultation_fee)}</Text>
             ) : null}
@@ -243,6 +256,14 @@ export default function BookAppointment() {
           <Button title="Confirmer le rendez-vous" onPress={handleBook} loading={saving} disabled={!canBook} />
         )}
         <Button title="Annuler" variant="outline" onPress={() => router.back()} />
+
+        <ReviewsSection
+          kind="doctor"
+          targetId={doctor.id}
+          ratingAvg={doctor.rating_avg}
+          ratingCount={doctor.rating_count}
+          onChanged={reloadDoctor}
+        />
       </ScrollView>
     </Screen>
   );
