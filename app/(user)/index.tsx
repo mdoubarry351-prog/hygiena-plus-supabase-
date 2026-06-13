@@ -30,6 +30,19 @@ function daysUntil(d: Date | null | undefined): number | null {
   return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
 
+// Salutation selon l'heure : « Bonsoir » à partir de 18h (et avant 5h), « Bonjour » sinon.
+function greeting(): { word: string; emoji: string } {
+  const h = new Date().getHours();
+  const evening = h >= 18 || h < 5;
+  return evening ? { word: "Bonsoir", emoji: "🌙" } : { word: "Bonjour", emoji: "🌿" };
+}
+
+// Date du jour en format long FR, capitalisée (ex. « Jeudi 13 juin »).
+function todayLongLabel(): string {
+  const s = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export default function CycleHome() {
   const { profile, session, role } = useAuth();
   const { cycles, prediction, loading, reload, offline, cachedAt } = useCycles();
@@ -59,6 +72,8 @@ export default function CycleHome() {
 
   const isDoctor = role === "doctor";
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
+  const greet = greeting();
+  const todayLabel = todayLongLabel();
   const day = prediction?.currentDay;
   const avg = prediction?.averageCycleLength;
   const hasData = !!prediction?.hasEnoughData;
@@ -116,8 +131,8 @@ export default function CycleHome() {
             <Image source={logo} style={styles.avatarImg} resizeMode="contain" />
           </View>
           <View style={styles.headerText}>
-            <Text style={styles.hello} numberOfLines={1}>Bonjour, {firstName || "vous"} 👋</Text>
-            {profile?.phone ? <Text style={styles.phone}>{profile.phone}</Text> : null}
+            <Text style={styles.hello} numberOfLines={1}>{greet.word}, {firstName || "vous"} {greet.emoji}</Text>
+            <Text style={styles.headerDate} numberOfLines={1}>{todayLabel}</Text>
           </View>
           <Pressable onPress={() => router.push("/(user)/notifications")} hitSlop={8} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel={unread > 0 ? `Notifications, ${unread} non lues` : "Notifications"}>
             <Ionicons name="notifications-outline" size={24} color={colors.text} />
@@ -154,57 +169,39 @@ export default function CycleHome() {
           <Ionicons name="arrow-forward" size={20} color={colors.white} />
         </Pressable>
 
-        {/* 3 · Pilule de confiance */}
+        {/* 3 · Prédictions consolidées (confiance + 3 lignes), ou amorce si pas de données */}
         {hasData ? (
-          <View style={styles.confPill}>
-            <View style={[styles.confDot, { backgroundColor: conf.color }]} />
-            <Text style={styles.confText}>Confiance {conf.label} — Fiabilité des prévisions</Text>
-          </View>
-        ) : null}
-
-        {/* 4 · Fenêtre fertile */}
-        {fertileStart && fertileEnd ? (
-          <Card style={styles.fertileCard}>
-            <Text style={styles.fertileLabel}>FENÊTRE FERTILE</Text>
-            <Text style={styles.fertileRange}>{formatShort(fertileStart)} → {formatShort(fertileEnd)}</Text>
-          </Card>
-        ) : null}
-
-        {/* 5 · Cartes de prédiction */}
-        {hasData ? (
-          <View style={styles.predList}>
-            <PredCard
-              label="PROCHAINES RÈGLES"
+          <Card style={styles.predBlock}>
+            <View style={styles.confRow}>
+              <View style={[styles.confDot, { backgroundColor: conf.color }]} />
+              <Text style={styles.confText}>Confiance {conf.label} — Fiabilité des prévisions</Text>
+            </View>
+            <View style={styles.predDivider} />
+            <PredRow
+              label="Prochaines règles"
               value={formatShort(prediction?.nextPeriodStart)}
               extra={periodIn != null && periodIn >= 0 ? `dans ${periodIn} jour${periodIn > 1 ? "s" : ""}` : undefined}
             />
-            <PredCard label="OVULATION ESTIMÉE" value={formatShort(prediction?.nextOvulation)} />
-            <PredCard label="FENÊTRE FERTILE" value={`${formatShort(fertileStart)} → ${formatShort(fertileEnd)}`} />
-          </View>
-        ) : null}
+            <PredRow label="Ovulation estimée" value={formatShort(prediction?.nextOvulation)} />
+            <PredRow label="Fenêtre fertile" value={`${formatShort(fertileStart)} → ${formatShort(fertileEnd)}`} />
+          </Card>
+        ) : (
+          <Card style={styles.emptyCard}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="sparkles-outline" size={20} color={colors.primaryDark} />
+            </View>
+            <Text style={styles.emptyText}>
+              Commence par enregistrer tes règles pour voir tes prédictions et ton cycle.
+            </Text>
+          </Card>
+        )}
 
         {/* Rappel : les prédictions sont indicatives, pas un avis médical (sous les prédictions). */}
         {hasData ? (
           <MedicalDisclaimer text="Les prédictions sont des estimations indicatives et ne constituent pas un avis médical." />
         ) : null}
 
-        {/* 6 · Accès rapide */}
-        <Text style={[typography.h3, styles.sectionTitle]}>Accès rapide</Text>
-
-        {/* 7 · Grille 2×2 */}
-        <View style={styles.grid}>
-          {quick.map((q) => (
-            <Pressable key={q.title} onPress={() => openQuick(q)} style={styles.quickWrap}>
-              <Card style={styles.quickCard}>
-                <View style={styles.quickIcon}><Text style={styles.quickEmoji}>{q.emoji}</Text></View>
-                <Text style={styles.quickTitle}>{q.title}</Text>
-                <Text style={styles.quickSub}>{q.sub}</Text>
-              </Card>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* 8 · Conseil du jour selon la phase (masqué si phase inconnue) */}
+        {/* 4 · Conseil du jour (remonté, avant Accès rapide ; masqué si phase inconnue) */}
         {dailyTip && phase ? (
           <Card style={styles.tipCard}>
             <View style={styles.tipIcon}>
@@ -218,7 +215,23 @@ export default function CycleHome() {
           </Card>
         ) : null}
 
-        {/* 9 · Promotion Premium (masquée si déjà premium) */}
+        {/* 5 · Accès rapide */}
+        <Text style={[typography.h3, styles.sectionTitle]}>Accès rapide</Text>
+
+        {/* 6 · Grille 2×2 */}
+        <View style={styles.grid}>
+          {quick.map((q) => (
+            <Pressable key={q.title} onPress={() => openQuick(q)} style={styles.quickWrap}>
+              <Card style={styles.quickCard}>
+                <View style={styles.quickIcon}><Text style={styles.quickEmoji}>{q.emoji}</Text></View>
+                <Text style={styles.quickTitle}>{q.title}</Text>
+                <Text style={styles.quickSub}>{q.sub}</Text>
+              </Card>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* 7 · Promotion Premium (masquée si déjà premium) */}
         {profile?.is_premium ? (
           <View style={styles.premiumActive}>
             <Ionicons name="checkmark-circle" size={16} color={colors.primaryDark} />
@@ -245,15 +258,16 @@ export default function CycleHome() {
   );
 }
 
-function PredCard({ label, value, extra }: { label: string; value: string; extra?: string }) {
+// Ligne de prédiction : libellé à gauche, valeur (+ extra) à droite.
+function PredRow({ label, value, extra }: { label: string; value: string; extra?: string }) {
   return (
-    <Card style={styles.predCard}>
-      <Text style={styles.predLabel}>{label}</Text>
-      <View style={styles.predRow}>
-        <Text style={styles.predValue}>{value}</Text>
-        {extra ? <Text style={styles.predExtra}>{extra}</Text> : null}
+    <View style={styles.predRow2}>
+      <Text style={styles.predRowLabel}>{label}</Text>
+      <View style={styles.predRowRight}>
+        <Text style={styles.predRowValue}>{value}</Text>
+        {extra ? <Text style={styles.predRowExtra}>{extra}</Text> : null}
       </View>
-    </Card>
+    </View>
   );
 }
 
@@ -266,15 +280,10 @@ const styles = StyleSheet.create({
   avatarImg: { width: 30, height: 30 },
   headerText: { flex: 1, gap: 1 },
   hello: { ...typography.h2, fontSize: 20 },
-  phone: { ...typography.caption, color: colors.textMuted },
+  headerDate: { ...typography.caption, color: colors.textMuted, textTransform: "capitalize" },
   iconBtn: { padding: spacing.xs },
   badge: { position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
   badgeText: { color: colors.white, fontSize: 11, fontFamily: fonts.bodyBold },
-
-  // Fenêtre fertile
-  fertileCard: { backgroundColor: colors.primaryLight, borderColor: colors.primary, gap: 4 },
-  fertileLabel: { ...typography.caption, color: colors.primaryDark, fontFamily: fonts.bodySemiBold, letterSpacing: 1 },
-  fertileRange: { ...typography.h3, color: colors.primaryDark, fontFamily: fonts.titleBold },
 
   // CTA
   cta: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.primary, borderRadius: radius.lg, padding: spacing.md, shadowColor: colors.primaryDark, shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
@@ -312,16 +321,20 @@ const styles = StyleSheet.create({
   // Anneau
   ringCard: { alignItems: "center", paddingVertical: spacing.lg },
 
-  // Confiance
-  confPill: { flexDirection: "row", alignItems: "center", gap: spacing.sm, alignSelf: "center", backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  // Bloc prédictions consolidé
+  predBlock: { gap: spacing.sm },
+  confRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   confDot: { width: 10, height: 10, borderRadius: 5 },
   confText: { ...typography.caption, color: colors.text, fontFamily: fonts.bodyMedium },
+  predDivider: { height: 1, backgroundColor: colors.border },
+  predRow2: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: spacing.sm },
+  predRowLabel: { ...typography.caption, color: colors.textMuted, fontFamily: fonts.bodySemiBold },
+  predRowRight: { flexDirection: "row", alignItems: "baseline", gap: spacing.xs, flexShrink: 1 },
+  predRowValue: { ...typography.body, fontFamily: fonts.bodyBold, fontWeight: "700", color: colors.text, textTransform: "capitalize" },
+  predRowExtra: { ...typography.caption, color: colors.primary, fontFamily: fonts.bodySemiBold },
 
-  // Prédictions
-  predList: { gap: spacing.sm },
-  predCard: { gap: 4 },
-  predLabel: { ...typography.caption, color: colors.textMuted, fontFamily: fonts.bodySemiBold, letterSpacing: 1 },
-  predRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
-  predValue: { ...typography.h3, fontFamily: fonts.titleBold, color: colors.text, textTransform: "capitalize" },
-  predExtra: { ...typography.caption, color: colors.primary, fontFamily: fonts.bodySemiBold },
+  // Amorce (nouvelle utilisatrice, pas de données)
+  emptyCard: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surface },
+  emptyIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  emptyText: { ...typography.body, color: colors.text, flex: 1, lineHeight: 21 },
 });
