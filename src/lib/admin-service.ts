@@ -11,6 +11,8 @@ import type {
   StoreSettings,
   BannedWord,
   Article,
+  ProductReview,
+  DoctorReview,
   UserRole,
   OrderStatus,
   Json,
@@ -97,6 +99,9 @@ export type SuspensionRow = UserSuspension & {
   user: Pick<Profile, "full_name" | "email"> | null;
 };
 export type AuditLogRow = Tables<"admin_logs"> & { adminName: string | null };
+// Avis enrichis pour la modération : nom de l'auteur + nom de la cible.
+export type ProductReviewRow = ProductReview & { authorName: string | null; targetName: string | null };
+export type DoctorReviewRow = DoctorReview & { authorName: string | null; targetName: string | null };
 
 export type AdminCounts = {
   users: number;
@@ -486,6 +491,81 @@ export const adminService = {
     const count = data.count ?? 0;
     await logAction(adminId, "broadcast_notification", "notifications", null, { audience, count });
     return count;
+  },
+
+  // ---------------- 7ter. Modération des avis ----------------
+  // Avis produits (récents d'abord) + résolution nom auteur (profiles) et
+  // nom de la cible (marketplace_products), via requêtes séparées.
+  async getProductReviewsAdmin(limit: number, offset: number): Promise<ProductReviewRow[]> {
+    const { data, error } = await supabase
+      .from("product_reviews")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (error) throw error;
+    const rows = data ?? [];
+    if (!rows.length) return [];
+
+    const userIds = [...new Set(rows.map((r) => r.user_id))];
+    const productIds = [...new Set(rows.map((r) => r.product_id))];
+    const [profilesRes, productsRes] = await Promise.all([
+      supabase.from("profiles").select("id, full_name").in("id", userIds),
+      supabase.from("marketplace_products").select("id, name").in("id", productIds),
+    ]);
+    const authorMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.full_name]));
+    const productMap = new Map((productsRes.data ?? []).map((p) => [p.id, p.name]));
+    return rows.map((r) => ({
+      ...r,
+      authorName: authorMap.get(r.user_id) ?? null,
+      targetName: productMap.get(r.product_id) ?? null,
+    }));
+  },
+
+  // Avis médecins (récents d'abord) + nom auteur (profiles via patient_id) et
+  // nom du médecin (doctors.user_id → profiles).
+  async getDoctorReviewsAdmin(limit: number, offset: number): Promise<DoctorReviewRow[]> {
+    const { data, error } = await supabase
+      .from("doctor_reviews")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (error) throw error;
+    const rows = data ?? [];
+    if (!rows.length) return [];
+
+    const doctorIds = [...new Set(rows.map((r) => r.doctor_id))];
+    const { data: doctors } = await supabase.from("doctors").select("id, user_id").in("id", doctorIds);
+    const doctorUserMap = new Map((doctors ?? []).map((d) => [d.id, d.user_id]));
+
+    // Profils nécessaires : patients (auteurs) + comptes des médecins (cibles).
+    const profileIds = [
+      ...new Set([
+        ...rows.map((r) => r.patient_id),
+        ...(doctors ?? []).map((d) => d.user_id),
+      ]),
+    ];
+    const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", profileIds);
+    const nameMap = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
+    return rows.map((r) => {
+      const docUserId = doctorUserMap.get(r.doctor_id);
+      return {
+        ...r,
+        authorName: nameMap.get(r.patient_id) ?? null,
+        targetName: docUserId ? nameMap.get(docUserId) ?? null : null,
+      };
+    });
+  },
+
+  async deleteProductReview(adminId: string, id: string): Promise<void> {
+    const { error } = await supabase.from("product_reviews").delete().eq("id", id);
+    if (error) throw error;
+    await logAction(adminId, "delete_review", "product_reviews", id);
+  },
+
+  async deleteDoctorReview(adminId: string, id: string): Promise<void> {
+    const { error } = await supabase.from("doctor_reviews").delete().eq("id", id);
+    if (error) throw error;
+    await logAction(adminId, "delete_review", "doctor_reviews", id);
   },
 
   // ---------------- 7c. Articles (bibliothèque de contenu) ----------------

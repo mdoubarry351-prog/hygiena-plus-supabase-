@@ -60,6 +60,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { label: "Produits", icon: "bag-handle-outline", href: "/(admin)/products", seg: "products" },
       { label: "Commandes", icon: "receipt-outline", href: "/(admin)/orders", seg: "orders" },
+      { label: "Avis", icon: "star-outline", href: "/(admin)/reviews", seg: "reviews" },
       { label: "Boutique", icon: "storefront-outline", href: "/(admin)/store-settings", seg: "store-settings" },
     ],
   },
