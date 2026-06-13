@@ -50,23 +50,6 @@ export type CommunityPostWithAuthor = CommunityPostSafe & {
   comments_count: number;
 };
 
-// Compte les commentaires par publication en UNE requête (pas de N+1) :
-// on récupère les post_id de community_comments pour les ids de la page,
-// puis on agrège côté JS. Respecte la RLS de lecture des commentaires existante.
-async function countComments(ids: string[]): Promise<Map<string, number>> {
-  const map = new Map<string, number>();
-  if (ids.length === 0) return map;
-  const { data, error } = await supabase
-    .from("community_comments")
-    .select("post_id")
-    .in("post_id", ids);
-  if (error) throw error;
-  for (const row of data ?? []) {
-    map.set(row.post_id, (map.get(row.post_id) ?? 0) + 1);
-  }
-  return map;
-}
-
 // Récupère les profils auteurs UNIQUEMENT pour des user_id non nuls
 // (donc jamais pour les posts anonymes), en une requête séparée — une vue
 // n'ayant pas de clé étrangère, on ne peut pas embarquer profiles directement.
@@ -143,12 +126,11 @@ export function formatRelativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 }
 
-// Enrichit des lignes de la vue sécurisée : auteur résolu + nb commentaires,
-// et exclusion des auteurs bloqués (anonymes user_id null conservés).
+// Enrichit des lignes de la vue sécurisée : auteur résolu (comments_count est
+// désormais une colonne maintenue par trigger), et exclusion des auteurs bloqués.
 async function enrichSafePosts(rows: CommunityPostSafe[]): Promise<CommunityPostWithAuthor[]> {
-  const [authors, comments, blocked] = await Promise.all([
+  const [authors, blocked] = await Promise.all([
     fetchAuthors(rows.map((r) => r.user_id)),
-    countComments(rows.map((r) => r.id)),
     fetchBlockedIds(),
   ]);
   return rows
@@ -156,7 +138,7 @@ async function enrichSafePosts(rows: CommunityPostSafe[]): Promise<CommunityPost
     .map((r) => ({
       ...r,
       author: r.user_id ? authors.get(r.user_id) ?? null : null,
-      comments_count: comments.get(r.id) ?? 0,
+      comments_count: r.comments_count ?? 0,
     }));
 }
 
@@ -198,17 +180,30 @@ export const communityService = {
     return enrichSafePosts(data ?? []);
   },
 
-  // Fil paginé (taille de page côté écran) : lit une tranche via .range(),
-  // enrichit comme getPosts, et renvoie le nombre de lignes BRUTES lues
-  // (pour savoir s'il reste des pages, indépendamment du filtrage anti-bloqué).
-  async getPostsPage(opts?: { limit?: number; offset?: number }): Promise<{ posts: CommunityPostWithAuthor[]; rawCount: number }> {
+  // Fil paginé avec recherche / catégorie / tri appliqués CÔTÉ SERVEUR.
+  // - search → .ilike('content', %…%) ; category → .eq('category', …) ;
+  // - sort « trending » → likes_count puis comments_count (proxy popularité),
+  //   sinon « recents » → created_at desc.
+  // Renvoie le nombre de lignes BRUTES lues (pour savoir s'il reste des pages).
+  async getPostsPage(opts?: {
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+    category?: string | null;
+    sort?: "recents" | "trending";
+  }): Promise<{ posts: CommunityPostWithAuthor[]; rawCount: number }> {
     const limit = opts?.limit ?? 20;
     const offset = opts?.offset ?? 0;
-    const { data, error } = await supabase
-      .from("community_posts_safe")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+    let query = supabase.from("community_posts_safe").select("*");
+    const s = opts?.search?.trim();
+    if (s) query = query.ilike("content", `%${s}%`);
+    if (opts?.category) query = query.eq("category", opts.category);
+    if (opts?.sort === "trending") {
+      query = query.order("likes_count", { ascending: false }).order("comments_count", { ascending: false });
+    } else {
+      query = query.order("created_at", { ascending: false });
+    }
+    const { data, error } = await query.range(offset, offset + limit - 1);
     if (error) throw error;
     const rows = data ?? [];
     return { posts: await enrichSafePosts(rows), rawCount: rows.length };
@@ -222,9 +217,8 @@ export const communityService = {
       .eq("id", id)
       .single();
     if (error) throw error;
-    const [authors, comments, blocked] = await Promise.all([
+    const [authors, blocked] = await Promise.all([
       fetchAuthors([data.user_id]),
-      countComments([data.id]),
       fetchBlockedIds(),
     ]);
     // Auteur bloqué → publication traitée comme introuvable.
@@ -232,7 +226,7 @@ export const communityService = {
     return {
       ...data,
       author: data.user_id ? authors.get(data.user_id) ?? null : null,
-      comments_count: comments.get(data.id) ?? 0,
+      comments_count: data.comments_count ?? 0,
     };
   },
 

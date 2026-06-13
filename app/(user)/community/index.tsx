@@ -24,21 +24,23 @@ import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { hapticWarning } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
-// Minuscules + suppression des accents pour une recherche tolérante.
-function norm(s: string): string {
-  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-}
-
 export default function CommunityHome() {
-  const { posts, likedIds, loading, loadingMore, hasMore, reload, loadMore, toggleLike } = useCommunity();
-  const { savedIds, toggle: toggleSave } = useBookmarks();
-  const { session } = useAuth();
-  const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [activeCat, setActiveCat] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<"recent" | "trending">("recent");
+
+  // Filtres appliqués CÔTÉ SERVEUR (recherche + catégorie + tri).
+  const { posts, likedIds, loading, loadingMore, hasMore, reload, loadMore, toggleLike } = useCommunity({
+    search,
+    category: activeCat === "all" ? null : activeCat,
+    sort: sortMode === "trending" ? "trending" : "recents",
+  });
+  const { savedIds, toggle: toggleSave } = useBookmarks();
+  const { session } = useAuth();
+  const router = useRouter();
   const meId = session?.user?.id;
+  const isFiltering = !!search.trim() || activeCat !== "all";
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
@@ -180,51 +182,34 @@ export default function CommunityHome() {
         scrollEventThrottle={400}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        {(() => {
-          // Catégorie + recherche (contenu) combinées, puis tri.
-          const q = norm(search.trim());
-          let visible = posts
-            .filter((p) => activeCat === "all" || p.category === activeCat)
-            .filter((p) => !q || norm(p.content).includes(q));
-          if (sortMode === "trending") {
-            visible = [...visible].sort(
-              (a, b) => (b.likes_count + b.comments_count) - (a.likes_count + a.comments_count)
-            );
-          }
-          const filtering = !!q || activeCat !== "all";
-
-          if (visible.length === 0) {
-            return (
-              <EmptyState
-                emoji="💬"
-                title={filtering ? "Aucune publication trouvée" : "Aucune publication"}
-                message={filtering ? "Essayez un autre mot-clé ou une autre catégorie." : "Soyez la première à partager quelque chose avec la communauté."}
+        {posts.length === 0 ? (
+          <EmptyState
+            emoji="💬"
+            title={isFiltering ? "Aucune publication trouvée" : "Aucune publication"}
+            message={isFiltering ? "Essayez un autre mot-clé ou une autre catégorie." : "Soyez la première à partager quelque chose avec la communauté."}
+          />
+        ) : (
+          <>
+            <Text style={styles.count}>{posts.length} publication{posts.length > 1 ? "s" : ""}</Text>
+            {posts.map((post) => (
+              <PostRow
+                key={post.id}
+                post={post}
+                liked={likedIds.has(post.id)}
+                saved={savedIds.has(post.id)}
+                onToggleSave={() => toggleSave(post.id)}
+                isMine={!!post.user_id && post.user_id === meId}
+                canBlock={!post.is_anonymous && !!post.user_id && post.user_id !== meId}
+                onBlock={() => post.user_id && blockAuthor(post.user_id)}
+                onReport={() => reportPost(post)}
+                onEdit={() => router.push({ pathname: "/(user)/community/new", params: { id: post.id } })}
+                onDelete={() => deleteMyPost(post.id)}
+                onPress={() => router.push(`/(user)/community/${post.id}`)}
+                onLike={() => toggleLike(post.id)}
               />
-            );
-          }
-          return (
-            <>
-              <Text style={styles.count}>{visible.length} publication{visible.length > 1 ? "s" : ""}</Text>
-              {visible.map((post) => (
-                <PostRow
-                  key={post.id}
-                  post={post}
-                  liked={likedIds.has(post.id)}
-                  saved={savedIds.has(post.id)}
-                  onToggleSave={() => toggleSave(post.id)}
-                  isMine={!!post.user_id && post.user_id === meId}
-                  canBlock={!post.is_anonymous && !!post.user_id && post.user_id !== meId}
-                  onBlock={() => post.user_id && blockAuthor(post.user_id)}
-                  onReport={() => reportPost(post)}
-                  onEdit={() => router.push({ pathname: "/(user)/community/new", params: { id: post.id } })}
-                  onDelete={() => deleteMyPost(post.id)}
-                  onPress={() => router.push(`/(user)/community/${post.id}`)}
-                  onLike={() => toggleLike(post.id)}
-                />
-              ))}
-            </>
-          );
-        })()}
+            ))}
+          </>
+        )}
 
         {hasMore ? (
           <View style={styles.footer}>

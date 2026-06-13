@@ -671,7 +671,9 @@ export type Database = {
           is_anonymous: boolean;
           category: string | null;
           image_url: string | null;
+          image_urls: string[] | null;
           likes_count: number;
+          comments_count: number;
           created_at: string;
           updated_at: string;
         };
@@ -682,7 +684,9 @@ export type Database = {
           is_anonymous?: boolean;
           category?: string | null;
           image_url?: string | null;
+          image_urls?: string[] | null;
           likes_count?: number;
+          comments_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -693,7 +697,9 @@ export type Database = {
           is_anonymous?: boolean;
           category?: string | null;
           image_url?: string | null;
+          image_urls?: string[] | null;
           likes_count?: number;
+          comments_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -1269,7 +1275,9 @@ export type Database = {
           is_anonymous: boolean;
           category: string | null;
           image_url: string | null;
+          image_urls: string[] | null;
           likes_count: number;
+          comments_count: number;
           created_at: string;
           updated_at: string;
         };
