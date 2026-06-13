@@ -113,6 +113,13 @@ export function authorDisplayName(isAnonymous: boolean, author: { full_name: str
   return author?.full_name?.trim() || "Utilisatrice";
 }
 
+// Vrai si le contenu a été modifié nettement après sa création (> 60 s) →
+// pour afficher la mention « · modifié ».
+export function wasEdited(createdAt: string, updatedAt: string | null | undefined): boolean {
+  if (!updatedAt) return false;
+  return new Date(updatedAt).getTime() - new Date(createdAt).getTime() > 60000;
+}
+
 // Formatage d'une date en libellé relatif français (ex. "il y a 3 h").
 export function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();

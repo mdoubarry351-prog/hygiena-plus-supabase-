@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,12 +8,14 @@ import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
+import { ActionSheet, type ActionSheetOption } from "@/components/ActionSheet";
 import { useCommunity } from "@/hooks/useCommunity";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   authorDisplayName,
   formatRelativeTime,
+  wasEdited,
   communityService,
   COMMUNITY_CATEGORIES,
   REPORT_REASONS,
@@ -22,6 +24,7 @@ import {
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { hapticWarning } from "@/lib/haptics";
+import { APP_DOWNLOAD_URL } from "@/lib/app-config";
 import { colors, radius, spacing, typography } from "@/theme";
 
 export default function CommunityHome() {
@@ -42,7 +45,37 @@ export default function CommunityHome() {
   const meId = session?.user?.id;
   const isFiltering = !!search.trim() || activeCat !== "all";
 
+  // Menu ⋯ en action sheet (une seule instance pour tout le fil).
+  const [sheet, setSheet] = useState<{ title?: string; options: ActionSheetOption[] } | null>(null);
+
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
+
+  // Partage natif d'une publication + lien de téléchargement de l'app.
+  async function sharePost(post: CommunityPostWithAuthor) {
+    try {
+      await Share.share({ message: `${post.content}\n\nVu sur Hygiena+ 🌸 Télécharge l'app : ${APP_DOWNLOAD_URL}` });
+    } catch {
+      // partage annulé
+    }
+  }
+
+  // Construit le menu ⋯ : MON post → Modifier/Partager/Supprimer ; autre → Partager/Signaler (+ Bloquer).
+  function openPostMenu(post: CommunityPostWithAuthor) {
+    const isMine = !!post.user_id && post.user_id === meId;
+    const canBlock = !post.is_anonymous && !!post.user_id && post.user_id !== meId;
+    const options: ActionSheetOption[] = isMine
+      ? [
+          { label: "Modifier", icon: "create-outline", onPress: () => router.push({ pathname: "/(user)/community/new", params: { id: post.id } }) },
+          { label: "Partager", icon: "share-social-outline", onPress: () => sharePost(post) },
+          { label: "Supprimer", icon: "trash-outline", destructive: true, onPress: () => deleteMyPost(post.id) },
+        ]
+      : [
+          { label: "Partager", icon: "share-social-outline", onPress: () => sharePost(post) },
+          { label: "Signaler", icon: "flag-outline", onPress: () => reportPost(post) },
+          ...(canBlock ? [{ label: "Bloquer cet utilisateur", icon: "ban-outline" as const, destructive: true, onPress: () => post.user_id && blockAuthor(post.user_id) }] : []),
+        ];
+    setSheet({ title: isMine ? "Ma publication" : "Publication", options });
+  }
 
   // Bloque l'auteur d'une publication → ses contenus disparaissent du fil.
   function blockAuthor(userId: string) {
@@ -198,13 +231,9 @@ export default function CommunityHome() {
                 liked={likedIds.has(post.id)}
                 saved={savedIds.has(post.id)}
                 onToggleSave={() => toggleSave(post.id)}
-                isMine={!!post.user_id && post.user_id === meId}
-                canBlock={!post.is_anonymous && !!post.user_id && post.user_id !== meId}
-                onBlock={() => post.user_id && blockAuthor(post.user_id)}
-                onReport={() => reportPost(post)}
-                onEdit={() => router.push({ pathname: "/(user)/community/new", params: { id: post.id } })}
-                onDelete={() => deleteMyPost(post.id)}
+                onMenu={() => openPostMenu(post)}
                 onPress={() => router.push(`/(user)/community/${post.id}`)}
+                onOpenComments={() => router.push(`/(user)/community/${post.id}?focus=comments`)}
                 onLike={() => toggleLike(post.id)}
               />
             ))}
@@ -223,6 +252,13 @@ export default function CommunityHome() {
           </View>
         ) : null}
       </ScrollView>
+
+      <ActionSheet
+        visible={!!sheet}
+        title={sheet?.title}
+        options={sheet?.options ?? []}
+        onClose={() => setSheet(null)}
+      />
     </Screen>
   );
 }
@@ -232,49 +268,22 @@ function PostRow({
   liked,
   saved,
   onToggleSave,
-  isMine,
-  canBlock,
-  onBlock,
-  onReport,
-  onEdit,
-  onDelete,
+  onMenu,
   onPress,
+  onOpenComments,
   onLike,
 }: {
   post: CommunityPostWithAuthor;
   liked: boolean;
   saved: boolean;
   onToggleSave: () => void;
-  isMine: boolean;
-  canBlock: boolean;
-  onBlock: () => void;
-  onReport: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onMenu: () => void;
   onPress: () => void;
+  onOpenComments: () => void;
   onLike: () => void;
 }) {
   const name = authorDisplayName(post.is_anonymous, post.author);
-
-  // Menu ⋯ : sur MON post → Modifier/Supprimer ; sur celui d'un autre → Signaler (+ Bloquer si non anonyme).
-  function openMenu() {
-    if (isMine) {
-      Alert.alert("Ma publication", undefined, [
-        { text: "Modifier", onPress: onEdit },
-        { text: "Supprimer", style: "destructive", onPress: onDelete },
-        { text: "Annuler", style: "cancel" },
-      ]);
-    } else {
-      Alert.alert("Publication", undefined, [
-        { text: "Signaler", onPress: onReport },
-        ...(canBlock ? [{ text: "Bloquer cet utilisateur", style: "destructive" as const, onPress: onBlock }] : []),
-        { text: "Annuler", style: "cancel" as const },
-      ]);
-    }
-  }
-
-  // Toujours visible : mon contenu (modifier/supprimer) ou celui d'un autre (signaler/bloquer).
-  const showMenu = true;
+  const edited = wasEdited(post.created_at, post.updated_at);
 
   return (
     <Pressable onPress={onPress}>
@@ -292,14 +301,12 @@ function PostRow({
               <Text style={styles.author}>{name}</Text>
               {!post.is_anonymous && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
             </View>
-            <Text style={styles.time}>{formatRelativeTime(post.created_at)}</Text>
+            <Text style={styles.time}>{formatRelativeTime(post.created_at)}{edited ? " · modifié" : ""}</Text>
           </View>
           <CategoryTag category={post.category} />
-          {showMenu ? (
-            <Pressable onPress={openMenu} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel={isMine ? "Options de ma publication" : "Bloquer cet utilisateur"}>
-              <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
-            </Pressable>
-          ) : null}
+          <Pressable onPress={onMenu} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de la publication">
+            <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
+          </Pressable>
         </View>
 
         <Text style={styles.body} numberOfLines={5}>{post.content}</Text>
@@ -319,10 +326,10 @@ function PostRow({
               {post.likes_count}
             </Text>
           </Pressable>
-          <View style={styles.likeBtn}>
+          <Pressable onPress={onOpenComments} hitSlop={8} style={styles.likeBtn} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
             <Ionicons name="chatbubble-outline" size={20} color={colors.textMuted} />
             <Text style={styles.likeCount}>{post.comments_count}</Text>
-          </View>
+          </Pressable>
           <Pressable onPress={onToggleSave} hitSlop={8} style={styles.bookmarkBtn} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
             <Ionicons
               name={saved ? "bookmark" : "bookmark-outline"}

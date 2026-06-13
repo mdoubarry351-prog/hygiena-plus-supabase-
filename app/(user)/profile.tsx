@@ -7,11 +7,8 @@ import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { useAuth } from "@/providers/AuthProvider";
+import { APP_DOWNLOAD_URL } from "@/lib/app-config";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
-
-// Lien de téléchargement de l'app partagé via « Inviter un ami ».
-// À REMPLACER par le lien store réel (App Store / Play Store) une fois publié.
-const APP_DOWNLOAD_URL = "https://hygiena.plus";
 
 export default function Profile() {
   const { profile, role, signOut } = useAuth();

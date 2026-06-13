@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useRef, useState, useCallback } from "react";
 import {
   Alert,
   Image,
@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   Text,
@@ -20,11 +21,13 @@ import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
+import { ActionSheet, type ActionSheetOption } from "@/components/ActionSheet";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   communityService,
   authorDisplayName,
   formatRelativeTime,
+  wasEdited,
   REPORT_REASONS,
   type CommunityPostWithAuthor,
   type CommunityCommentWithAuthor,
@@ -32,13 +35,17 @@ import {
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { hapticLight, hapticWarning } from "@/lib/haptics";
+import { APP_DOWNLOAD_URL } from "@/lib/app-config";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 export default function PostDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, focus } = useLocalSearchParams<{ id: string; focus?: string }>();
   const router = useRouter();
   const { session } = useAuth();
   const { savedIds, toggle: toggleSave } = useBookmarks();
+  const scrollRef = useRef<ScrollView>(null);
+  const didFocusScroll = useRef(false);
+  const [sheet, setSheet] = useState<{ title?: string; options: ActionSheetOption[] } | null>(null);
 
   const [post, setPost] = useState<CommunityPostWithAuthor | null>(null);
   const [comments, setComments] = useState<CommunityCommentWithAuthor[]>([]);
@@ -134,14 +141,27 @@ export default function PostDetail() {
 
   const meId = session?.user?.id;
 
-  // ---- Mon post : modifier / supprimer ----
+  // Partage natif de la publication + lien de téléchargement de l'app.
+  async function sharePost() {
+    if (!post) return;
+    try {
+      await Share.share({ message: `${post.content}\n\nVu sur Hygiena+ 🌸 Télécharge l'app : ${APP_DOWNLOAD_URL}` });
+    } catch {
+      // partage annulé
+    }
+  }
+
+  // ---- Menu ⋯ du post (action sheet) ----
   function postMenu() {
     if (!post) return;
-    Alert.alert("Ma publication", undefined, [
-      { text: "Modifier", onPress: () => router.push({ pathname: "/(user)/community/new", params: { id: post.id } }) },
-      { text: "Supprimer", style: "destructive", onPress: deleteMyPost },
-      { text: "Annuler", style: "cancel" },
-    ]);
+    setSheet({
+      title: "Ma publication",
+      options: [
+        { label: "Modifier", icon: "create-outline", onPress: () => router.push({ pathname: "/(user)/community/new", params: { id: post.id } }) },
+        { label: "Partager", icon: "share-social-outline", onPress: sharePost },
+        { label: "Supprimer", icon: "trash-outline", destructive: true, onPress: deleteMyPost },
+      ],
+    });
   }
 
   function deleteMyPost() {
@@ -189,11 +209,13 @@ export default function PostDetail() {
     }
   }
   function commentMenu(c: CommunityCommentWithAuthor) {
-    Alert.alert("Mon commentaire", undefined, [
-      { text: "Modifier", onPress: () => startEditComment(c) },
-      { text: "Supprimer", style: "destructive", onPress: () => deleteCommentConfirm(c) },
-      { text: "Annuler", style: "cancel" },
-    ]);
+    setSheet({
+      title: "Mon commentaire",
+      options: [
+        { label: "Modifier", icon: "create-outline", onPress: () => startEditComment(c) },
+        { label: "Supprimer", icon: "trash-outline", destructive: true, onPress: () => deleteCommentConfirm(c) },
+      ],
+    });
   }
   function deleteCommentConfirm(c: CommunityCommentWithAuthor) {
     Alert.alert("Supprimer le commentaire ?", "Cette action est définitive.", [
@@ -249,25 +271,30 @@ export default function PostDetail() {
     Alert.alert(title, "Pour quelle raison ?", [...buttons, { text: "Annuler", style: "cancel" }]);
   }
 
-  // Menu ⋯ d'un post qui n'est pas le mien : Signaler (+ Bloquer si non anonyme).
+  // Menu ⋯ d'un post qui n'est pas le mien : Partager / Signaler (+ Bloquer si non anonyme).
   function postOtherMenu() {
     if (!post) return;
     const canBlock = !post.is_anonymous && !!post.user_id && post.user_id !== meId;
-    Alert.alert("Publication", undefined, [
-      { text: "Signaler", onPress: () => reportReasonAlert("Signaler la publication", (r) => communityService.reportPost(post.id, post.user_id ?? null, r)) },
-      ...(canBlock ? [{ text: "Bloquer cet utilisateur", style: "destructive" as const, onPress: () => confirmBlock(post.user_id!, () => router.back()) }] : []),
-      { text: "Annuler", style: "cancel" as const },
-    ]);
+    setSheet({
+      title: "Publication",
+      options: [
+        { label: "Partager", icon: "share-social-outline", onPress: sharePost },
+        { label: "Signaler", icon: "flag-outline", onPress: () => reportReasonAlert("Signaler la publication", (r) => communityService.reportPost(post.id, post.user_id ?? null, r)) },
+        ...(canBlock ? [{ label: "Bloquer cet utilisateur", icon: "ban-outline" as const, destructive: true, onPress: () => confirmBlock(post.user_id!, () => router.back()) }] : []),
+      ],
+    });
   }
 
   // Menu ⋯ d'un commentaire qui n'est pas le mien : Signaler (+ Bloquer si non anonyme).
   function commentOtherMenu(c: CommunityCommentWithAuthor) {
     const canBlock = !c.is_anonymous && c.user_id !== meId;
-    Alert.alert("Commentaire", undefined, [
-      { text: "Signaler", onPress: () => reportReasonAlert("Signaler le commentaire", (r) => communityService.reportComment(c, r)) },
-      ...(canBlock ? [{ text: "Bloquer cet utilisateur", style: "destructive" as const, onPress: () => confirmBlock(c.user_id, () => load()) }] : []),
-      { text: "Annuler", style: "cancel" as const },
-    ]);
+    setSheet({
+      title: "Commentaire",
+      options: [
+        { label: "Signaler", icon: "flag-outline", onPress: () => reportReasonAlert("Signaler le commentaire", (r) => communityService.reportComment(c, r)) },
+        ...(canBlock ? [{ label: "Bloquer cet utilisateur", icon: "ban-outline" as const, destructive: true, onPress: () => confirmBlock(c.user_id, () => load()) }] : []),
+      ],
+    });
   }
 
   if (loading) return <Loading />;
@@ -327,7 +354,7 @@ export default function PostDetail() {
               {!c.is_anonymous && c.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
             </View>
             <View style={styles.commentRight}>
-              <Text style={styles.commentTime}>{formatRelativeTime(c.created_at)}</Text>
+              <Text style={styles.commentTime}>{formatRelativeTime(c.created_at)}{wasEdited(c.created_at, c.updated_at) ? " · modifié" : ""}</Text>
               {c.user_id === meId ? (
                 <Pressable onPress={() => commentMenu(c)} hitSlop={8} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de mon commentaire">
                   <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
@@ -384,7 +411,7 @@ export default function PostDetail() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
           <Card style={styles.post}>
             <View style={styles.postHead}>
               <View style={styles.avatar}>
@@ -399,7 +426,7 @@ export default function PostDetail() {
                   <Text style={styles.author}>{authorDisplayName(post.is_anonymous, post.author)}</Text>
                   {!post.is_anonymous && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
                 </View>
-                <Text style={styles.time}>{formatRelativeTime(post.created_at)}</Text>
+                <Text style={styles.time}>{formatRelativeTime(post.created_at)}{wasEdited(post.created_at, post.updated_at) ? " · modifié" : ""}</Text>
               </View>
               <CategoryTag category={post.category} />
               {post.user_id === meId ? (
@@ -440,9 +467,20 @@ export default function PostDetail() {
             </View>
           </Card>
 
-          <Text style={[typography.h3, styles.sectionTitle]}>
-            Commentaires ({comments.length})
-          </Text>
+          <View
+            onLayout={(e) => {
+              // Ouverture ciblée « commentaires » (depuis le compteur 💬 du fil).
+              if (focus === "comments" && !didFocusScroll.current) {
+                didFocusScroll.current = true;
+                const y = e.nativeEvent.layout.y;
+                requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true }));
+              }
+            }}
+          >
+            <Text style={[typography.h3, styles.sectionTitle]}>
+              Commentaires ({comments.length})
+            </Text>
+          </View>
 
           {comments.length === 0 ? (
             <Text style={[typography.body, styles.muted]}>
@@ -493,6 +531,13 @@ export default function PostDetail() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      <ActionSheet
+        visible={!!sheet}
+        title={sheet?.title}
+        options={sheet?.options ?? []}
+        onClose={() => setSheet(null)}
+      />
     </Screen>
   );
 }
