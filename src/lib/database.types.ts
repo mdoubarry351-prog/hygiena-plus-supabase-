@@ -352,6 +352,8 @@ export type Database = {
           price: number;
           stock: number;
           image_url: string | null;
+          image_urls: string[] | null;
+          category: string | null;
           is_active: boolean;
           rating_avg: number;
           rating_count: number;
@@ -365,6 +367,8 @@ export type Database = {
           price?: number;
           stock?: number;
           image_url?: string | null;
+          image_urls?: string[] | null;
+          category?: string | null;
           is_active?: boolean;
           rating_avg?: number;
           rating_count?: number;
@@ -378,6 +382,8 @@ export type Database = {
           price?: number;
           stock?: number;
           image_url?: string | null;
+          image_urls?: string[] | null;
+          category?: string | null;
           is_active?: boolean;
           rating_avg?: number;
           rating_count?: number;

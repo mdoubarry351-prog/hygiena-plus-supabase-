@@ -15,7 +15,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import { uploadProductImage } from "@/lib/storage";
 import { exportCsv } from "@/lib/csv-export";
-import { formatPrice } from "@/lib/marketplace-service";
+import { formatPrice, PRODUCT_CATEGORIES } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -188,7 +188,7 @@ export default function AdminProducts() {
                   )}
                   <View style={styles.rowInfo}>
                     <Text style={styles.name} numberOfLines={1}>{p.name}</Text>
-                    <Text style={styles.meta}>{formatPrice(p.price)} · stock {p.stock}</Text>
+                    <Text style={styles.meta}>{formatPrice(p.price)} · stock {p.stock}{p.category ? ` · ${p.category}` : ""}</Text>
                   </View>
                 </Pressable>
                 <View style={styles.rowActions}>
@@ -216,6 +216,7 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
   const [price, setPrice] = useState(product?.price != null ? String(product.price) : "");
   const [stock, setStock] = useState(product?.stock != null ? String(product.stock) : "0");
   const [description, setDescription] = useState(product?.description ?? "");
+  const [category, setCategory] = useState<string>(product?.category ?? "");
   const [imageUrl, setImageUrl] = useState(product?.image_url ?? "");
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -276,12 +277,14 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
       if (product) {
         await adminService.updateProduct(session.user.id, product.id, {
           name: name.trim(), price: priceNum, stock: stockNum,
-          description: description.trim() || null, image_url: imageUrl.trim() || null, is_active: isActive,
+          description: description.trim() || null, image_url: imageUrl.trim() || null,
+          category: category || null, is_active: isActive,
         });
       } else {
         await adminService.createProduct(session.user.id, {
           name: name.trim(), price: priceNum, stock: stockNum,
-          description: description.trim() || null, image_url: imageUrl.trim() || null, is_active: isActive,
+          description: description.trim() || null, image_url: imageUrl.trim() || null,
+          category: category || null, is_active: isActive,
         });
       }
       onDone();
@@ -300,6 +303,19 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
         <Input label="Prix (GNF)" value={price} onChangeText={setPrice} placeholder="Ex. 50000" keyboardType="numeric" />
         <Input label="Stock" value={stock} onChangeText={setStock} placeholder="Ex. 20" keyboardType="numeric" />
         <Input label="Description" value={description} onChangeText={setDescription} placeholder="Description (facultatif)" multiline numberOfLines={4} style={styles.textArea} />
+
+        <Text style={styles.fieldLabel}>Catégorie</Text>
+        <View style={styles.catChips}>
+          {PRODUCT_CATEGORIES.map((c) => {
+            const active = category === c;
+            return (
+              <Pressable key={c} onPress={() => setCategory(active ? "" : c)} style={[styles.catChip, active && styles.catChipActive]}>
+                <Text style={[styles.catChipText, active && styles.catChipTextActive]}>{c}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <View style={styles.photoBlock}>
           <Text style={styles.photoLabel}>Photo du produit (facultatif)</Text>
           {previewUri ? (
@@ -367,6 +383,12 @@ const styles = StyleSheet.create({
   badgeOff: { backgroundColor: colors.textMuted },
   formContent: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
   textArea: { height: 100, textAlignVertical: "top", paddingTop: spacing.sm },
+  fieldLabel: { ...typography.caption, color: colors.text, fontWeight: "700" },
+  catChips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  catChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border },
+  catChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  catChipText: { ...typography.caption, fontWeight: "700", color: colors.text },
+  catChipTextActive: { color: colors.white },
   activeRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.sm },
   activeLabel: { ...typography.name },
   // Sélecteur de photo

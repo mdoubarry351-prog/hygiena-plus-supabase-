@@ -488,6 +488,7 @@ export const adminService = {
       price: number;
       stock: number;
       image_url: string | null;
+      category: string | null;
       is_active: boolean;
     }
   ): Promise<MarketplaceProduct> {

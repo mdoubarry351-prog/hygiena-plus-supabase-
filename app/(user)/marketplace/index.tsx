@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
@@ -12,17 +13,35 @@ import { useProducts } from "@/hooks/useProducts";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useCart } from "@/providers/CartProvider";
-import { formatPrice } from "@/lib/marketplace-service";
+import { formatPrice, PRODUCT_CATEGORIES, type ProductSort } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
+// Options de tri (libellés courts pour les chips).
+const SORTS: { key: ProductSort; label: string }[] = [
+  { key: "recent", label: "Récents" },
+  { key: "price_asc", label: "Prix ↑" },
+  { key: "price_desc", label: "Prix ↓" },
+  { key: "rating", label: "Mieux notés" },
+];
+
 export default function MarketplaceHome() {
-  const { products, loading, loadingMore, hasMore, reload, loadMore } = useProducts();
+  const [search, setSearch] = useState("");
+  const [activeCat, setActiveCat] = useState<string>("all");
+  const [sort, setSort] = useState<ProductSort>("recent");
+
+  // Filtres appliqués CÔTÉ SERVEUR (recherche + catégorie + tri).
+  const { products, loading, loadingMore, hasMore, reload, loadMore } = useProducts({
+    search,
+    category: activeCat === "all" ? null : activeCat,
+    sort,
+  });
   const { marketplace_enabled } = useAppSettings();
   const { favIds, toggle } = useFavorites();
   const { count } = useCart();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const isFiltering = !!search.trim() || activeCat !== "all";
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
@@ -73,6 +92,41 @@ export default function MarketplaceHome() {
         </View>
       </View>
 
+      {/* Recherche */}
+      <View style={styles.searchRow}>
+        <Input
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Rechercher un produit…"
+          autoCapitalize="none"
+          style={styles.searchInput}
+        />
+      </View>
+
+      {/* Catégories */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipBar} contentContainerStyle={styles.chips}>
+        {["all", ...PRODUCT_CATEGORIES].map((c) => {
+          const active = activeCat === c;
+          return (
+            <Pressable key={c} onPress={() => setActiveCat(c)} style={[styles.chip, active && styles.chipActive]}>
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>{c === "all" ? "Toutes" : c}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Tri */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipBar} contentContainerStyle={styles.chips}>
+        {SORTS.map((s) => {
+          const active = sort === s.key;
+          return (
+            <Pressable key={s.key} onPress={() => setSort(s.key)} style={[styles.sortChip, active && styles.sortChipActive]}>
+              <Text style={[styles.sortChipText, active && styles.sortChipTextActive]}>{s.label}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
@@ -83,11 +137,12 @@ export default function MarketplaceHome() {
         {products.length === 0 ? (
           <EmptyState
             icon="bag-handle-outline"
-            title="Aucun produit disponible"
-            message="Revenez plus tard, de nouveaux produits arrivent bientôt."
+            title={isFiltering ? "Aucun produit trouvé" : "Aucun produit disponible"}
+            message={isFiltering ? "Essayez un autre mot-clé ou une autre catégorie." : "Revenez plus tard, de nouveaux produits arrivent bientôt."}
           />
         ) : (
           <>
+            <Text style={styles.count}>{products.length} produit{products.length > 1 ? "s" : ""}</Text>
             {products.map((p) => (
               <ProductRow
                 key={p.id}
@@ -163,6 +218,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 4,
   },
   cartBadgeText: { color: colors.white, fontSize: 11, fontWeight: "700", fontFamily: fonts.bodyBold },
+  searchRow: { paddingTop: spacing.sm },
+  searchInput: { marginBottom: 0 },
+  chipBar: { marginTop: spacing.sm },
+  chips: { gap: spacing.xs, paddingRight: spacing.md },
+  chip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { ...typography.caption, fontWeight: "700", color: colors.text },
+  chipTextActive: { color: colors.white },
+  sortChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, backgroundColor: colors.surface },
+  sortChipActive: { backgroundColor: colors.primaryLight },
+  sortChipText: { ...typography.caption, fontWeight: "600", color: colors.textMuted },
+  sortChipTextActive: { color: colors.primaryDark, fontWeight: "700" },
+  count: { ...typography.caption, color: colors.textMuted },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   footer: { alignItems: "center", paddingVertical: spacing.sm },
   loadMore: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.primary },

@@ -1,6 +1,21 @@
 import { supabase } from "@/lib/supabase";
 import type { MarketplaceProduct, MarketplaceOrder, TablesInsert } from "@/lib/database.types";
 
+// Catégories de produits (liste fixe, FR). Centralisée : réutilisée par la
+// boutique (filtres) et le formulaire admin (select).
+export const PRODUCT_CATEGORIES = [
+  "Protections",
+  "Hygiène intime",
+  "Bien-être",
+  "Nutrition",
+  "Soins",
+  "Autre",
+] as const;
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+
+// Tris disponibles côté boutique.
+export type ProductSort = "recent" | "price_asc" | "price_desc" | "rating";
+
 // Article tel qu'enregistré dans la colonne jsonb "items" d'une commande.
 export type OrderItem = {
   product_id: string;
@@ -49,16 +64,34 @@ export const marketplaceService = {
     return data ?? [];
   },
 
-  // Produits actifs paginés (.range), même ordre/filtre que getProducts.
-  async getProductsPage(opts?: { limit?: number; offset?: number }): Promise<MarketplaceProduct[]> {
+  // Produits actifs paginés, avec recherche (nom) / catégorie / tri CÔTÉ SERVEUR.
+  async getProductsPage(opts?: {
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+    category?: string | null;
+    sort?: ProductSort;
+  }): Promise<MarketplaceProduct[]> {
     const limit = opts?.limit ?? 20;
     const offset = opts?.offset ?? 0;
-    const { data, error } = await supabase
-      .from("marketplace_products")
-      .select("*")
-      .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+    let query = supabase.from("marketplace_products").select("*").eq("is_active", true);
+    const s = opts?.search?.trim();
+    if (s) query = query.ilike("name", `%${s}%`);
+    if (opts?.category) query = query.eq("category", opts.category);
+    switch (opts?.sort) {
+      case "price_asc":
+        query = query.order("price", { ascending: true });
+        break;
+      case "price_desc":
+        query = query.order("price", { ascending: false });
+        break;
+      case "rating":
+        query = query.order("rating_avg", { ascending: false });
+        break;
+      default:
+        query = query.order("created_at", { ascending: false });
+    }
+    const { data, error } = await query.range(offset, offset + limit - 1);
     if (error) throw error;
     return data ?? [];
   },
