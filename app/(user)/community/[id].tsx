@@ -1,7 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import {
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -33,6 +32,7 @@ import {
   type CommunityCommentWithAuthor,
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
+import { PostImages } from "@/components/PostImages";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { hapticLight, hapticWarning } from "@/lib/haptics";
 import { APP_DOWNLOAD_URL } from "@/lib/app-config";
@@ -442,9 +442,7 @@ export default function PostDetail() {
 
             <Text style={styles.body}>{post.content}</Text>
 
-            {post.image_url ? (
-              <Image source={{ uri: post.image_url }} style={styles.postImage} resizeMode="cover" />
-            ) : null}
+            <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
             <View style={styles.postFoot}>
               <Pressable onPress={handleLike} hitSlop={8} style={styles.likeBtn}>

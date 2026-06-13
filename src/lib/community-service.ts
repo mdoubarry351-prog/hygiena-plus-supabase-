@@ -238,20 +238,23 @@ export const communityService = {
   },
 
   // Crée une publication. `isAnonymous` masque l'auteur dans l'app.
-  // `imageUrl` (optionnel) : photo jointe déjà uploadée dans community-images.
+  // `imageUrls` (optionnel) : photos déjà uploadées dans community-images.
+  // On écrit le tableau dans image_urls ET la 1ʳᵉ dans image_url (compat affichage ancien).
   async createPost(input: {
     userId: string;
     content: string;
     isAnonymous: boolean;
     category: string;
-    imageUrl?: string | null;
+    imageUrls?: string[];
   }): Promise<CommunityPost> {
+    const urls = input.imageUrls ?? [];
     const payload: TablesInsert<"community_posts"> = {
       user_id: input.userId,
       content: input.content,
       is_anonymous: input.isAnonymous,
       category: input.category,
-      image_url: input.imageUrl ?? null,
+      image_urls: urls.length ? urls : null,
+      image_url: urls[0] ?? null,
     };
     const { data, error } = await supabase
       .from("community_posts")
@@ -266,17 +269,20 @@ export const communityService = {
   },
 
   // Modifie SA propre publication. La RLS (own_or_admin) limite l'accès.
-  // `imageUrl` : undefined = inchangé, null = retirée, string = nouvelle image.
+  // `imageUrls` : undefined = inchangé, [] = retirées, sinon nouvelles photos.
   async updatePost(
     id: string,
-    patch: { content: string; category: string; imageUrl?: string | null }
+    patch: { content: string; category: string; imageUrls?: string[] }
   ): Promise<CommunityPost> {
     const update: TablesUpdate<"community_posts"> = {
       content: patch.content,
       category: patch.category,
       updated_at: new Date().toISOString(),
     };
-    if (patch.imageUrl !== undefined) update.image_url = patch.imageUrl;
+    if (patch.imageUrls !== undefined) {
+      update.image_urls = patch.imageUrls.length ? patch.imageUrls : null;
+      update.image_url = patch.imageUrls[0] ?? null;
+    }
     const { data, error } = await supabase
       .from("community_posts")
       .update(update)

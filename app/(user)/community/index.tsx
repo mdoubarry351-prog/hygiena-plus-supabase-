@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,6 +23,7 @@ import {
   type CommunityPostWithAuthor,
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
+import { PostImages } from "@/components/PostImages";
 import { hapticWarning } from "@/lib/haptics";
 import { APP_DOWNLOAD_URL } from "@/lib/app-config";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -311,9 +312,7 @@ function PostRow({
 
         <Text style={styles.body} numberOfLines={5}>{post.content}</Text>
 
-        {post.image_url ? (
-          <Image source={{ uri: post.image_url }} style={styles.postImage} resizeMode="cover" />
-        ) : null}
+        <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
         <View style={styles.postFoot}>
           <Pressable onPress={onLike} hitSlop={8} style={styles.likeBtn}>

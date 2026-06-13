@@ -27,16 +27,14 @@ export default function NewPost() {
   const needsRules = !isEdit && profile?.community_rules_accepted === false;
   const [accepting, setAccepting] = useState(false);
 
+  const MAX_IMAGES = 4;
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<string>(DEFAULT_CATEGORY);
   const [isAnonymous, setIsAnonymous] = useState(false);
-  const [imageUrl, setImageUrl] = useState("");
-  const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const [images, setImages] = useState<string[]>([]); // URLs déjà uploadées
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingPost, setLoadingPost] = useState(isEdit);
-
-  const previewUri = localPreview ?? (imageUrl || null);
 
   // Édition : charge le post existant et préremplit le formulaire.
   useEffect(() => {
@@ -48,7 +46,8 @@ export default function NewPost() {
           setContent(p.content);
           setCategory(p.category ?? DEFAULT_CATEGORY);
           setIsAnonymous(p.is_anonymous);
-          setImageUrl(p.image_url ?? "");
+          // Reprend image_urls, sinon repli sur l'ancienne image unique.
+          setImages(p.image_urls ?? (p.image_url ? [p.image_url] : []));
         }
       } catch {
         Alert.alert("Erreur", "Publication introuvable.", [{ text: "OK", onPress: () => router.back() }]);
@@ -58,37 +57,42 @@ export default function NewPost() {
     })();
   }, [isEdit, id]);
 
-  // Sélection d'une photo (optionnelle) + upload dans community-images.
-  async function pickImage() {
+  // Sélection de PLUSIEURS photos (jusqu'à 4) + upload de chacune.
+  async function pickImages() {
+    const remaining = MAX_IMAGES - images.length;
+    if (remaining <= 0) { Alert.alert("Limite atteinte", `Vous pouvez ajouter jusqu'à ${MAX_IMAGES} photos.`); return; }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour ajouter une image.");
+      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour ajouter des images.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
       allowsEditing: false,
       quality: 1,
       base64: true,
     });
     if (result.canceled) return;
-    const asset = result.assets[0];
-    if (!asset?.base64) { Alert.alert("Erreur", "Impossible de lire la photo sélectionnée."); return; }
-    setLocalPreview(asset.uri);
+    const assets = result.assets.slice(0, remaining).filter((a) => a.base64);
+    if (assets.length === 0) { Alert.alert("Erreur", "Impossible de lire les photos sélectionnées."); return; }
     setUploading(true);
     try {
-      setImageUrl(await uploadCommunityImage(asset.base64));
+      const urls: string[] = [];
+      for (const a of assets) {
+        urls.push(await uploadCommunityImage(a.base64!));
+      }
+      setImages((prev) => [...prev, ...urls].slice(0, MAX_IMAGES));
     } catch (e) {
-      setLocalPreview(null);
       Alert.alert("Échec de l'upload", e instanceof Error ? e.message : "Réessayez.");
     } finally {
       setUploading(false);
     }
   }
 
-  function removePhoto() {
-    setImageUrl("");
-    setLocalPreview(null);
+  function removeImage(index: number) {
+    setImages((prev) => prev.filter((_, i) => i !== index));
   }
 
   // Accepte la charte → on ne la redemandera plus.
@@ -108,7 +112,7 @@ export default function NewPost() {
   async function handlePublish() {
     if (!session?.user) return;
     if (needsRules) { Alert.alert("Règles à accepter", "Veuillez accepter les règles de la communauté avant de publier."); return; }
-    if (uploading) { Alert.alert("Patientez", "La photo est encore en cours d'envoi."); return; }
+    if (uploading) { Alert.alert("Patientez", "Les photos sont encore en cours d'envoi."); return; }
     const text = content.trim();
     if (!text) {
       Alert.alert("Publication vide", "Écrivez quelque chose avant de publier.");
@@ -120,7 +124,7 @@ export default function NewPost() {
         await communityService.updatePost(id!, {
           content: text,
           category,
-          imageUrl: imageUrl.trim() || null,
+          imageUrls: images,
         });
         router.back();
       } else {
@@ -129,7 +133,7 @@ export default function NewPost() {
           content: text,
           isAnonymous,
           category,
-          imageUrl: imageUrl.trim() || null,
+          imageUrls: images,
         });
         Alert.alert("Publié", "Votre publication a été partagée.", [
           { text: "OK", onPress: () => router.back() },
@@ -180,31 +184,34 @@ export default function NewPost() {
           })}
         </View>
 
-        {/* Photo optionnelle */}
-        <Text style={styles.catLabel}>Photo (facultatif)</Text>
-        {previewUri ? (
-          <View style={styles.previewWrap}>
-            <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="cover" />
-            {uploading && (
-              <View style={styles.previewOverlay}>
-                <ActivityIndicator color={colors.white} />
-                <Text style={styles.previewOverlayText}>Envoi…</Text>
+        {/* Photos optionnelles (jusqu'à 4) */}
+        <Text style={styles.catLabel}>Photos (facultatif, jusqu'à {MAX_IMAGES})</Text>
+        {images.length > 0 ? (
+          <View style={styles.thumbGrid}>
+            {images.map((url, i) => (
+              <View key={url} style={styles.thumbWrap}>
+                <Image source={{ uri: url }} style={styles.thumb} resizeMode="cover" />
+                <Pressable onPress={() => removeImage(i)} hitSlop={6} style={styles.thumbRemove} accessibilityRole="button" accessibilityLabel="Retirer cette photo">
+                  <Ionicons name="close" size={14} color={colors.white} />
+                </Pressable>
               </View>
-            )}
+            ))}
           </View>
         ) : null}
-        <View style={styles.photoActions}>
-          <Pressable onPress={pickImage} disabled={uploading} style={[styles.photoBtn, uploading && styles.photoBtnDisabled]}>
-            <Ionicons name="image" size={18} color={colors.primary} />
-            <Text style={styles.photoBtnText}>{previewUri ? "Changer la photo" : "Ajouter une photo"}</Text>
-          </Pressable>
-          {previewUri && !uploading ? (
-            <Pressable onPress={removePhoto} style={[styles.photoBtn, styles.photoBtnDanger]}>
-              <Ionicons name="trash-outline" size={18} color={colors.danger} />
-              <Text style={[styles.photoBtnText, { color: colors.danger }]}>Retirer</Text>
+        {uploading ? (
+          <View style={styles.uploadRow}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={styles.uploadText}>Envoi des photos…</Text>
+          </View>
+        ) : null}
+        {images.length < MAX_IMAGES ? (
+          <View style={styles.photoActions}>
+            <Pressable onPress={pickImages} disabled={uploading} style={[styles.photoBtn, uploading && styles.photoBtnDisabled]}>
+              <Ionicons name="image" size={18} color={colors.primary} />
+              <Text style={styles.photoBtnText}>{images.length > 0 ? "Ajouter des photos" : "Ajouter des photos"}</Text>
             </Pressable>
-          ) : null}
-        </View>
+          </View>
+        ) : null}
 
         {/* L'anonymat est défini à la création (non modifiable ensuite). */}
         {!isEdit ? (
@@ -244,14 +251,15 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { ...typography.caption, fontWeight: "700", color: colors.text },
   chipTextActive: { color: colors.white },
-  previewWrap: { position: "relative", marginBottom: spacing.xs },
-  preview: { width: "100%", height: 200, borderRadius: radius.md, backgroundColor: colors.surface },
-  previewOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: radius.md, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center", gap: spacing.xs },
-  previewOverlayText: { ...typography.caption, color: colors.white, fontWeight: "700" },
+  thumbGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.xs },
+  thumbWrap: { width: "48%", aspectRatio: 1, position: "relative" },
+  thumb: { width: "100%", height: "100%", borderRadius: radius.md, backgroundColor: colors.surface },
+  thumbRemove: { position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" },
+  uploadRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs },
+  uploadText: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
   photoActions: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.sm },
   photoBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.primary },
   photoBtnDisabled: { opacity: 0.5 },
-  photoBtnDanger: { borderColor: colors.danger },
   photoBtnText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
   anonRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.md },
   anonIcon: {
