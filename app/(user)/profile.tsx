@@ -1,4 +1,4 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -7,6 +7,10 @@ import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
+
+// Lien de téléchargement de l'app partagé via « Inviter un ami ».
+// À REMPLACER par le lien store réel (App Store / Play Store) une fois publié.
+const APP_DOWNLOAD_URL = "https://hygiena.plus";
 
 export default function Profile() {
   const { profile, role, signOut } = useAuth();
@@ -29,6 +33,16 @@ export default function Profile() {
         },
       },
     ]);
+  }
+
+  async function inviteFriend() {
+    try {
+      await Share.share({
+        message: `Découvre Hygiena+, l'app de santé féminine 🌸. Télécharge-la ici : ${APP_DOWNLOAD_URL}`,
+      });
+    } catch {
+      // partage annulé : rien à faire
+    }
   }
 
   const initial = (profile.full_name ?? profile.email ?? "?").trim().charAt(0).toUpperCase();
@@ -128,14 +142,14 @@ export default function Profile() {
           </Card>
         </Pressable>
 
-        <Pressable onPress={() => router.push("/(user)/referral")}>
+        <Pressable onPress={inviteFriend}>
           <Card style={styles.proCard}>
             <View style={styles.proIcon}>
-              <Ionicons name="gift-outline" size={22} color={colors.primary} />
+              <Ionicons name="share-social-outline" size={22} color={colors.primary} />
             </View>
             <View style={styles.proText}>
-              <Text style={styles.proTitle}>Parrainer une amie</Text>
-              <Text style={styles.proSub}>Partagez votre code, recevez le Premium</Text>
+              <Text style={styles.proTitle}>Inviter un ami</Text>
+              <Text style={styles.proSub}>Partagez le lien de téléchargement de l'app</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </Card>
