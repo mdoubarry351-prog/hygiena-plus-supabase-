@@ -226,17 +226,20 @@ export const communityService = {
   },
 
   // Crée une publication. `isAnonymous` masque l'auteur dans l'app.
+  // `imageUrl` (optionnel) : photo jointe déjà uploadée dans community-images.
   async createPost(input: {
     userId: string;
     content: string;
     isAnonymous: boolean;
     category: string;
+    imageUrl?: string | null;
   }): Promise<CommunityPost> {
     const payload: TablesInsert<"community_posts"> = {
       user_id: input.userId,
       content: input.content,
       is_anonymous: input.isAnonymous,
       category: input.category,
+      image_url: input.imageUrl ?? null,
     };
     const { data, error } = await supabase
       .from("community_posts")

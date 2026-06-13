@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -245,6 +245,10 @@ function PostRow({
 
         <Text style={styles.body} numberOfLines={5}>{post.content}</Text>
 
+        {post.image_url ? (
+          <Image source={{ uri: post.image_url }} style={styles.postImage} resizeMode="cover" />
+        ) : null}
+
         <View style={styles.postFoot}>
           <Pressable onPress={onLike} hitSlop={8} style={styles.likeBtn}>
             <Ionicons
@@ -321,6 +325,7 @@ const styles = StyleSheet.create({
   filterChipText: { fontSize: 13, fontWeight: "700", color: colors.text },
   filterChipTextActive: { color: colors.white },
   body: { ...typography.body, color: colors.text, lineHeight: 21 },
+  postImage: { width: "100%", height: 200, borderRadius: radius.md, backgroundColor: colors.surface },
   postFoot: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   likeCount: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },

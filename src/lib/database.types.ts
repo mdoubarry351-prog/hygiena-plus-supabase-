@@ -664,6 +664,7 @@ export type Database = {
           content: string;
           is_anonymous: boolean;
           category: string | null;
+          image_url: string | null;
           likes_count: number;
           created_at: string;
           updated_at: string;
@@ -674,6 +675,7 @@ export type Database = {
           content: string;
           is_anonymous?: boolean;
           category?: string | null;
+          image_url?: string | null;
           likes_count?: number;
           created_at?: string;
           updated_at?: string;
@@ -684,6 +686,7 @@ export type Database = {
           content?: string;
           is_anonymous?: boolean;
           category?: string | null;
+          image_url?: string | null;
           likes_count?: number;
           created_at?: string;
           updated_at?: string;
@@ -1209,6 +1212,7 @@ export type Database = {
           content: string;
           is_anonymous: boolean;
           category: string | null;
+          image_url: string | null;
           likes_count: number;
           created_at: string;
           updated_at: string;

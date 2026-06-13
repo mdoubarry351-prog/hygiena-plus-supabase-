@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -160,6 +161,10 @@ export default function PostDetail() {
 
             <Text style={styles.body}>{post.content}</Text>
 
+            {post.image_url ? (
+              <Image source={{ uri: post.image_url }} style={styles.postImage} resizeMode="cover" />
+            ) : null}
+
             <View style={styles.postFoot}>
               <Pressable onPress={handleLike} hitSlop={8} style={styles.likeBtn}>
                 <Ionicons
@@ -267,6 +272,7 @@ const styles = StyleSheet.create({
   author: { ...typography.name },
   time: { ...typography.caption, color: colors.textMuted },
   body: { ...typography.body, color: colors.text, lineHeight: 22 },
+  postImage: { width: "100%", height: 200, borderRadius: radius.md, backgroundColor: colors.surface, marginTop: spacing.sm },
   postFoot: { flexDirection: "row", alignItems: "center", marginTop: spacing.xs },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   bookmarkBtn: { marginLeft: "auto", padding: spacing.xs },

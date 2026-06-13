@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 const BUCKET = "product-images";
 const AVATAR_BUCKET = "avatars";
 const ARTICLE_BUCKET = "article-images";
+const COMMUNITY_BUCKET = "community-images";
 
 /**
  * Uploade une image de produit dans le bucket public `product-images` et
@@ -49,4 +50,23 @@ export async function uploadArticleImage(base64: string): Promise<string> {
     .upload(path, decode(base64), { contentType: "image/jpeg", upsert: true });
   if (error) throw error;
   return supabase.storage.from(ARTICLE_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+/**
+ * Uploade une image jointe à une publication communautaire (base64 JPEG) dans
+ * le bucket public `community-images` et renvoie son URL publique.
+ *
+ * RLS : l'upload est réservé au dossier de l'utilisatrice → on range le fichier
+ * sous `${userId}/...`. On récupère l'userId via supabase.auth.getUser().
+ */
+export async function uploadCommunityImage(base64: string): Promise<string> {
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+  if (!userId) throw new Error("Vous devez être connectée pour ajouter une photo.");
+  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+  const { error } = await supabase.storage
+    .from(COMMUNITY_BUCKET)
+    .upload(path, decode(base64), { contentType: "image/jpeg", upsert: true });
+  if (error) throw error;
+  return supabase.storage.from(COMMUNITY_BUCKET).getPublicUrl(path).data.publicUrl;
 }
