@@ -100,6 +100,33 @@ export const authService = {
   },
 
   /**
+   * Suppression DÉFINITIVE de son propre compte (exigence App Store).
+   * Invoque l'Edge Function `admin-user-actions` (action `delete_self`) qui
+   * supprime le compte auth → cascade (profil + toutes les données). Puis
+   * déconnecte la session : le provider d'auth renvoie alors vers la connexion.
+   */
+  async deleteOwnAccount() {
+    const { data, error } = await supabase.functions.invoke("admin-user-actions", {
+      body: { action: "delete_self" },
+    });
+    if (error) {
+      let message = error.message || "Suppression du compte échouée";
+      try {
+        const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
+        const body = ctx?.json ? ((await ctx.json()) as { error?: string }) : null;
+        if (body?.error) message = body.error;
+      } catch {
+        // on garde le message par défaut
+      }
+      throw new Error(message);
+    }
+    const body = data as { success?: boolean; error?: string } | null;
+    if (body?.error) throw new Error(body.error);
+    // Compte supprimé : on ferme la session locale (redirection gérée par le provider).
+    await supabase.auth.signOut();
+  },
+
+  /**
    * Connexion par téléphone (OTP SMS) — méthode ALTERNATIVE à l'email.
    * 1) Envoie le code par SMS. Crée le compte si le numéro est nouveau.
    *    (Nécessite un fournisseur SMS configuré dans Supabase → Auth → Phone.)

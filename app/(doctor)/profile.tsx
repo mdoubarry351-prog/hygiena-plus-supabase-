@@ -9,6 +9,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
+import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { useAuth } from "@/providers/AuthProvider";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import { doctorService } from "@/lib/doctor-service";
@@ -237,7 +238,9 @@ export default function DoctorProfile() {
           <Button title="Enregistrer" onPress={handleSave} loading={saving} disabled={!dirty || feeInvalid} />
         </Card>
 
-        <Button title="Se déconnecter" variant="danger" onPress={() => handleSignOut(signOut)} />
+        <Button title="Se déconnecter" variant="outline" onPress={() => handleSignOut(signOut)} />
+
+        <DeleteAccountButton />
       </ScrollView>
     </Screen>
   );

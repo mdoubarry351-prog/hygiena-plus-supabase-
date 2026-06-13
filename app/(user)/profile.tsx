@@ -5,6 +5,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
+import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { useAuth } from "@/providers/AuthProvider";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
@@ -196,7 +197,9 @@ export default function Profile() {
           </Card>
         </Pressable>
 
-        <Button title="Se déconnecter" variant="danger" onPress={handleSignOut} />
+        <Button title="Se déconnecter" variant="outline" onPress={handleSignOut} />
+
+        <DeleteAccountButton />
       </ScrollView>
     </Screen>
   );
