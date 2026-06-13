@@ -285,7 +285,12 @@ export default function PostDetail() {
     }
     return cur.id;
   };
-  const topComments = comments.filter((c) => !c.parent_comment_id);
+  // Épinglage : les commentaires de premier niveau de médecins vérifiés (non
+  // anonymes) ressortent en tête, en conservant l'ordre chronologique au sein
+  // de chaque groupe (partition stable).
+  const isDoctorComment = (c: CommunityCommentWithAuthor) => !c.is_anonymous && c.isVerifiedDoctor;
+  const rawTops = comments.filter((c) => !c.parent_comment_id);
+  const topComments = [...rawTops.filter(isDoctorComment), ...rawTops.filter((c) => !isDoctorComment(c))];
   const repliesByRoot = new Map<string, CommunityCommentWithAuthor[]>();
   for (const c of comments) {
     if (!c.parent_comment_id) continue;
@@ -295,12 +300,27 @@ export default function PostDetail() {
   }
 
   function renderComment(c: CommunityCommentWithAuthor, isReply: boolean) {
+    // Mise en avant des médecins vérifiés (impossible si l'auteur poste anonymement).
+    const highlighted = !c.is_anonymous && c.isVerifiedDoctor;
     return (
-      <View key={c.id} style={[styles.comment, isReply && styles.replyComment]}>
-        <View style={[styles.commentAvatar, isReply && styles.replyAvatar]}>
+      <View
+        key={c.id}
+        style={[
+          styles.comment,
+          isReply && (highlighted ? styles.replyIndent : styles.replyComment),
+          highlighted && styles.doctorComment,
+        ]}
+      >
+        <View style={[styles.commentAvatar, isReply && styles.replyAvatar, highlighted && styles.doctorAvatar]}>
           <Ionicons name={c.is_anonymous ? "person-outline" : "person"} size={isReply ? 13 : 15} color={colors.primary} />
         </View>
         <View style={styles.commentBody}>
+          {highlighted ? (
+            <View style={styles.doctorBanner}>
+              <Ionicons name="medkit" size={13} color={colors.primaryDark} />
+              <Text style={styles.doctorBannerText}>Réponse de médecin vérifié</Text>
+            </View>
+          ) : null}
           <View style={styles.commentHead}>
             <View style={styles.authorRow}>
               <Text style={styles.commentAuthor}>{authorDisplayName(c.is_anonymous, c.author)}</Text>
@@ -504,6 +524,12 @@ const styles = StyleSheet.create({
   thread: { gap: spacing.md },
   comment: { flexDirection: "row", gap: spacing.sm },
   replyComment: { marginLeft: spacing.xl, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.border },
+  replyIndent: { marginLeft: spacing.xl },
+  // Mise en avant médecin vérifié : encart vert clair sobre + bordure verte.
+  doctorComment: { backgroundColor: colors.primaryLight, borderWidth: 1.5, borderColor: colors.primary, borderRadius: radius.md, padding: spacing.sm },
+  doctorAvatar: { backgroundColor: colors.white },
+  doctorBanner: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginBottom: 2 },
+  doctorBannerText: { ...typography.caption, color: colors.primaryDark, fontWeight: "700" },
   commentAvatar: {
     width: 30, height: 30, borderRadius: radius.pill, backgroundColor: colors.primaryLight,
     alignItems: "center", justifyContent: "center",
