@@ -5,6 +5,7 @@ const BUCKET = "product-images";
 const AVATAR_BUCKET = "avatars";
 const ARTICLE_BUCKET = "article-images";
 const COMMUNITY_BUCKET = "community-images";
+const KYC_BUCKET = "doctor-kyc";
 
 /**
  * Uploade une image de produit dans le bucket public `product-images` et
@@ -69,4 +70,24 @@ export async function uploadCommunityImage(base64: string): Promise<string> {
     .upload(path, decode(base64), { contentType: "image/jpeg", upsert: true });
   if (error) throw error;
   return supabase.storage.from(COMMUNITY_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+/**
+ * Uploade un document de vérification (KYC) du médecin dans le bucket PRIVÉ
+ * `doctor-kyc`, sous son propre dossier `${userId}/license-${timestamp}.jpg`.
+ *
+ * Bucket privé → on renvoie le CHEMIN du fichier (à stocker dans
+ * doctors.license_document_url), pas une URL publique. L'affichage se fait via
+ * une URL signée (createSignedUrl) côté admin/médecin.
+ */
+export async function uploadKycDocument(base64: string): Promise<string> {
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+  if (!userId) throw new Error("Vous devez être connecté pour téléverser un document.");
+  const path = `${userId}/license-${Date.now()}.jpg`;
+  const { error } = await supabase.storage
+    .from(KYC_BUCKET)
+    .upload(path, decode(base64), { contentType: "image/jpeg", upsert: true });
+  if (error) throw error;
+  return path;
 }

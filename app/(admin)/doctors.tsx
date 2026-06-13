@@ -45,6 +45,8 @@ export default function AdminDoctors() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activity, setActivity] = useState<DoctorActivity | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
+  const [kycUrl, setKycUrl] = useState<string | null>(null);
+  const [kycLoading, setKycLoading] = useState(false);
   const offsetRef = useRef(0);
   const PAGE = 20;
 
@@ -97,8 +99,10 @@ export default function AdminDoctors() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Charge le récap d'activité du médecin déplié.
+  // Charge le récap d'activité du médecin déplié. (Réinitialise aussi le doc KYC.)
   useEffect(() => {
+    setKycUrl(null);
+    setKycLoading(false);
     if (!expandedId) { setActivity(null); return; }
     let cancelled = false;
     setActivity(null);
@@ -115,6 +119,18 @@ export default function AdminDoctors() {
     setRefreshing(true);
     await load();
     setRefreshing(false);
+  }
+
+  // Génère une URL signée (60s) pour afficher le document KYC du bucket privé.
+  async function viewKyc(path: string) {
+    setKycLoading(true);
+    try {
+      setKycUrl(await adminService.getKycSignedUrl(path));
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Document indisponible.");
+    } finally {
+      setKycLoading(false);
+    }
   }
 
   // Recherche par NOM côté client (le nom vit sur profiles ; jeu réduit). On
@@ -472,6 +488,39 @@ export default function AdminDoctors() {
                   ) : (
                     <Text style={styles.meta}>—</Text>
                   )}
+
+                  {/* Vérification (KYC) */}
+                  <Text style={[styles.activityTitle, styles.kycTitle]}>Vérification (KYC)</Text>
+                  {d.license_document_url ? (
+                    <>
+                      {!d.is_validated ? (
+                        <Text style={styles.kycPending}>● En attente de vérification</Text>
+                      ) : null}
+                      {kycUrl ? (
+                        <Image source={{ uri: kycUrl }} style={styles.kycImage} resizeMode="contain" />
+                      ) : null}
+                      <View style={styles.kycActions}>
+                        <Pressable onPress={() => viewKyc(d.license_document_url!)} disabled={kycLoading} style={[styles.btn, styles.btnOutlineMuted, kycLoading && styles.kycBtnDisabled]}>
+                          {kycLoading ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                          ) : (
+                            <>
+                              <Ionicons name="document-text-outline" size={16} color={colors.text} />
+                              <Text style={[styles.btnText, { color: colors.text }]}>{kycUrl ? "Recharger le document" : "Voir le document"}</Text>
+                            </>
+                          )}
+                        </Pressable>
+                        {!d.is_validated ? (
+                          <Pressable onPress={() => setValidation(d, true)} style={[styles.btn, { backgroundColor: colors.success }]}>
+                            <Ionicons name="checkmark" size={16} color={colors.white} />
+                            <Text style={styles.btnText}>Valider</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={styles.meta}>Aucun document fourni</Text>
+                  )}
                 </View>
               ) : null}
               <View style={styles.actions}>
@@ -528,6 +577,11 @@ const styles = StyleSheet.create({
   activityValue: { ...typography.name, color: colors.primaryDark },
   activityLabel: { ...typography.caption, color: colors.textMuted },
   activityRating: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  kycTitle: { marginTop: spacing.sm },
+  kycPending: { ...typography.caption, color: colors.accent, fontWeight: "700" },
+  kycImage: { width: "100%", height: 220, borderRadius: radius.md, backgroundColor: colors.surface },
+  kycActions: { flexDirection: "row", gap: spacing.sm },
+  kycBtnDisabled: { opacity: 0.6 },
   info: { flex: 1, gap: 2 },
   name: { ...typography.name },
   specialty: { ...typography.caption, color: colors.secondary, fontWeight: "600" },

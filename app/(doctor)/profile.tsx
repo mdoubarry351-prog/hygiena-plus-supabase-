@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -11,6 +12,7 @@ import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import { doctorService } from "@/lib/doctor-service";
+import { uploadKycDocument } from "@/lib/storage";
 import { colors, radius, spacing, typography } from "@/theme";
 
 export default function DoctorProfile() {
@@ -23,6 +25,7 @@ export default function DoctorProfile() {
   const [bio, setBio] = useState("");
   const [fee, setFee] = useState("");
   const [saving, setSaving] = useState(false);
+  const [kycUploading, setKycUploading] = useState(false);
 
   // Pré-remplit le formulaire à partir de la fiche chargée.
   useEffect(() => {
@@ -88,6 +91,43 @@ export default function DoctorProfile() {
     }
   }
 
+  // Téléverse (ou remplace) le document de vérification dans le bucket privé.
+  async function pickKycDocument() {
+    if (!doctor) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour téléverser votre document.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 1,
+      base64: true,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (!asset?.base64) { Alert.alert("Erreur", "Impossible de lire le document sélectionné."); return; }
+    setKycUploading(true);
+    try {
+      const path = await uploadKycDocument(asset.base64);
+      const updated = await doctorService.updateLicenseDocument(doctor.id, path);
+      setDoctor(updated);
+      Alert.alert("Document envoyé", "Votre document a été transmis. Il sera vérifié par un administrateur.");
+    } catch (e) {
+      Alert.alert("Échec de l'envoi", e instanceof Error ? e.message : "Réessayez.");
+    } finally {
+      setKycUploading(false);
+    }
+  }
+
+  // État du document de vérification.
+  const kyc = doctor.is_validated
+    ? { icon: "shield-checkmark" as const, color: colors.success, label: "Vérifié ✓", sub: "Votre document a été validé." }
+    : doctor.license_document_url
+    ? { icon: "time-outline" as const, color: colors.accent, label: "Document fourni — en attente de vérification", sub: "Un administrateur va vérifier votre document." }
+    : { icon: "document-outline" as const, color: colors.textMuted, label: "Aucun document", sub: "Téléversez votre licence ou diplôme pour être vérifié." };
+
   const initial = (profile?.full_name ?? profile?.email ?? "?").trim().charAt(0).toUpperCase();
 
   return (
@@ -121,6 +161,30 @@ export default function DoctorProfile() {
               </Text>
             </View>
           </View>
+        </Card>
+
+        {/* Document de vérification (KYC) — bucket privé */}
+        <Card style={styles.kycCard}>
+          <Text style={typography.h3}>Document de vérification</Text>
+          <View style={styles.kycStatus}>
+            <Ionicons name={kyc.icon} size={20} color={kyc.color} />
+            <View style={styles.kycText}>
+              <Text style={styles.kycLabel}>{kyc.label}</Text>
+              <Text style={styles.kycSub}>{kyc.sub}</Text>
+            </View>
+          </View>
+          {!doctor.is_validated ? (
+            <Pressable onPress={pickKycDocument} disabled={kycUploading} style={[styles.kycBtn, kycUploading && styles.kycBtnDisabled]}>
+              {kycUploading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <>
+                  <Ionicons name="cloud-upload-outline" size={18} color={colors.primary} />
+                  <Text style={styles.kycBtnText}>{doctor.license_document_url ? "Remplacer le document" : "Téléverser un document"}</Text>
+                </>
+              )}
+            </Pressable>
+          ) : null}
         </Card>
 
         {/* Infos personnelles (distinctes de la fiche pro) */}
@@ -214,6 +278,14 @@ const styles = StyleSheet.create({
   statusTitle: { ...typography.name },
   statusSub: { ...typography.caption, marginTop: 2, flexShrink: 1 },
   formCard: { gap: spacing.sm },
+  kycCard: { gap: spacing.sm },
+  kycStatus: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  kycText: { flex: 1 },
+  kycLabel: { ...typography.name },
+  kycSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  kycBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.primary },
+  kycBtnDisabled: { opacity: 0.6 },
+  kycBtnText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
   accountRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   accountIcon: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
   accountText: { flex: 1, gap: 2 },

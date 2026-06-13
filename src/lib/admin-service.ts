@@ -417,6 +417,14 @@ export const adminService = {
     );
   },
 
+  // URL signée (courte durée) pour consulter un document KYC du bucket privé.
+  async getKycSignedUrl(path: string): Promise<string> {
+    const { data, error } = await supabase.storage.from("doctor-kyc").createSignedUrl(path, 60);
+    if (error) throw error;
+    if (!data?.signedUrl) throw new Error("URL signée indisponible.");
+    return data.signedUrl;
+  },
+
   // Récap d'activité d'un médecin pour la fiche détail : rendez-vous, note/avis,
   // revenus (somme des consultations payées), statut validé.
   async getDoctorActivity(doctorId: string): Promise<DoctorActivity> {

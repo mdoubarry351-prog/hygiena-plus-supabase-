@@ -162,6 +162,7 @@ export type Database = {
           specialty: string;
           bio: string | null;
           license_number: string | null;
+          license_document_url: string | null;
           availability: Json;
           consultation_fee: number | null;
           clinic_name: string | null;
@@ -180,6 +181,7 @@ export type Database = {
           specialty: string;
           bio?: string | null;
           license_number?: string | null;
+          license_document_url?: string | null;
           availability?: Json;
           consultation_fee?: number | null;
           clinic_name?: string | null;
@@ -198,6 +200,7 @@ export type Database = {
           specialty?: string;
           bio?: string | null;
           license_number?: string | null;
+          license_document_url?: string | null;
           availability?: Json;
           consultation_fee?: number | null;
           clinic_name?: string | null;

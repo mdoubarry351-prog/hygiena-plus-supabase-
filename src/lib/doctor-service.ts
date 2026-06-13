@@ -154,4 +154,16 @@ export const doctorService = {
     if (error) throw error;
     return data;
   },
+
+  // Enregistre le CHEMIN du document KYC (bucket privé doctor-kyc) sur la fiche.
+  async updateLicenseDocument(doctorId: string, path: string): Promise<Doctor> {
+    const { data, error } = await supabase
+      .from("doctors")
+      .update({ license_document_url: path })
+      .eq("id", doctorId)
+      .select("*")
+      .single();
+    if (error) throw error;
+    return data;
+  },
 };
