@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -9,6 +9,7 @@ import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
 import { ReviewsSection } from "@/components/ReviewsSection";
+import { PostImages } from "@/components/PostImages";
 import { useFavorites } from "@/hooks/useFavorites";
 import { hapticLight } from "@/lib/haptics";
 import { useCart } from "@/providers/CartProvider";
@@ -83,8 +84,8 @@ export default function ProductDetail() {
         }
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {product.image_url ? (
-          <Image source={{ uri: product.image_url }} style={styles.image} resizeMode="cover" />
+        {(product.image_urls?.length || product.image_url) ? (
+          <PostImages imageUrls={product.image_urls} imageUrl={product.image_url} />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
             <Ionicons name="bag-outline" size={48} color={colors.textMuted} />

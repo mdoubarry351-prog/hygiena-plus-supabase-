@@ -215,75 +215,77 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
   const [name, setName] = useState(product?.name ?? "");
   const [price, setPrice] = useState(product?.price != null ? String(product.price) : "");
   const [stock, setStock] = useState(product?.stock != null ? String(product.stock) : "0");
+  const MAX_IMAGES = 5;
   const [description, setDescription] = useState(product?.description ?? "");
   const [category, setCategory] = useState<string>(product?.category ?? "");
-  const [imageUrl, setImageUrl] = useState(product?.image_url ?? "");
-  const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const [images, setImages] = useState<string[]>(
+    product?.image_urls?.length ? product.image_urls : product?.image_url ? [product.image_url] : []
+  );
   const [uploading, setUploading] = useState(false);
   const [isActive, setIsActive] = useState(product?.is_active ?? true);
   const [saving, setSaving] = useState(false);
 
-  // Aperçu : la photo locale (immédiate) puis l'URL distante une fois uploadée.
-  const previewUri = localPreview ?? (imageUrl || null);
-
-  // Sélection d'une photo depuis la galerie + upload haute qualité vers Storage.
-  async function pickImage() {
+  // Sélection de PLUSIEURS photos (jusqu'à 5) + upload de chacune vers Storage.
+  async function pickImages() {
+    const remaining = MAX_IMAGES - images.length;
+    if (remaining <= 0) { Alert.alert("Limite atteinte", `Jusqu'à ${MAX_IMAGES} photos par produit.`); return; }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour ajouter une image de produit.");
+      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour ajouter des images de produit.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false, // garde la résolution d'origine
-      quality: 1, // aucune compression
-      base64: true, // octets fiables pour l'upload en RN
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
+      allowsEditing: false,
+      quality: 1,
+      base64: true,
     });
     if (result.canceled) return;
-    const asset = result.assets[0];
-    if (!asset?.base64) {
-      Alert.alert("Erreur", "Impossible de lire la photo sélectionnée.");
-      return;
-    }
-    setLocalPreview(asset.uri);
+    const assets = result.assets.slice(0, remaining).filter((a) => a.base64);
+    if (assets.length === 0) { Alert.alert("Erreur", "Impossible de lire les photos sélectionnées."); return; }
     setUploading(true);
     try {
-      const url = await uploadProductImage(asset.base64);
-      setImageUrl(url);
+      const urls: string[] = [];
+      for (const a of assets) urls.push(await uploadProductImage(a.base64!));
+      setImages((prev) => [...prev, ...urls].slice(0, MAX_IMAGES));
     } catch (e) {
-      setLocalPreview(null);
       Alert.alert("Échec de l'upload", e instanceof Error ? e.message : "Réessayez.");
     } finally {
       setUploading(false);
     }
   }
 
-  function removePhoto() {
-    setImageUrl("");
-    setLocalPreview(null);
+  function removeImage(index: number) {
+    setImages((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function handleSave() {
     if (!session?.user) return;
-    if (uploading) { Alert.alert("Patientez", "La photo est encore en cours d'envoi."); return; }
+    if (uploading) { Alert.alert("Patientez", "Les photos sont encore en cours d'envoi."); return; }
     const priceNum = Number(price.replace(/\s/g, ""));
     const stockNum = Number(stock.replace(/\s/g, ""));
     if (!name.trim()) { Alert.alert("Nom requis", "Indiquez le nom du produit."); return; }
     if (Number.isNaN(priceNum) || priceNum < 0) { Alert.alert("Prix invalide", "Le prix doit être un nombre positif."); return; }
     if (Number.isNaN(stockNum) || stockNum < 0) { Alert.alert("Stock invalide", "Le stock doit être un nombre positif."); return; }
 
+    // image_url = 1ʳᵉ photo (compat affichage ancien) ; image_urls = la galerie.
+    const firstImage = images[0] ?? null;
+    const imageList = images.length ? images : null;
+
     setSaving(true);
     try {
       if (product) {
         await adminService.updateProduct(session.user.id, product.id, {
           name: name.trim(), price: priceNum, stock: stockNum,
-          description: description.trim() || null, image_url: imageUrl.trim() || null,
+          description: description.trim() || null, image_url: firstImage, image_urls: imageList,
           category: category || null, is_active: isActive,
         });
       } else {
         await adminService.createProduct(session.user.id, {
           name: name.trim(), price: priceNum, stock: stockNum,
-          description: description.trim() || null, image_url: imageUrl.trim() || null,
+          description: description.trim() || null, image_url: firstImage, image_urls: imageList,
           category: category || null, is_active: isActive,
         });
       }
@@ -317,34 +319,34 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
         </View>
 
         <View style={styles.photoBlock}>
-          <Text style={styles.photoLabel}>Photo du produit (facultatif)</Text>
-          {previewUri ? (
-            <View style={styles.previewWrap}>
-              <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="cover" />
-              {uploading && (
-                <View style={styles.previewOverlay}>
-                  <ActivityIndicator color={colors.white} />
-                  <Text style={styles.previewOverlayText}>Envoi…</Text>
+          <Text style={styles.photoLabel}>Photos du produit (facultatif, jusqu'à {MAX_IMAGES})</Text>
+          {images.length > 0 ? (
+            <View style={styles.thumbGrid}>
+              {images.map((url, i) => (
+                <View key={url} style={styles.thumbWrap}>
+                  <Image source={{ uri: url }} style={styles.thumb} resizeMode="cover" />
+                  {i === 0 ? <View style={styles.mainTag}><Text style={styles.mainTagText}>Principale</Text></View> : null}
+                  <Pressable onPress={() => removeImage(i)} hitSlop={6} style={styles.thumbRemove} accessibilityRole="button" accessibilityLabel="Retirer cette photo">
+                    <Ionicons name="close" size={14} color={colors.white} />
+                  </Pressable>
                 </View>
-              )}
+              ))}
             </View>
-          ) : (
-            <View style={[styles.preview, styles.previewPlaceholder]}>
-              <Ionicons name="image-outline" size={44} color={colors.textMuted} />
+          ) : null}
+          {uploading ? (
+            <View style={styles.uploadRow}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={styles.uploadText}>Envoi des photos…</Text>
             </View>
-          )}
-          <View style={styles.photoActions}>
-            <Pressable onPress={pickImage} disabled={uploading} style={[styles.photoBtn, uploading && styles.photoBtnDisabled]}>
-              <Ionicons name="image" size={18} color={colors.primary} />
-              <Text style={styles.photoBtnText}>{previewUri ? "Changer la photo" : "Choisir une photo"}</Text>
-            </Pressable>
-            {previewUri && !uploading ? (
-              <Pressable onPress={removePhoto} style={[styles.photoBtn, styles.photoBtnDanger]}>
-                <Ionicons name="trash-outline" size={18} color={colors.danger} />
-                <Text style={[styles.photoBtnText, { color: colors.danger }]}>Retirer</Text>
+          ) : null}
+          {images.length < MAX_IMAGES ? (
+            <View style={styles.photoActions}>
+              <Pressable onPress={pickImages} disabled={uploading} style={[styles.photoBtn, uploading && styles.photoBtnDisabled]}>
+                <Ionicons name="image" size={18} color={colors.primary} />
+                <Text style={styles.photoBtnText}>Ajouter des photos</Text>
               </Pressable>
-            ) : null}
-          </View>
+            </View>
+          ) : null}
         </View>
         <View style={styles.activeRow}>
           <Text style={styles.activeLabel}>Produit actif</Text>
@@ -394,6 +396,14 @@ const styles = StyleSheet.create({
   // Sélecteur de photo
   photoBlock: { gap: spacing.sm },
   photoLabel: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
+  thumbGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  thumbWrap: { width: "31%", aspectRatio: 1, position: "relative" },
+  thumb: { width: "100%", height: "100%", borderRadius: radius.md, backgroundColor: colors.surface },
+  thumbRemove: { position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" },
+  mainTag: { position: "absolute", bottom: 4, left: 4, backgroundColor: colors.primary, borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 1 },
+  mainTagText: { ...typography.caption, color: colors.white, fontSize: 10, fontWeight: "700" },
+  uploadRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  uploadText: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
   previewWrap: { position: "relative" },
   preview: { width: "100%", height: 220, borderRadius: radius.lg, backgroundColor: colors.surface },
   previewPlaceholder: { alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.border, borderStyle: "dashed" },

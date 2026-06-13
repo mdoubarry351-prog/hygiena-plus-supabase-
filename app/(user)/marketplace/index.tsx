@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useRef, useState, useCallback } from "react";
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
@@ -13,6 +13,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useCart } from "@/providers/CartProvider";
+import { hapticLight } from "@/lib/haptics";
 import { formatPrice, PRODUCT_CATEGORIES, type ProductSort } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
@@ -38,7 +39,7 @@ export default function MarketplaceHome() {
   });
   const { marketplace_enabled } = useAppSettings();
   const { favIds, toggle } = useFavorites();
-  const { count } = useCart();
+  const { count, addItem } = useCart();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const isFiltering = !!search.trim() || activeCat !== "all";
@@ -149,6 +150,7 @@ export default function MarketplaceHome() {
                 product={p}
                 isFav={favIds.has(p.id)}
                 onToggleFav={() => toggle(p.id)}
+                onAdd={() => addItem(p, 1)}
                 onPress={() => router.push(`/(user)/marketplace/${p.id}`)}
               />
             ))}
@@ -170,13 +172,26 @@ export default function MarketplaceHome() {
   );
 }
 
-function ProductRow({ product, isFav, onToggleFav, onPress }: { product: MarketplaceProduct; isFav: boolean; onToggleFav: () => void; onPress: () => void }) {
+function ProductRow({ product, isFav, onToggleFav, onAdd, onPress }: { product: MarketplaceProduct; isFav: boolean; onToggleFav: () => void; onAdd: () => void; onPress: () => void }) {
   const outOfStock = product.stock <= 0;
+  const thumbUrl = product.image_urls?.[0] ?? product.image_url;
+  const [justAdded, setJustAdded] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function quickAdd() {
+    if (outOfStock) return;
+    onAdd();
+    hapticLight();
+    setJustAdded(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setJustAdded(false), 1200);
+  }
+
   return (
     <Pressable onPress={onPress}>
       <Card style={styles.row}>
-        {product.image_url ? (
-          <Image source={{ uri: product.image_url }} style={styles.thumb} resizeMode="cover" />
+        {thumbUrl ? (
+          <Image source={{ uri: thumbUrl }} style={styles.thumb} resizeMode="cover" />
         ) : (
           <View style={[styles.thumb, styles.thumbPlaceholder]}>
             <Ionicons name="bag-outline" size={28} color={colors.textMuted} />
@@ -195,13 +210,25 @@ function ProductRow({ product, isFav, onToggleFav, onPress }: { product: Marketp
             {outOfStock && <Text style={styles.outOfStock}>Rupture</Text>}
           </View>
         </View>
-        <Pressable onPress={onToggleFav} hitSlop={10} style={styles.favBtn} accessibilityRole="button" accessibilityLabel={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}>
-          <Ionicons
-            name={isFav ? "heart" : "heart-outline"}
-            size={22}
-            color={isFav ? colors.danger : colors.textMuted}
-          />
-        </Pressable>
+        <View style={styles.rowActions}>
+          <Pressable onPress={onToggleFav} hitSlop={10} style={styles.favBtn} accessibilityRole="button" accessibilityLabel={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}>
+            <Ionicons
+              name={isFav ? "heart" : "heart-outline"}
+              size={22}
+              color={isFav ? colors.danger : colors.textMuted}
+            />
+          </Pressable>
+          <Pressable
+            onPress={quickAdd}
+            disabled={outOfStock}
+            hitSlop={8}
+            style={[styles.addBtn, justAdded && styles.addBtnDone, outOfStock && styles.addBtnDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel={`Ajouter ${product.name} au panier`}
+          >
+            <Ionicons name={justAdded ? "checkmark" : "add"} size={20} color={colors.white} />
+          </Pressable>
+        </View>
       </Card>
     </Pressable>
   );
@@ -210,6 +237,10 @@ function ProductRow({ product, isFav, onToggleFav, onPress }: { product: Marketp
 const THUMB = 96;
 const styles = StyleSheet.create({
   favBtn: { padding: spacing.xs },
+  rowActions: { alignItems: "center", justifyContent: "space-between", alignSelf: "stretch" },
+  addBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  addBtnDone: { backgroundColor: colors.success },
+  addBtnDisabled: { backgroundColor: colors.border },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
   actions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   iconBtn: { padding: spacing.xs },
