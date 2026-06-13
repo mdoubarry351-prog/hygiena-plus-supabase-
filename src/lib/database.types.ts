@@ -1283,6 +1283,16 @@ export type Database = {
         Args: { p_doctor: string; p_from: string; p_to: string };
         Returns: { appointment_date: string; appointment_time: string }[];
       };
+      // Diffusion de notifications (admin) : nombre de destinataires d'un public.
+      admin_broadcast_count: {
+        Args: { p_audience: string };
+        Returns: number;
+      };
+      // Diffusion de notifications (admin) : insère une notification par destinataire.
+      admin_broadcast: {
+        Args: { p_title: string; p_message: string; p_audience: string };
+        Returns: { ok: boolean; count?: number; error?: string };
+      };
     };
     Enums: {
       user_role: UserRole;

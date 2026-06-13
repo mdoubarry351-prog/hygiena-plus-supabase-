@@ -466,6 +466,28 @@ export const adminService = {
     await logAction(adminId, "delete_banned_word", "banned_words", id);
   },
 
+  // ---------------- 7bis. Diffusion de notifications ----------------
+  // Nombre de destinataires d'un public (preview avant envoi).
+  async broadcastCount(audience: string): Promise<number> {
+    const { data, error } = await supabase.rpc("admin_broadcast_count", { p_audience: audience });
+    if (error) throw error;
+    return typeof data === "number" ? data : 0;
+  },
+
+  // Envoie une notification à tout le public choisi (une notif par destinataire).
+  async sendBroadcast(adminId: string, title: string, message: string, audience: string): Promise<number> {
+    const { data, error } = await supabase.rpc("admin_broadcast", {
+      p_title: title,
+      p_message: message,
+      p_audience: audience,
+    });
+    if (error) throw error;
+    if (!data?.ok) throw new Error(data?.error || "Diffusion impossible.");
+    const count = data.count ?? 0;
+    await logAction(adminId, "broadcast_notification", "notifications", null, { audience, count });
+    return count;
+  },
+
   // ---------------- 7c. Articles (bibliothèque de contenu) ----------------
   // Admin : voit TOUS les articles (publiés + brouillons).
   async getAllArticles(): Promise<Article[]> {
