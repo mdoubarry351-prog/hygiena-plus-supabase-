@@ -29,6 +29,7 @@ import {
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { hapticLight } from "@/lib/haptics";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 export default function PostDetail() {
@@ -45,6 +46,7 @@ export default function PostDetail() {
   const [comment, setComment] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [sending, setSending] = useState(false);
+  const [replyTo, setReplyTo] = useState<CommunityCommentWithAuthor | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -91,15 +93,36 @@ export default function PostDetail() {
         userId: session.user.id,
         content: text,
         isAnonymous,
+        parentCommentId: replyTo?.id ?? null,
       });
       setComment("");
       setIsAnonymous(false);
+      setReplyTo(null);
       const c = await communityService.getComments(post.id);
       setComments(c);
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Commentaire échoué");
     } finally {
       setSending(false);
+    }
+  }
+
+  // Like/unlike d'un commentaire (optimiste + haptique léger).
+  async function handleCommentLike(c: CommunityCommentWithAuthor) {
+    if (!session?.user) return;
+    hapticLight();
+    setComments((prev) =>
+      prev.map((x) =>
+        x.id === c.id ? { ...x, likedByMe: !x.likedByMe, likes_count: x.likes_count + (x.likedByMe ? -1 : 1) } : x
+      )
+    );
+    try {
+      await communityService.toggleCommentLike(c.id, c.likedByMe);
+    } catch {
+      // rollback à l'état initial du commentaire
+      setComments((prev) =>
+        prev.map((x) => (x.id === c.id ? { ...x, likedByMe: c.likedByMe, likes_count: c.likes_count } : x))
+      );
     }
   }
 
@@ -126,6 +149,64 @@ export default function PostDetail() {
 
   if (loading) return <Loading />;
   if (!post) return null;
+
+  // Threading : commentaires de premier niveau + réponses regroupées sous leur
+  // fil racine (une réponse à une réponse rattache au même fil parent).
+  const byId = new Map(comments.map((c) => [c.id, c]));
+  const rootId = (c: CommunityCommentWithAuthor): string => {
+    let cur = c;
+    const seen = new Set<string>();
+    while (cur.parent_comment_id && byId.has(cur.parent_comment_id) && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      cur = byId.get(cur.parent_comment_id)!;
+    }
+    return cur.id;
+  };
+  const topComments = comments.filter((c) => !c.parent_comment_id);
+  const repliesByRoot = new Map<string, CommunityCommentWithAuthor[]>();
+  for (const c of comments) {
+    if (!c.parent_comment_id) continue;
+    const r = rootId(c);
+    if (!repliesByRoot.has(r)) repliesByRoot.set(r, []);
+    repliesByRoot.get(r)!.push(c);
+  }
+
+  function renderComment(c: CommunityCommentWithAuthor, isReply: boolean) {
+    return (
+      <View key={c.id} style={[styles.comment, isReply && styles.replyComment]}>
+        <View style={[styles.commentAvatar, isReply && styles.replyAvatar]}>
+          <Ionicons name={c.is_anonymous ? "person-outline" : "person"} size={isReply ? 13 : 15} color={colors.primary} />
+        </View>
+        <View style={styles.commentBody}>
+          <View style={styles.commentHead}>
+            <View style={styles.authorRow}>
+              <Text style={styles.commentAuthor}>{authorDisplayName(c.is_anonymous, c.author)}</Text>
+              {!c.is_anonymous && c.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
+            </View>
+            <View style={styles.commentRight}>
+              <Text style={styles.commentTime}>{formatRelativeTime(c.created_at)}</Text>
+              {!c.is_anonymous && c.user_id !== meId ? (
+                <Pressable onPress={() => confirmBlock(c.user_id, () => load())} hitSlop={8} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Bloquer cet utilisateur">
+                  <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+          <Text style={styles.commentText}>{c.content}</Text>
+          <View style={styles.commentActions}>
+            <Pressable onPress={() => handleCommentLike(c)} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel={c.likedByMe ? "Je n'aime plus" : "J'aime"}>
+              <Ionicons name={c.likedByMe ? "heart" : "heart-outline"} size={16} color={c.likedByMe ? colors.primary : colors.textMuted} />
+              <Text style={[styles.commentActionText, c.likedByMe && styles.likeCountActive]}>{c.likes_count}</Text>
+            </Pressable>
+            <Pressable onPress={() => setReplyTo(c)} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel="Répondre">
+              <Ionicons name="return-down-forward-outline" size={15} color={colors.textMuted} />
+              <Text style={styles.commentActionText}>Répondre</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <Screen>
@@ -195,44 +276,31 @@ export default function PostDetail() {
               Aucun commentaire pour le moment.
             </Text>
           ) : (
-            comments.map((c) => (
-              <View key={c.id} style={styles.comment}>
-                <View style={styles.commentAvatar}>
-                  <Ionicons
-                    name={c.is_anonymous ? "person-outline" : "person"}
-                    size={15}
-                    color={colors.primary}
-                  />
-                </View>
-                <View style={styles.commentBody}>
-                  <View style={styles.commentHead}>
-                    <View style={styles.authorRow}>
-                      <Text style={styles.commentAuthor}>
-                        {authorDisplayName(c.is_anonymous, c.author)}
-                      </Text>
-                      {!c.is_anonymous && c.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
-                    </View>
-                    <View style={styles.commentRight}>
-                      <Text style={styles.commentTime}>{formatRelativeTime(c.created_at)}</Text>
-                      {!c.is_anonymous && c.user_id !== meId ? (
-                        <Pressable onPress={() => confirmBlock(c.user_id, () => load())} hitSlop={8} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Bloquer cet utilisateur">
-                          <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
-                        </Pressable>
-                      ) : null}
-                    </View>
-                  </View>
-                  <Text style={styles.commentText}>{c.content}</Text>
-                </View>
+            topComments.map((top) => (
+              <View key={top.id} style={styles.thread}>
+                {renderComment(top, false)}
+                {(repliesByRoot.get(top.id) ?? []).map((r) => renderComment(r, true))}
               </View>
             ))
           )}
         </ScrollView>
 
         <View style={styles.composer}>
+          {replyTo ? (
+            <View style={styles.replyBanner}>
+              <Ionicons name="return-down-forward-outline" size={14} color={colors.primary} />
+              <Text style={styles.replyBannerText} numberOfLines={1}>
+                En réponse à {authorDisplayName(replyTo.is_anonymous, replyTo.author)}
+              </Text>
+              <Pressable onPress={() => setReplyTo(null)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Annuler la réponse">
+                <Ionicons name="close" size={16} color={colors.textMuted} />
+              </Pressable>
+            </View>
+          ) : null}
           <Input
             value={comment}
             onChangeText={setComment}
-            placeholder="Écrire un commentaire…"
+            placeholder={replyTo ? "Votre réponse…" : "Écrire un commentaire…"}
             multiline
             style={styles.composerInput}
           />
@@ -280,16 +348,24 @@ const styles = StyleSheet.create({
   likeCountActive: { color: colors.primary },
   sectionTitle: { marginTop: spacing.sm },
   muted: { color: colors.textMuted },
+  thread: { gap: spacing.md },
   comment: { flexDirection: "row", gap: spacing.sm },
+  replyComment: { marginLeft: spacing.xl, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.border },
   commentAvatar: {
     width: 30, height: 30, borderRadius: radius.pill, backgroundColor: colors.primaryLight,
     alignItems: "center", justifyContent: "center",
   },
+  replyAvatar: { width: 26, height: 26 },
   commentBody: { flex: 1, gap: 2 },
   commentHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   commentAuthor: { ...typography.caption, color: colors.text, fontFamily: fonts.bodyBold, fontWeight: "700" },
   commentTime: { ...typography.caption, color: colors.textMuted },
   commentText: { ...typography.body, color: colors.text, lineHeight: 20 },
+  commentActions: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },
+  commentAction: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  commentActionText: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
+  replyBanner: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.primaryLight, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  replyBannerText: { ...typography.caption, color: colors.primaryDark, fontWeight: "600", flex: 1 },
   composer: {
     borderTopWidth: 1, borderTopColor: colors.border,
     paddingTop: spacing.sm, paddingBottom: spacing.sm, gap: spacing.sm,

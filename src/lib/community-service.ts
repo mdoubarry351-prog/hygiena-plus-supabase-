@@ -115,10 +115,11 @@ async function fetchAuthors(ids: (string | null)[]): Promise<Map<string, PostAut
   return map;
 }
 
-// Commentaire enrichi avec son auteur + statut médecin vérifié.
+// Commentaire enrichi avec son auteur + statut médecin vérifié + like de l'utilisatrice.
 export type CommunityCommentWithAuthor = CommunityComment & {
   author: Pick<Profile, "full_name" | "avatar_url"> | null;
   isVerifiedDoctor: boolean;
+  likedByMe: boolean;
 };
 
 // Nom à afficher : "Anonyme" si la publication est anonyme, sinon le nom
@@ -305,6 +306,7 @@ export const communityService = {
   },
 
   // Commentaires d'une publication, les plus anciens en premier (ordre de lecture).
+  // Renvoie aussi parent_comment_id, likes_count et likedByMe (likes de l'utilisatrice).
   async getComments(postId: string): Promise<CommunityCommentWithAuthor[]> {
     const { data, error } = await supabase
       .from("community_comments")
@@ -315,6 +317,17 @@ export const communityService = {
     const rows = (data ?? []) as (CommunityComment & {
       author: Pick<Profile, "full_name" | "avatar_url"> | null;
     })[];
+    // Likes de l'utilisatrice sur ces commentaires (requête séparée).
+    const me = await currentUserId();
+    let likedSet = new Set<string>();
+    if (me && rows.length) {
+      const { data: likes } = await supabase
+        .from("comment_likes")
+        .select("comment_id")
+        .eq("user_id", me)
+        .in("comment_id", rows.map((r) => r.id));
+      likedSet = new Set((likes ?? []).map((l) => l.comment_id));
+    }
     // Badge « médecin vérifié » + exclusion des commentaires d'auteurs bloqués.
     const [verified, blocked] = await Promise.all([
       fetchVerifiedDoctorIds(rows.map((r) => r.user_id)),
@@ -322,21 +335,27 @@ export const communityService = {
     ]);
     return rows
       .filter((r) => !(r.user_id && blocked.has(r.user_id)))
-      .map((r) => ({ ...r, isVerifiedDoctor: r.user_id ? verified.has(r.user_id) : false }));
+      .map((r) => ({
+        ...r,
+        isVerifiedDoctor: r.user_id ? verified.has(r.user_id) : false,
+        likedByMe: likedSet.has(r.id),
+      }));
   },
 
-  // Ajoute un commentaire à une publication.
+  // Ajoute un commentaire (ou une réponse si parentCommentId est fourni).
   async addComment(input: {
     postId: string;
     userId: string;
     content: string;
     isAnonymous: boolean;
+    parentCommentId?: string | null;
   }): Promise<CommunityComment> {
     const payload: TablesInsert<"community_comments"> = {
       post_id: input.postId,
       user_id: input.userId,
       content: input.content,
       is_anonymous: input.isAnonymous,
+      parent_comment_id: input.parentCommentId ?? null,
     };
     const { data, error } = await supabase
       .from("community_comments")
@@ -348,6 +367,25 @@ export const communityService = {
       throw error;
     }
     return data;
+  },
+
+  // Like/unlike d'un commentaire. Le trigger SQL maintient likes_count.
+  async toggleCommentLike(commentId: string, isLiked: boolean): Promise<void> {
+    const me = await currentUserId();
+    if (!me) throw new Error("Vous devez être connectée.");
+    if (isLiked) {
+      const { error } = await supabase
+        .from("comment_likes")
+        .delete()
+        .eq("comment_id", commentId)
+        .eq("user_id", me);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("comment_likes")
+        .insert({ comment_id: commentId, user_id: me });
+      if (error && error.code !== "23505") throw error; // ignore le doublon (unique)
+    }
   },
 
   // ---------------- Blocage d'utilisateurs ----------------

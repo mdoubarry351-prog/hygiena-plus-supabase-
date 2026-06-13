@@ -711,6 +711,8 @@ export type Database = {
           user_id: string;
           content: string;
           is_anonymous: boolean;
+          parent_comment_id: string | null;
+          likes_count: number;
           created_at: string;
           updated_at: string;
         };
@@ -720,6 +722,8 @@ export type Database = {
           user_id: string;
           content: string;
           is_anonymous?: boolean;
+          parent_comment_id?: string | null;
+          likes_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -729,6 +733,8 @@ export type Database = {
           user_id?: string;
           content?: string;
           is_anonymous?: boolean;
+          parent_comment_id?: string | null;
+          likes_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -741,6 +747,50 @@ export type Database = {
           },
           {
             foreignKeyName: "community_comments_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "community_comments_parent_comment_id_fkey";
+            columns: ["parent_comment_id"];
+            referencedRelation: "community_comments";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      // =================================================
+      // 8b. comment_likes (j'aime sur un commentaire)
+      // =================================================
+      comment_likes: {
+        Row: {
+          id: string;
+          comment_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          comment_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          comment_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "comment_likes_comment_id_fkey";
+            columns: ["comment_id"];
+            referencedRelation: "community_comments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "comment_likes_user_id_fkey";
             columns: ["user_id"];
             referencedRelation: "profiles";
             referencedColumns: ["id"];
@@ -1267,6 +1317,7 @@ export type CommunityPost = Tables<"community_posts">;
 export type CommunityPostSafe = Database["public"]["Views"]["community_posts_safe"]["Row"];
 export type CommunityComment = Tables<"community_comments">;
 export type CommunityLike = Tables<"community_likes">;
+export type CommentLike = Tables<"comment_likes">;
 export type AppSettings = Tables<"app_settings">;
 export type StoreSettings = Tables<"store_settings">;
 export type AdminLog = Tables<"admin_logs">;
