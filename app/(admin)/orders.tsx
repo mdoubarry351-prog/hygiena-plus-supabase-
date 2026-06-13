@@ -3,6 +3,7 @@ import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, t
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -45,13 +46,23 @@ export default function AdminOrders() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<"all" | OrderStatus>("all");
+  const [exporting, setExporting] = useState(false);
   const offsetRef = useRef(0);
+  const filtersRef = useRef<{ search: string; status: "all" | OrderStatus }>({ search: "", status: "all" });
   const PAGE = 20;
+
+  // Filtres serveur courants (recherche téléphone + statut).
+  const serverFilters = () => ({
+    search: filtersRef.current.search || null,
+    status: filtersRef.current.status === "all" ? null : filtersRef.current.status,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await adminService.getOrdersPage(PAGE, 0);
+      const data = await adminService.getOrdersPage(PAGE, 0, serverFilters());
       setOrders(data);
       offsetRef.current = PAGE;
       setHasMore(data.length === PAGE);
@@ -66,7 +77,7 @@ export default function AdminOrders() {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
-      const data = await adminService.getOrdersPage(PAGE, offsetRef.current);
+      const data = await adminService.getOrdersPage(PAGE, offsetRef.current, serverFilters());
       setOrders((prev) => {
         const seen = new Set(prev.map((o) => o.id));
         return [...prev, ...data.filter((o) => !seen.has(o.id))];
@@ -80,7 +91,12 @@ export default function AdminOrders() {
     }
   }, [loadingMore, hasMore]);
 
-  useEffect(() => { load(); }, [load]);
+  // Recharge serveur (page 0) à chaque changement de recherche/statut, avec debounce.
+  useEffect(() => {
+    filtersRef.current = { search, status };
+    const t = setTimeout(() => { load(); }, 350);
+    return () => clearTimeout(t);
+  }, [search, status, load]);
 
   async function onRefresh() {
     setRefreshing(true);
@@ -89,8 +105,10 @@ export default function AdminOrders() {
   }
 
   async function handleExport() {
+    setExporting(true);
     try {
-      const rows = orders.map((o) => ({
+      const all = await adminService.getAllOrdersFiltered(serverFilters());
+      const rows = all.map((o) => ({
         numero: o.id.slice(0, 8),
         cliente: o.phone,
         articles: String(itemCount(o.items)),
@@ -108,6 +126,8 @@ export default function AdminOrders() {
       ]);
     } catch (e) {
       Alert.alert("Export impossible", e instanceof Error ? e.message : "Réessayez.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -136,7 +156,27 @@ export default function AdminOrders() {
 
   return (
     <Screen>
-      <AdminHeader title="Commandes" right={<ExportButton onPress={handleExport} />} />
+      <AdminHeader title="Commandes" right={<ExportButton onPress={handleExport} loading={exporting} />} />
+      <View style={styles.filters}>
+        <Input
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Rechercher (téléphone)…"
+          autoCapitalize="none"
+          keyboardType="phone-pad"
+          style={styles.searchInput}
+        />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusRow}>
+          {(["all", ...STATUSES] as const).map((s) => {
+            const active = status === s;
+            return (
+              <Pressable key={s} onPress={() => setStatus(s)} style={[styles.statusChip, active && styles.statusChipActive]}>
+                <Text style={[styles.statusChipText, active && styles.statusChipTextActive]}>{s === "all" ? "Toutes" : STATUS_LABELS[s]}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
@@ -145,7 +185,7 @@ export default function AdminOrders() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {orders.length === 0 ? (
-          <EmptyState icon="receipt-outline" title="Aucune commande" />
+          <EmptyState icon="receipt-outline" title={search.trim() || status !== "all" ? "Aucun résultat" : "Aucune commande"} />
         ) : (
           <>
             {orders.map((o) => {
@@ -176,6 +216,13 @@ export default function AdminOrders() {
 }
 
 const styles = StyleSheet.create({
+  filters: { paddingTop: spacing.sm, gap: spacing.sm },
+  searchInput: { marginBottom: 0 },
+  statusRow: { gap: spacing.xs, paddingRight: spacing.md },
+  statusChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border },
+  statusChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  statusChipText: { ...typography.caption, fontWeight: "700", color: colors.text },
+  statusChipTextActive: { color: colors.white },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   empty: { alignItems: "center" },
   muted: { color: colors.textMuted },

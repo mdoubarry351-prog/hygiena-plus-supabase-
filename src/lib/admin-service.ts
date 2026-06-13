@@ -15,6 +15,7 @@ import type {
   DoctorReview,
   UserRole,
   OrderStatus,
+  DeliveryMode,
   Json,
   Tables,
   TablesInsert,
@@ -42,6 +43,50 @@ async function logAction(
   };
   const { error } = await supabase.from("admin_logs").insert(payload);
   if (error) console.warn("admin_logs (log non enregistré):", error.message);
+}
+
+// Récupère TOUTES les pages d'une requête filtrée (export complet), par lots de
+// EXPORT_PAGE, jusqu'à épuisement ou plafond EXPORT_CAP.
+async function fetchAllPages<T>(
+  makeQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; from < EXPORT_CAP; from += EXPORT_PAGE) {
+    const { data, error } = await makeQuery(from, from + EXPORT_PAGE - 1);
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+    all.push(...rows);
+    if (rows.length < EXPORT_PAGE) break;
+  }
+  return all;
+}
+
+// Constructeurs de requêtes filtrées (réutilisés par les variantes paginées et
+// par l'export complet) — recherche/filtres appliqués CÔTÉ SERVEUR.
+function buildUsersQuery(filters?: UsersFilter) {
+  let q = supabase.from("profiles").select("*").order("created_at", { ascending: false });
+  const s = filters?.search?.trim();
+  if (s) q = q.or(`full_name.ilike.%${s}%,email.ilike.%${s}%,phone.ilike.%${s}%`);
+  if (filters?.role) q = q.eq("role", filters.role);
+  return q;
+}
+
+function buildProductsQuery(filters?: ProductsFilter) {
+  let q = supabase.from("marketplace_products").select("*").order("created_at", { ascending: false });
+  const s = filters?.search?.trim();
+  if (s) q = q.ilike("name", `%${s}%`);
+  if (filters?.status === "active") q = q.eq("is_active", true);
+  else if (filters?.status === "inactive") q = q.eq("is_active", false);
+  return q;
+}
+
+function buildOrdersQuery(filters?: OrdersFilter) {
+  let q = supabase.from("marketplace_orders").select("*").order("created_at", { ascending: false });
+  const s = filters?.search?.trim();
+  if (s) q = q.ilike("phone", `%${s}%`); // recherche sur le téléphone (l'id uuid n'est pas filtrable en ilike)
+  if (filters?.status) q = q.eq("status", filters.status);
+  if (filters?.source) q = q.eq("delivery_mode", filters.source);
+  return q;
 }
 
 // Invoque l'Edge Function admin-user-actions (service role côté serveur).
@@ -102,6 +147,15 @@ export type AuditLogRow = Tables<"admin_logs"> & { adminName: string | null };
 // Avis enrichis pour la modération : nom de l'auteur + nom de la cible.
 export type ProductReviewRow = ProductReview & { authorName: string | null; targetName: string | null };
 export type DoctorReviewRow = DoctorReview & { authorName: string | null; targetName: string | null };
+
+// Filtres serveur des listes admin (tous optionnels).
+export type UsersFilter = { search?: string | null; role?: UserRole | null };
+export type ProductsFilter = { search?: string | null; status?: "active" | "inactive" | null };
+export type OrdersFilter = { search?: string | null; status?: OrderStatus | null; source?: DeliveryMode | null };
+
+// Plafond de sécurité pour l'export complet (toutes pages confondues).
+const EXPORT_CAP = 5000;
+const EXPORT_PAGE = 1000;
 
 export type AdminCounts = {
   users: number;
@@ -280,15 +334,16 @@ export const adminService = {
     return data ?? [];
   },
 
-  // Profils paginés (.range) — recherche/filtres faits côté client sur le chargé.
-  async getUsersPage(limit: number, offset: number): Promise<Profile[]> {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+  // Profils paginés — recherche (nom/email/téléphone) + rôle appliqués CÔTÉ SERVEUR.
+  async getUsersPage(limit: number, offset: number, filters?: UsersFilter): Promise<Profile[]> {
+    const { data, error } = await buildUsersQuery(filters).range(offset, offset + limit - 1);
     if (error) throw error;
     return data ?? [];
+  },
+
+  // Toutes les lignes correspondant aux filtres (pour l'export CSV complet).
+  async getAllUsersFiltered(filters?: UsersFilter): Promise<Profile[]> {
+    return fetchAllPages((from, to) => buildUsersQuery(filters).range(from, to));
   },
 
   async updateUserRole(adminId: string, userId: string, role: UserRole): Promise<void> {
@@ -317,6 +372,18 @@ export const adminService = {
     return (data ?? []) as DoctorRow[];
   },
 
+  // Tous les médecins (pour l'export complet). La recherche par NOM se fait
+  // côté client sur le résultat (le nom vit sur profiles, jeu de données réduit).
+  async getAllDoctors(): Promise<DoctorRow[]> {
+    return fetchAllPages<DoctorRow>((from, to) =>
+      supabase
+        .from("doctors")
+        .select("*, profile:profiles!doctors_user_id_fkey(full_name, email)")
+        .order("created_at", { ascending: false })
+        .range(from, to) as unknown as PromiseLike<{ data: DoctorRow[] | null; error: { message: string } | null }>
+    );
+  },
+
   async setDoctorValidation(adminId: string, doctorId: string, isValidated: boolean): Promise<void> {
     const patch: TablesUpdate<"doctors"> = {
       is_validated: isValidated,
@@ -343,14 +410,15 @@ export const adminService = {
     return data ?? [];
   },
 
-  async getProductsPage(limit: number, offset: number): Promise<MarketplaceProduct[]> {
-    const { data, error } = await supabase
-      .from("marketplace_products")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+  // Produits paginés — recherche (nom) + statut (actif/inactif) CÔTÉ SERVEUR.
+  async getProductsPage(limit: number, offset: number, filters?: ProductsFilter): Promise<MarketplaceProduct[]> {
+    const { data, error } = await buildProductsQuery(filters).range(offset, offset + limit - 1);
     if (error) throw error;
     return data ?? [];
+  },
+
+  async getAllProductsFiltered(filters?: ProductsFilter): Promise<MarketplaceProduct[]> {
+    return fetchAllPages((from, to) => buildProductsQuery(filters).range(from, to));
   },
 
   async createProduct(
@@ -401,14 +469,15 @@ export const adminService = {
     return data ?? [];
   },
 
-  async getOrdersPage(limit: number, offset: number): Promise<MarketplaceOrder[]> {
-    const { data, error } = await supabase
-      .from("marketplace_orders")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+  // Commandes paginées — statut + mode (livraison/retrait) + recherche (téléphone) CÔTÉ SERVEUR.
+  async getOrdersPage(limit: number, offset: number, filters?: OrdersFilter): Promise<MarketplaceOrder[]> {
+    const { data, error } = await buildOrdersQuery(filters).range(offset, offset + limit - 1);
     if (error) throw error;
     return data ?? [];
+  },
+
+  async getAllOrdersFiltered(filters?: OrdersFilter): Promise<MarketplaceOrder[]> {
+    return fetchAllPages((from, to) => buildOrdersQuery(filters).range(from, to));
   },
 
   async updateOrderStatus(adminId: string, id: string, status: OrderStatus): Promise<void> {

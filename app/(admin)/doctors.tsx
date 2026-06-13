@@ -39,6 +39,8 @@ export default function AdminDoctors() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [exporting, setExporting] = useState(false);
   const offsetRef = useRef(0);
   const PAGE = 20;
 
@@ -97,9 +99,21 @@ export default function AdminDoctors() {
     setRefreshing(false);
   }
 
+  // Recherche par NOM côté client (le nom vit sur profiles ; jeu réduit). On
+  // l'applique sur le chargé pour la liste, et sur le « tout » pour l'export.
+  function matchesSearch(d: DoctorRow, q: string): boolean {
+    if (!q) return true;
+    return (d.profile?.full_name ?? "").toLowerCase().includes(q) || d.specialty.toLowerCase().includes(q);
+  }
+  const q = search.trim().toLowerCase();
+  const visibleDoctors = doctors.filter((d) => matchesSearch(d, q));
+
   async function handleExport() {
+    setExporting(true);
     try {
-      const rows = doctors.map((d) => ({
+      // Export COMPLET : tous les médecins, puis filtre nom/spécialité côté client.
+      const all = await adminService.getAllDoctors();
+      const rows = all.filter((d) => matchesSearch(d, q)).map((d) => ({
         nom: d.profile?.full_name ?? "",
         specialite: d.specialty,
         valide: d.is_validated ? "Oui" : "Non",
@@ -117,6 +131,8 @@ export default function AdminDoctors() {
       ]);
     } catch (e) {
       Alert.alert("Export impossible", e instanceof Error ? e.message : "Réessayez.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -283,7 +299,18 @@ export default function AdminDoctors() {
 
   return (
     <Screen>
-      <AdminHeader title="Médecins" right={<ExportButton onPress={handleExport} />} />
+      <AdminHeader title="Médecins" right={<ExportButton onPress={handleExport} loading={exporting} />} />
+      {!adding ? (
+        <View style={styles.searchRow}>
+          <Input
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Rechercher (nom ou spécialité)…"
+            autoCapitalize="none"
+            style={styles.searchInput}
+          />
+        </View>
+      ) : null}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
@@ -373,11 +400,11 @@ export default function AdminDoctors() {
           </Pressable>
         )}
 
-        {doctors.length === 0 ? (
-          <EmptyState icon="medkit-outline" title="Aucun médecin enregistré" />
+        {visibleDoctors.length === 0 ? (
+          <EmptyState icon="medkit-outline" title={q ? "Aucun résultat" : "Aucun médecin enregistré"} />
         ) : (
           <>
-          {doctors.map((d) => {
+          {visibleDoctors.map((d) => {
             const isSelf = session?.user?.id === d.user_id;
             return (
             <Card key={d.id} style={styles.card}>
@@ -435,6 +462,8 @@ export default function AdminDoctors() {
 }
 
 const styles = StyleSheet.create({
+  searchRow: { paddingTop: spacing.sm },
+  searchInput: { marginBottom: 0 },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   empty: { alignItems: "center" },
   muted: { color: colors.textMuted },

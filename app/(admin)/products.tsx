@@ -28,13 +28,23 @@ export default function AdminProducts() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [editing, setEditing] = useState<Editing>(null);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
+  const [exporting, setExporting] = useState(false);
   const offsetRef = useRef(0);
+  const filtersRef = useRef<{ search: string; status: "all" | "active" | "inactive" }>({ search: "", status: "all" });
   const PAGE = 20;
+
+  // Filtres serveur courants (lus par load/loadMore sans recréer les callbacks).
+  const serverFilters = () => ({
+    search: filtersRef.current.search || null,
+    status: filtersRef.current.status === "all" ? null : filtersRef.current.status,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await adminService.getProductsPage(PAGE, 0);
+      const data = await adminService.getProductsPage(PAGE, 0, serverFilters());
       setProducts(data);
       offsetRef.current = PAGE;
       setHasMore(data.length === PAGE);
@@ -49,7 +59,7 @@ export default function AdminProducts() {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
-      const data = await adminService.getProductsPage(PAGE, offsetRef.current);
+      const data = await adminService.getProductsPage(PAGE, offsetRef.current, serverFilters());
       setProducts((prev) => {
         const seen = new Set(prev.map((p) => p.id));
         return [...prev, ...data.filter((p) => !seen.has(p.id))];
@@ -63,11 +73,18 @@ export default function AdminProducts() {
     }
   }, [loadingMore, hasMore]);
 
-  useEffect(() => { load(); }, [load]);
+  // Recharge serveur (page 0) à chaque changement de recherche/statut, avec debounce.
+  useEffect(() => {
+    filtersRef.current = { search, status };
+    const t = setTimeout(() => { load(); }, 350);
+    return () => clearTimeout(t);
+  }, [search, status, load]);
 
   async function handleExport() {
+    setExporting(true);
     try {
-      const rows = products.map((p) => ({
+      const all = await adminService.getAllProductsFiltered(serverFilters());
+      const rows = all.map((p) => ({
         nom: p.name,
         prix: formatPrice(p.price),
         stock: String(p.stock),
@@ -85,6 +102,8 @@ export default function AdminProducts() {
       ]);
     } catch (e) {
       Alert.alert("Export impossible", e instanceof Error ? e.message : "Réessayez.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -117,13 +136,36 @@ export default function AdminProducts() {
         title="Produits"
         right={
           <View style={styles.headerActions}>
-            <ExportButton onPress={handleExport} />
+            <ExportButton onPress={handleExport} loading={exporting} />
             <Pressable onPress={() => setEditing("new")} hitSlop={8} style={styles.addBtn}>
               <Ionicons name="add" size={20} color={colors.white} />
             </Pressable>
           </View>
         }
       />
+      <View style={styles.filters}>
+        <Input
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Rechercher un produit…"
+          autoCapitalize="none"
+          style={styles.searchInput}
+        />
+        <View style={styles.statusRow}>
+          {([
+            { key: "all", label: "Tous" },
+            { key: "active", label: "Actifs" },
+            { key: "inactive", label: "Inactifs" },
+          ] as const).map((s) => {
+            const active = status === s.key;
+            return (
+              <Pressable key={s.key} onPress={() => setStatus(s.key)} style={[styles.statusChip, active && styles.statusChipActive]}>
+                <Text style={[styles.statusChipText, active && styles.statusChipTextActive]}>{s.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
@@ -131,7 +173,7 @@ export default function AdminProducts() {
         scrollEventThrottle={400}
       >
         {products.length === 0 ? (
-          <EmptyState icon="bag-handle-outline" title="Aucun produit" message="Touchez + pour en créer un." />
+          <EmptyState icon="bag-handle-outline" title={search.trim() || status !== "all" ? "Aucun résultat" : "Aucun produit"} message={search.trim() || status !== "all" ? "Ajustez la recherche ou les filtres." : "Touchez + pour en créer un."} />
         ) : (
           <>
             {products.map((p) => (
@@ -302,6 +344,13 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
 const styles = StyleSheet.create({
   headerActions: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   addBtn: { width: 36, height: 36, borderRadius: radius.pill, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  filters: { paddingTop: spacing.sm, gap: spacing.sm },
+  searchInput: { marginBottom: 0 },
+  statusRow: { flexDirection: "row", gap: spacing.xs },
+  statusChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border },
+  statusChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  statusChipText: { ...typography.caption, fontWeight: "700", color: colors.text },
+  statusChipTextActive: { color: colors.white },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
   empty: { alignItems: "center" },
   muted: { color: colors.textMuted, textAlign: "center" },

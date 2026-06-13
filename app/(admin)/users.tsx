@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -29,14 +29,18 @@ export default function AdminUsers() {
   const [selected, setSelected] = useState<Profile | null>(null);
   // userId -> id de la ligne user_suspensions active (pour la réactivation)
   const [suspendedMap, setSuspendedMap] = useState<Record<string, string>>({});
+  const [exporting, setExporting] = useState(false);
   const offsetRef = useRef(0);
+  const searchRef = useRef("");
   const PAGE = 20;
 
+  // Recherche appliquée CÔTÉ SERVEUR (nom/email/téléphone). On lit searchRef pour
+  // que load/loadMore restent stables sans dépendre de `search`.
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [us, sus] = await Promise.all([
-        adminService.getUsersPage(PAGE, 0),
+        adminService.getUsersPage(PAGE, 0, { search: searchRef.current || null }),
         adminService.getSuspensions(),
       ]);
       setUsers(us);
@@ -56,7 +60,7 @@ export default function AdminUsers() {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
-      const data = await adminService.getUsersPage(PAGE, offsetRef.current);
+      const data = await adminService.getUsersPage(PAGE, offsetRef.current, { search: searchRef.current || null });
       setUsers((prev) => {
         const seen = new Set(prev.map((u) => u.id));
         return [...prev, ...data.filter((u) => !seen.has(u.id))];
@@ -70,21 +74,22 @@ export default function AdminUsers() {
     }
   }, [loadingMore, hasMore]);
 
-  useEffect(() => { load(); }, [load]);
+  // Recharge depuis le serveur (page 0) à chaque changement de recherche, avec debounce.
+  useEffect(() => {
+    searchRef.current = search;
+    const t = setTimeout(() => { load(); }, 350);
+    return () => clearTimeout(t);
+  }, [search, load]);
 
-  // Recherche client sur le jeu déjà chargé (nom ou email).
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter((u) =>
-      (u.full_name ?? "").toLowerCase().includes(q) || (u.email ?? "").toLowerCase().includes(q)
-    );
-  }, [users, search]);
+  // Le serveur filtre déjà : on affiche directement `users`.
+  const filtered = users;
 
   async function handleExport() {
+    setExporting(true);
     try {
-      // Export = ce qui est chargé/filtré (les pages déjà récupérées).
-      const rows = filtered.map((u) => ({
+      // Export COMPLET : toutes les lignes correspondant à la recherche serveur.
+      const all = await adminService.getAllUsersFiltered({ search: search.trim() || null });
+      const rows = all.map((u) => ({
         nom: u.full_name ?? "",
         email: u.email ?? "",
         telephone: u.phone ?? "",
@@ -102,6 +107,8 @@ export default function AdminUsers() {
       ]);
     } catch (e) {
       Alert.alert("Export impossible", e instanceof Error ? e.message : "Réessayez.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -196,7 +203,7 @@ export default function AdminUsers() {
 
   return (
     <Screen>
-      <AdminHeader title="Utilisateurs" right={<ExportButton onPress={handleExport} />} />
+      <AdminHeader title="Utilisateurs" right={<ExportButton onPress={handleExport} loading={exporting} />} />
       <View style={styles.searchRow}>
         <Input
           value={search}
