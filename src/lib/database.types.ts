@@ -953,6 +953,47 @@ export type Database = {
       };
 
       // =================================================
+      // 11d. pregnancies (suivi de grossesse — une active par utilisatrice)
+      // =================================================
+      pregnancies: {
+        Row: {
+          id: string;
+          user_id: string;
+          start_date: string;
+          due_date: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          start_date: string;
+          due_date: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          start_date?: string;
+          due_date?: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pregnancies_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      // =================================================
       // 11b. store_settings (paramètres de la boutique — ligne unique)
       // =================================================
       store_settings: {
@@ -1243,6 +1284,7 @@ export type StoreSettings = Tables<"store_settings">;
 export type AdminLog = Tables<"admin_logs">;
 export type BannedWord = Tables<"banned_words">;
 export type Article = Tables<"articles">;
+export type Pregnancy = Tables<"pregnancies">;
 export type UserReport = Tables<"user_reports">;
 export type UserSuspension = Tables<"user_suspensions">;
 export type Notification = Tables<"notifications">;

@@ -106,6 +106,19 @@ export default function CalendarScreen() {
           </Card>
         </Pressable>
 
+        <Pressable onPress={() => router.push("/(user)/pregnancy")}>
+          <Card style={styles.summaryCard}>
+            <View style={styles.summaryIcon}>
+              <Ionicons name="heart-outline" size={20} color={colors.primaryDark} />
+            </View>
+            <View style={styles.summaryText}>
+              <Text style={styles.summaryTitle}>Suivi de grossesse</Text>
+              <Text style={styles.summarySub}>Semaine par semaine, du début à la naissance</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
         <Card style={styles.calCard}>
           <View style={styles.header}>
             <Pressable onPress={() => changeMonth(-1)} hitSlop={12}><Text style={styles.nav}>‹</Text></Pressable>
