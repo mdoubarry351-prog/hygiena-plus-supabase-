@@ -12,6 +12,8 @@ import { useCart } from "@/providers/CartProvider";
 import {
   marketplaceService,
   formatPrice,
+  computeDeliveryFee,
+  codZoneAllowed,
   type OrderItem,
   type StorePaymentSettings,
 } from "@/lib/marketplace-service";
@@ -44,7 +46,23 @@ export default function Checkout() {
   }, []);
 
   const isMobileMoney = method === "orange_money" || method === "mtn";
-  const codAvailable = !!store?.cod_enabled && (store.cod_max_amount == null || total <= store.cod_max_amount);
+
+  // Frais de livraison + total (livraison incluse).
+  const delivery = computeDeliveryFee(store, neighborhood, total, deliveryMode);
+  const grandTotal = total + delivery.fee;
+  const threshold = store?.free_delivery_threshold ?? null;
+  // Combien manque-t-il pour la livraison gratuite (mode livraison, seuil non atteint).
+  const remainingForFree =
+    deliveryMode === "delivery" && threshold != null && !delivery.free && total < threshold
+      ? threshold - total
+      : null;
+
+  // COD : activé + sous plafond + (si zones définies) quartier autorisé en livraison.
+  const codZoneOk = deliveryMode !== "delivery" || codZoneAllowed(store, neighborhood);
+  const codAvailable =
+    !!store?.cod_enabled &&
+    (store.cod_max_amount == null || grandTotal <= store.cod_max_amount) &&
+    codZoneOk;
   const whatsappAvailable = !!store?.whatsapp_enabled && !!store?.whatsapp_number;
 
   const payOptions: { key: PayMethod; label: string; sub?: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -54,10 +72,17 @@ export default function Checkout() {
     ...(whatsappAvailable ? [{ key: "whatsapp" as const, label: "Commander via WhatsApp", icon: "logo-whatsapp" as const }] : []),
   ];
 
+  // Si le mode sélectionné n'est plus disponible (ex. COD masqué par zone), on revient au Mobile Money.
+  useEffect(() => {
+    if (!payOptions.some((o) => o.key === method)) setMethod("orange_money");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codAvailable, whatsappAvailable]);
+
   function openWhatsApp() {
     const num = (store?.whatsapp_number ?? "").replace(/[^\d]/g, "");
     const lines = items.map((it) => `• ${it.quantity} × ${it.product.name}`).join("\n");
-    const msg = `Bonjour, je souhaite commander :\n${lines}\nTotal : ${formatPrice(total)}\nTéléphone : ${phone.trim()}`;
+    const livraison = deliveryMode === "delivery" ? `\nLivraison : ${delivery.free ? "Gratuite" : formatPrice(delivery.fee)}` : "";
+    const msg = `Bonjour, je souhaite commander :\n${lines}\nSous-total : ${formatPrice(total)}${livraison}\nTotal : ${formatPrice(grandTotal)}\nTéléphone : ${phone.trim()}`;
     Linking.openURL(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`).catch(() =>
       Alert.alert("WhatsApp indisponible", "Impossible d'ouvrir WhatsApp sur cet appareil.")
     );
@@ -97,7 +122,7 @@ export default function Checkout() {
         deliveryMode,
         instructions: instructions.trim() ? instructions.trim() : null,
         items: orderItems,
-        totalAmount: total,
+        totalAmount: grandTotal,
         paymentMethod: method,
         paymentPhone: isMobileMoney ? payPhone.trim() : null,
         isPaid: isMobileMoney,
@@ -121,8 +146,8 @@ export default function Checkout() {
 
   const payLabel =
     method === "whatsapp" ? "Commander via WhatsApp"
-    : method === "cod" ? `Confirmer · ${formatPrice(total)}`
-    : `Payer ${formatPrice(total)}`;
+    : method === "cod" ? `Confirmer · ${formatPrice(grandTotal)}`
+    : `Payer ${formatPrice(grandTotal)}`;
 
   return (
     <Screen>
@@ -139,10 +164,25 @@ export default function Checkout() {
               <Text style={styles.summaryPrice}>{formatPrice(it.product.price * it.quantity)}</Text>
             </View>
           ))}
+          <View style={[styles.summaryRow, styles.summarySub]}>
+            <Text style={styles.summaryName}>Sous-total</Text>
+            <Text style={styles.summaryPrice}>{formatPrice(total)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryName}>Livraison{deliveryMode === "pickup" ? " (retrait)" : ""}</Text>
+            <Text style={[styles.summaryPrice, delivery.free && styles.freeText]}>
+              {deliveryMode === "pickup" || delivery.fee === 0
+                ? delivery.free ? "Gratuite" : "—"
+                : formatPrice(delivery.fee)}
+            </Text>
+          </View>
           <View style={[styles.summaryRow, styles.summaryTotal]}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{formatPrice(total)}</Text>
+            <Text style={styles.totalValue}>{formatPrice(grandTotal)}</Text>
           </View>
+          {remainingForFree != null ? (
+            <Text style={styles.freeHint}>Plus que {formatPrice(remainingForFree)} pour la livraison gratuite 🎉</Text>
+          ) : null}
         </Card>
 
         <Text style={[typography.h3, styles.sectionTitle]}>Mode de réception</Text>
@@ -240,9 +280,12 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.md },
   summaryName: { ...typography.body, color: colors.textMuted, flex: 1 },
   summaryPrice: { ...typography.body, fontWeight: "600" },
+  summarySub: { marginTop: spacing.xs },
   summaryTotal: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, marginTop: spacing.xs },
   totalLabel: { ...typography.h3 },
   totalValue: { ...typography.h3, color: colors.primary },
+  freeText: { color: colors.success, fontWeight: "700" },
+  freeHint: { ...typography.caption, color: colors.primaryDark, fontWeight: "600", marginTop: spacing.xs },
   sectionTitle: { marginTop: spacing.md, marginBottom: spacing.xs },
   modes: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md },
   mode: {

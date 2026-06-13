@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { MarketplaceProduct, MarketplaceOrder, TablesInsert } from "@/lib/database.types";
+import type { MarketplaceProduct, MarketplaceOrder, TablesInsert, Json } from "@/lib/database.types";
 
 // Catégories de produits (liste fixe, FR). Centralisée : réutilisée par la
 // boutique (filtres) et le formulaire admin (select).
@@ -38,18 +38,73 @@ export type OrderInput = {
   isPaid: boolean;
 };
 
-// Réglages de paiement boutique utiles au checkout (lecture best-effort :
+// Réglages de paiement + livraison boutique utiles au checkout (lecture best-effort :
 // si la RLS bloque la lecture côté utilisatrice, on renvoie null).
 export type StorePaymentSettings = {
   cod_enabled: boolean;
   cod_max_amount: number | null;
+  cod_zones: string[] | null;
   whatsapp_enabled: boolean;
   whatsapp_number: string | null;
+  default_delivery_fee: number;
+  free_delivery_threshold: number | null;
+  delivery_zones: Json | null;
 };
 
 // Formatage prix en francs guinéens, ex. "50 000GNF".
 export function formatPrice(amount: number): string {
   return `${Math.round(amount).toLocaleString("fr-FR")}GNF`;
+}
+
+// Frais de zone pour un quartier donné, depuis delivery_zones (jsonb).
+// Accepte un tableau [{ name, fee }] ou un objet { "Quartier": fee }.
+function zoneFeeFor(zones: Json | null | undefined, neighborhood: string): number | null {
+  const q = neighborhood.trim().toLowerCase();
+  if (!zones || !q) return null;
+  if (Array.isArray(zones)) {
+    for (const z of zones) {
+      if (z && typeof z === "object" && !Array.isArray(z)) {
+        const rec = z as Record<string, unknown>;
+        const name = String(rec.name ?? "").trim().toLowerCase();
+        const fee = Number(rec.fee);
+        if (name === q && Number.isFinite(fee)) return fee;
+      }
+    }
+    return null;
+  }
+  if (typeof zones === "object") {
+    for (const [k, v] of Object.entries(zones as Record<string, unknown>)) {
+      if (k.trim().toLowerCase() === q) {
+        const fee = Number(v);
+        if (Number.isFinite(fee)) return fee;
+      }
+    }
+  }
+  return null;
+}
+
+// Calcule les frais de livraison : retrait = 0 ; seuil de gratuité atteint = 0 ;
+// sinon frais de la zone du quartier, à défaut le tarif par défaut.
+export function computeDeliveryFee(
+  store: StorePaymentSettings | null,
+  neighborhood: string,
+  subtotal: number,
+  deliveryMode: "delivery" | "pickup"
+): { fee: number; free: boolean } {
+  if (deliveryMode !== "delivery") return { fee: 0, free: false };
+  const threshold = store?.free_delivery_threshold ?? null;
+  if (threshold != null && subtotal >= threshold) return { fee: 0, free: true };
+  const zoneFee = zoneFeeFor(store?.delivery_zones, neighborhood);
+  return { fee: zoneFee ?? store?.default_delivery_fee ?? 0, free: false };
+}
+
+// Paiement à la livraison autorisé pour le quartier ? Si cod_zones est vide,
+// aucune restriction de zone ; sinon le quartier doit y figurer.
+export function codZoneAllowed(store: StorePaymentSettings | null, neighborhood: string): boolean {
+  const zones = store?.cod_zones;
+  if (!zones || zones.length === 0) return true;
+  const q = neighborhood.trim().toLowerCase();
+  return zones.some((z) => z.trim().toLowerCase() === q);
 }
 
 export const marketplaceService = {
@@ -148,7 +203,7 @@ export const marketplaceService = {
     try {
       const { data, error } = await supabase
         .from("store_settings")
-        .select("cod_enabled, cod_max_amount, whatsapp_enabled, whatsapp_number")
+        .select("cod_enabled, cod_max_amount, cod_zones, whatsapp_enabled, whatsapp_number, default_delivery_fee, free_delivery_threshold, delivery_zones")
         .limit(1)
         .maybeSingle();
       if (error || !data) return null;
