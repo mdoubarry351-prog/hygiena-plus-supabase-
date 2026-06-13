@@ -148,6 +148,22 @@ export type AuditLogRow = Tables<"admin_logs"> & { adminName: string | null };
 export type ProductReviewRow = ProductReview & { authorName: string | null; targetName: string | null };
 export type DoctorReviewRow = DoctorReview & { authorName: string | null; targetName: string | null };
 
+// Récap d'activité pour les fiches détaillées (admin).
+export type UserActivity = {
+  orders: number;
+  posts: number;
+  appointments: number;
+  isPremium: boolean;
+  createdAt: string | null;
+};
+export type DoctorActivity = {
+  appointments: number;
+  ratingAvg: number;
+  ratingCount: number;
+  revenue: number;
+  isValidated: boolean;
+};
+
 // Filtres serveur des listes admin (tous optionnels).
 export type UsersFilter = { search?: string | null; role?: UserRole | null };
 export type ProductsFilter = { search?: string | null; status?: "active" | "inactive" | null };
@@ -352,6 +368,23 @@ export const adminService = {
     await logAction(adminId, "update_user_role", "profiles", userId, { role });
   },
 
+  // Récap d'activité d'une utilisatrice (counts en parallèle) pour la fiche détail.
+  async getUserActivity(userId: string): Promise<UserActivity> {
+    const [ordersRes, postsRes, apptRes, profileRes] = await Promise.all([
+      supabase.from("marketplace_orders").select("id", { count: "exact", head: true }).eq("user_id", userId),
+      supabase.from("community_posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
+      supabase.from("appointments").select("id", { count: "exact", head: true }).eq("patient_id", userId),
+      supabase.from("profiles").select("is_premium, created_at").eq("id", userId).maybeSingle(),
+    ]);
+    return {
+      orders: ordersRes.count ?? 0,
+      posts: postsRes.count ?? 0,
+      appointments: apptRes.count ?? 0,
+      isPremium: profileRes.data?.is_premium ?? false,
+      createdAt: profileRes.data?.created_at ?? null,
+    };
+  },
+
   // ---------------- 4. Médecins ----------------
   async getDoctors(): Promise<DoctorRow[]> {
     const { data, error } = await supabase
@@ -382,6 +415,24 @@ export const adminService = {
         .order("created_at", { ascending: false })
         .range(from, to) as unknown as PromiseLike<{ data: DoctorRow[] | null; error: { message: string } | null }>
     );
+  },
+
+  // Récap d'activité d'un médecin pour la fiche détail : rendez-vous, note/avis,
+  // revenus (somme des consultations payées), statut validé.
+  async getDoctorActivity(doctorId: string): Promise<DoctorActivity> {
+    const [apptRes, doctorRes, paidRes] = await Promise.all([
+      supabase.from("appointments").select("id", { count: "exact", head: true }).eq("doctor_id", doctorId),
+      supabase.from("doctors").select("rating_avg, rating_count, is_validated").eq("id", doctorId).maybeSingle(),
+      supabase.from("appointments").select("amount_paid").eq("doctor_id", doctorId).eq("is_paid", true),
+    ]);
+    const revenue = (paidRes.data ?? []).reduce((sum, a) => sum + (a.amount_paid ?? 0), 0);
+    return {
+      appointments: apptRes.count ?? 0,
+      ratingAvg: doctorRes.data?.rating_avg ?? 0,
+      ratingCount: doctorRes.data?.rating_count ?? 0,
+      revenue,
+      isValidated: doctorRes.data?.is_validated ?? false,
+    };
   },
 
   async setDoctorValidation(adminId: string, doctorId: string, isValidated: boolean): Promise<void> {

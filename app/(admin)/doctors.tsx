@@ -10,9 +10,10 @@ import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { ExportButton } from "@/components/ExportButton";
+import { StarRating } from "@/components/StarRating";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
-import { adminService, type DoctorRow } from "@/lib/admin-service";
+import { adminService, type DoctorRow, type DoctorActivity } from "@/lib/admin-service";
 import { uploadAvatar } from "@/lib/storage";
 import { exportCsv } from "@/lib/csv-export";
 import { formatPrice } from "@/lib/marketplace-service";
@@ -41,6 +42,9 @@ export default function AdminDoctors() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [activity, setActivity] = useState<DoctorActivity | null>(null);
+  const [activityLoading, setActivityLoading] = useState(false);
   const offsetRef = useRef(0);
   const PAGE = 20;
 
@@ -92,6 +96,20 @@ export default function AdminDoctors() {
   }, [loadingMore, hasMore]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Charge le récap d'activité du médecin déplié.
+  useEffect(() => {
+    if (!expandedId) { setActivity(null); return; }
+    let cancelled = false;
+    setActivity(null);
+    setActivityLoading(true);
+    adminService
+      .getDoctorActivity(expandedId)
+      .then((a) => { if (!cancelled) setActivity(a); })
+      .catch(() => { if (!cancelled) setActivity(null); })
+      .finally(() => { if (!cancelled) setActivityLoading(false); });
+    return () => { cancelled = true; };
+  }, [expandedId]);
 
   async function onRefresh() {
     setRefreshing(true);
@@ -406,9 +424,10 @@ export default function AdminDoctors() {
           <>
           {visibleDoctors.map((d) => {
             const isSelf = session?.user?.id === d.user_id;
+            const open = expandedId === d.id;
             return (
             <Card key={d.id} style={styles.card}>
-              <View style={styles.head}>
+              <Pressable onPress={() => setExpandedId(open ? null : d.id)} style={styles.head} accessibilityRole="button" accessibilityLabel={open ? "Masquer l'activité" : "Voir l'activité"}>
                 <View style={styles.info}>
                   <Text style={styles.name}>{d.profile?.full_name ?? "Médecin"}</Text>
                   <Text style={styles.specialty}>{d.specialty}</Text>
@@ -417,12 +436,44 @@ export default function AdminDoctors() {
                 <Text style={[styles.badge, d.is_validated ? styles.badgeOk : styles.badgePending]}>
                   {d.is_validated ? "Validé" : "En attente"}
                 </Text>
-              </View>
+                <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={colors.textMuted} />
+              </Pressable>
               <View style={styles.metaRow}>
                 {d.license_number ? <Text style={styles.meta}>Licence : {d.license_number}</Text> : null}
                 {d.consultation_fee != null ? <Text style={styles.meta}>{formatPrice(d.consultation_fee)}</Text> : null}
               </View>
               {d.bio ? <Text style={styles.bio} numberOfLines={3}>{d.bio}</Text> : null}
+
+              {/* Activité (au dépliage) */}
+              {open ? (
+                <View style={styles.activityBox}>
+                  <Text style={styles.activityTitle}>Activité</Text>
+                  {activityLoading ? (
+                    <ActivityIndicator color={colors.primary} style={styles.activitySpinner} />
+                  ) : activity ? (
+                    <>
+                      <View style={styles.activityRow}>
+                        <View style={styles.activityStat}>
+                          <Ionicons name="calendar-outline" size={18} color={colors.primaryDark} />
+                          <Text style={styles.activityValue}>{activity.appointments}</Text>
+                          <Text style={styles.activityLabel}>Rendez-vous</Text>
+                        </View>
+                        <View style={styles.activityStat}>
+                          <Ionicons name="cash-outline" size={18} color={colors.primaryDark} />
+                          <Text style={styles.activityValue}>{formatPrice(activity.revenue)}</Text>
+                          <Text style={styles.activityLabel}>Revenus</Text>
+                        </View>
+                      </View>
+                      <View style={styles.activityRating}>
+                        <StarRating value={activity.ratingAvg} count={activity.ratingCount} size={14} compact />
+                        <Text style={styles.activityLabel}>{activity.isValidated ? "Compte validé" : "En attente de validation"}</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={styles.meta}>—</Text>
+                  )}
+                </View>
+              ) : null}
               <View style={styles.actions}>
                 {!d.is_validated ? (
                   <Pressable onPress={() => setValidation(d, true)} style={[styles.btn, { backgroundColor: colors.success }]}>
@@ -468,7 +519,15 @@ const styles = StyleSheet.create({
   empty: { alignItems: "center" },
   muted: { color: colors.textMuted },
   card: { gap: spacing.sm },
-  head: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
+  head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  activityBox: { gap: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
+  activityTitle: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
+  activitySpinner: { alignSelf: "flex-start" },
+  activityRow: { flexDirection: "row", gap: spacing.sm },
+  activityStat: { flex: 1, alignItems: "center", gap: 2, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: colors.surface },
+  activityValue: { ...typography.name, color: colors.primaryDark },
+  activityLabel: { ...typography.caption, color: colors.textMuted },
+  activityRating: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   info: { flex: 1, gap: 2 },
   name: { ...typography.name },
   specialty: { ...typography.caption, color: colors.secondary, fontWeight: "600" },

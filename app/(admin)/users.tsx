@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ExportButton } from "@/components/ExportButton";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
-import { adminService } from "@/lib/admin-service";
+import { adminService, type UserActivity } from "@/lib/admin-service";
 import { exportCsv } from "@/lib/csv-export";
 import type { Profile, UserRole } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -27,6 +27,8 @@ export default function AdminUsers() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [selected, setSelected] = useState<Profile | null>(null);
+  const [activity, setActivity] = useState<UserActivity | null>(null);
+  const [activityLoading, setActivityLoading] = useState(false);
   // userId -> id de la ligne user_suspensions active (pour la réactivation)
   const [suspendedMap, setSuspendedMap] = useState<Record<string, string>>({});
   const [exporting, setExporting] = useState(false);
@@ -80,6 +82,21 @@ export default function AdminUsers() {
     const t = setTimeout(() => { load(); }, 350);
     return () => clearTimeout(t);
   }, [search, load]);
+
+  // Charge le récap d'activité à l'ouverture d'une fiche détail.
+  useEffect(() => {
+    const id = selected?.id;
+    if (!id) { setActivity(null); return; }
+    let cancelled = false;
+    setActivity(null);
+    setActivityLoading(true);
+    adminService
+      .getUserActivity(id)
+      .then((a) => { if (!cancelled) setActivity(a); })
+      .catch(() => { if (!cancelled) setActivity(null); })
+      .finally(() => { if (!cancelled) setActivityLoading(false); });
+    return () => { cancelled = true; };
+  }, [selected?.id]);
 
   // Le serveur filtre déjà : on affiche directement `users`.
   const filtered = users;
@@ -247,6 +264,21 @@ export default function AdminUsers() {
                       <Text style={styles.detailLine}>Téléphone : {u.phone ?? "—"}</Text>
                       <Text style={styles.detailLine}>Premium : {u.is_premium ? "Oui" : "Non"}</Text>
                       <Text style={styles.detailLine}>Inscrit le {new Date(u.created_at).toLocaleDateString("fr-FR")}</Text>
+
+                      {/* Activité */}
+                      <Text style={[styles.detailLine, styles.detailLabel]}>Activité :</Text>
+                      {activityLoading ? (
+                        <ActivityIndicator color={colors.primary} style={styles.activitySpinner} />
+                      ) : activity ? (
+                        <View style={styles.activityRow}>
+                          <ActivityStat icon="bag-handle-outline" value={activity.orders} label="Commandes" />
+                          <ActivityStat icon="chatbubbles-outline" value={activity.posts} label="Publications" />
+                          <ActivityStat icon="calendar-outline" value={activity.appointments} label="Rendez-vous" />
+                        </View>
+                      ) : (
+                        <Text style={styles.detailLine}>—</Text>
+                      )}
+
                       <Text style={[styles.detailLine, styles.detailLabel]}>Rôle :</Text>
                       <View style={styles.roleRow}>
                         {ROLES.map((r) => (
@@ -294,8 +326,24 @@ export default function AdminUsers() {
   );
 }
 
+// Petit compteur d'activité (icône + valeur + libellé) pour la fiche détail.
+function ActivityStat({ icon, value, label }: { icon: keyof typeof Ionicons.glyphMap; value: number; label: string }) {
+  return (
+    <View style={styles.activityStat}>
+      <Ionicons name={icon} size={18} color={colors.primaryDark} />
+      <Text style={styles.activityValue}>{value}</Text>
+      <Text style={styles.activityLabel}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   searchRow: { paddingTop: spacing.sm },
+  activitySpinner: { alignSelf: "flex-start", marginVertical: spacing.xs },
+  activityRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
+  activityStat: { flex: 1, alignItems: "center", gap: 2, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
+  activityValue: { ...typography.name, color: colors.primaryDark },
+  activityLabel: { ...typography.caption, color: colors.textMuted },
   searchInput: { marginBottom: 0 },
   content: { paddingTop: spacing.sm, paddingBottom: spacing.xxl, gap: spacing.sm },
   empty: { alignItems: "center" },
