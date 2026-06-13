@@ -45,6 +45,7 @@ export default function UserLayout() {
           <Tabs.Screen name="marketplace/cart" options={{ href: null }} />
           <Tabs.Screen name="marketplace/checkout" options={{ href: null }} />
           <Tabs.Screen name="marketplace/orders" options={{ href: null }} />
+          <Tabs.Screen name="marketplace/order" options={{ href: null }} />
           <Tabs.Screen name="marketplace/favorites" options={{ href: null }} />
           <Tabs.Screen name="community/new" options={{ href: null }} />
           <Tabs.Screen name="community/[id]" options={{ href: null }} />

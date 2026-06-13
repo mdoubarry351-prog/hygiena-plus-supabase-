@@ -174,6 +174,27 @@ export const marketplaceService = {
     return data ?? [];
   },
 
+  // Détail d'une commande (la RLS limite à ses propres commandes).
+  async getOrder(id: string): Promise<MarketplaceOrder | null> {
+    const { data, error } = await supabase
+      .from("marketplace_orders")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return data ?? null;
+  },
+
+  // Annule SA propre commande (autorisé par orders_update_own ; côté UI réservé
+  // au statut « pending »).
+  async cancelOrder(id: string): Promise<void> {
+    const { error } = await supabase
+      .from("marketplace_orders")
+      .update({ status: "cancelled" })
+      .eq("id", id);
+    if (error) throw error;
+  },
+
   // Crée une commande dans marketplace_orders (avec infos de paiement).
   async createOrder(input: OrderInput): Promise<MarketplaceOrder> {
     const payload: TablesInsert<"marketplace_orders"> = {

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -7,97 +8,16 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
+import { OrderTimeline } from "@/components/OrderTimeline";
 import { useAuth } from "@/providers/AuthProvider";
-import { marketplaceService, formatPrice, type OrderItem } from "@/lib/marketplace-service";
-import type { MarketplaceOrder, OrderStatus } from "@/lib/database.types";
+import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
+import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS, orderItemCount, formatOrderDate } from "@/lib/order-display";
+import type { MarketplaceOrder } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
-
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: "En attente",
-  confirmed: "Confirmée",
-  preparing: "En préparation",
-  delivering: "Expédiée",
-  completed: "Livrée",
-  cancelled: "Annulée",
-};
-
-const STATUS_COLORS: Record<OrderStatus, string> = {
-  pending: colors.accent,
-  confirmed: colors.secondary,
-  preparing: colors.secondary,
-  delivering: colors.primary,
-  completed: colors.success,
-  cancelled: colors.danger,
-};
-
-const PAYMENT_LABELS: Record<string, string> = {
-  orange_money: "Orange Money",
-  mtn: "MTN Money",
-  cod: "Paiement à la livraison",
-  whatsapp: "WhatsApp",
-};
-
-// Étapes de progression (cancelled exclu — état distinct).
-const STEPS: { key: OrderStatus; label: string }[] = [
-  { key: "pending", label: "En attente" },
-  { key: "confirmed", label: "Confirmée" },
-  { key: "preparing", label: "En préparation" },
-  { key: "delivering", label: "Expédiée" },
-  { key: "completed", label: "Livrée" },
-];
-
-// Suivi visuel étape par étape (stepper horizontal). Annulée = état distinct.
-function OrderTimeline({ status }: { status: OrderStatus }) {
-  if (status === "cancelled") {
-    return (
-      <View style={styles.cancelledRow}>
-        <Ionicons name="close-circle" size={18} color={colors.danger} />
-        <Text style={styles.cancelledText}>Commande annulée</Text>
-      </View>
-    );
-  }
-  const currentIndex = STEPS.findIndex((s) => s.key === status);
-  return (
-    <View style={styles.timeline}>
-      <View style={styles.stepper}>
-        {STEPS.map((s, i) => {
-          const reached = i <= currentIndex;
-          const done = i < currentIndex;
-          const current = i === currentIndex;
-          return (
-            <View key={s.key} style={[styles.segment, i > 0 && styles.segmentGrow]}>
-              {i > 0 ? <View style={[styles.line, i <= currentIndex ? styles.lineDone : styles.lineTodo]} /> : null}
-              <View style={[styles.node, reached && styles.nodeReached, current && styles.nodeCurrent]}>
-                {done ? <Ionicons name="checkmark" size={12} color={colors.white} /> : null}
-              </View>
-            </View>
-          );
-        })}
-      </View>
-      <Text style={styles.currentLabel}>
-        Étape actuelle : <Text style={styles.currentLabelStrong}>{STEPS[currentIndex]?.label ?? "—"}</Text>
-      </Text>
-    </View>
-  );
-}
-
-function itemCount(items: MarketplaceOrder["items"]): number {
-  if (!Array.isArray(items)) return 0;
-  return (items as unknown as OrderItem[]).reduce((s, it) => s + (it?.quantity ?? 0), 0);
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function Orders() {
   const { session } = useAuth();
+  const router = useRouter();
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -143,29 +63,31 @@ export default function Orders() {
           />
         ) : (
           orders.map((o) => {
-            const count = itemCount(o.items);
+            const count = orderItemCount(o.items);
             return (
-              <Card key={o.id} style={styles.orderCard}>
-                <View style={styles.orderHead}>
-                  <Text style={styles.date}>{formatDate(o.created_at)}</Text>
-                  <Text style={[styles.badge, { backgroundColor: STATUS_COLORS[o.status] }]}>
-                    {STATUS_LABELS[o.status]}
-                  </Text>
-                </View>
-                <OrderTimeline status={o.status} />
-                {o.payment_method ? (
-                  <View style={styles.payRow}>
-                    <Ionicons name={o.is_paid ? "checkmark-circle" : "cash-outline"} size={14} color={o.is_paid ? colors.success : colors.textMuted} />
-                    <Text style={styles.payText}>
-                      {PAYMENT_LABELS[o.payment_method] ?? o.payment_method} · {o.is_paid ? "Payé" : "À la livraison"}
+              <Pressable key={o.id} onPress={() => router.push({ pathname: "/(user)/marketplace/order", params: { id: o.id } })}>
+                <Card style={styles.orderCard}>
+                  <View style={styles.orderHead}>
+                    <Text style={styles.date}>{formatOrderDate(o.created_at)}</Text>
+                    <Text style={[styles.badge, { backgroundColor: ORDER_STATUS_COLORS[o.status] }]}>
+                      {ORDER_STATUS_LABELS[o.status]}
                     </Text>
                   </View>
-                ) : null}
-                <View style={styles.orderFoot}>
-                  <Text style={styles.count}>{count} article{count > 1 ? "s" : ""}</Text>
-                  <Text style={styles.total}>{formatPrice(o.total_amount)}</Text>
-                </View>
-              </Card>
+                  <OrderTimeline status={o.status} />
+                  {o.payment_method ? (
+                    <View style={styles.payRow}>
+                      <Ionicons name={o.is_paid ? "checkmark-circle" : "cash-outline"} size={14} color={o.is_paid ? colors.success : colors.textMuted} />
+                      <Text style={styles.payText}>
+                        {PAYMENT_LABELS[o.payment_method] ?? o.payment_method} · {o.is_paid ? "Payé" : "À la livraison"}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <View style={styles.orderFoot}>
+                    <Text style={styles.count}>{count} article{count > 1 ? "s" : ""}</Text>
+                    <Text style={styles.total}>{formatPrice(o.total_amount)}</Text>
+                  </View>
+                </Card>
+              </Pressable>
             );
           })
         )}
