@@ -132,15 +132,19 @@ export default function CycleHome() {
 
         {offline ? <OfflineBanner cachedAt={cachedAt} /> : null}
 
-        {/* 2 · Fenêtre fertile */}
-        {fertileStart && fertileEnd ? (
-          <Card style={styles.fertileCard}>
-            <Text style={styles.fertileLabel}>FENÊTRE FERTILE</Text>
-            <Text style={styles.fertileRange}>{formatShort(fertileStart)} → {formatShort(fertileEnd)}</Text>
-          </Card>
-        ) : null}
+        {/* 1 · Anneau du cycle segmenté par phase — remonté en tête (élément central, visible sans scroller) */}
+        <Card style={styles.ringCard}>
+          <CycleRing
+            cycleLength={ringN}
+            currentDay={day ?? null}
+            periodLength={periodLen}
+            fertileStartDay={fertileStartDay}
+            fertileEndDay={fertileEndDay}
+            ovulationDay={ovulationDay}
+          />
+        </Card>
 
-        {/* 3 · Grand bouton d'action */}
+        {/* 2 · Grand bouton d'action */}
         <Pressable onPress={() => router.push("/(user)/cycle/log")} style={styles.cta}>
           <View style={styles.ctaIcon}><Ionicons name="add" size={22} color={colors.white} /></View>
           <View style={styles.ctaText}>
@@ -150,7 +154,57 @@ export default function CycleHome() {
           <Ionicons name="arrow-forward" size={20} color={colors.white} />
         </Pressable>
 
-        {/* 3a · Conseil du jour selon la phase (masqué si phase inconnue) */}
+        {/* 3 · Pilule de confiance */}
+        {hasData ? (
+          <View style={styles.confPill}>
+            <View style={[styles.confDot, { backgroundColor: conf.color }]} />
+            <Text style={styles.confText}>Confiance {conf.label} — Fiabilité des prévisions</Text>
+          </View>
+        ) : null}
+
+        {/* 4 · Fenêtre fertile */}
+        {fertileStart && fertileEnd ? (
+          <Card style={styles.fertileCard}>
+            <Text style={styles.fertileLabel}>FENÊTRE FERTILE</Text>
+            <Text style={styles.fertileRange}>{formatShort(fertileStart)} → {formatShort(fertileEnd)}</Text>
+          </Card>
+        ) : null}
+
+        {/* 5 · Cartes de prédiction */}
+        {hasData ? (
+          <View style={styles.predList}>
+            <PredCard
+              label="PROCHAINES RÈGLES"
+              value={formatShort(prediction?.nextPeriodStart)}
+              extra={periodIn != null && periodIn >= 0 ? `dans ${periodIn} jour${periodIn > 1 ? "s" : ""}` : undefined}
+            />
+            <PredCard label="OVULATION ESTIMÉE" value={formatShort(prediction?.nextOvulation)} />
+            <PredCard label="FENÊTRE FERTILE" value={`${formatShort(fertileStart)} → ${formatShort(fertileEnd)}`} />
+          </View>
+        ) : null}
+
+        {/* Rappel : les prédictions sont indicatives, pas un avis médical (sous les prédictions). */}
+        {hasData ? (
+          <MedicalDisclaimer text="Les prédictions sont des estimations indicatives et ne constituent pas un avis médical." />
+        ) : null}
+
+        {/* 6 · Accès rapide */}
+        <Text style={[typography.h3, styles.sectionTitle]}>Accès rapide</Text>
+
+        {/* 7 · Grille 2×2 */}
+        <View style={styles.grid}>
+          {quick.map((q) => (
+            <Pressable key={q.title} onPress={() => openQuick(q)} style={styles.quickWrap}>
+              <Card style={styles.quickCard}>
+                <View style={styles.quickIcon}><Text style={styles.quickEmoji}>{q.emoji}</Text></View>
+                <Text style={styles.quickTitle}>{q.title}</Text>
+                <Text style={styles.quickSub}>{q.sub}</Text>
+              </Card>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* 8 · Conseil du jour selon la phase (masqué si phase inconnue) */}
         {dailyTip && phase ? (
           <Card style={styles.tipCard}>
             <View style={styles.tipIcon}>
@@ -164,7 +218,7 @@ export default function CycleHome() {
           </Card>
         ) : null}
 
-        {/* 3b · Promotion Premium (masquée si déjà premium) */}
+        {/* 9 · Promotion Premium (masquée si déjà premium) */}
         {profile?.is_premium ? (
           <View style={styles.premiumActive}>
             <Ionicons name="checkmark-circle" size={16} color={colors.primaryDark} />
@@ -186,60 +240,6 @@ export default function CycleHome() {
             </Card>
           </Pressable>
         )}
-
-        {/* 4 · Accès rapide */}
-        <Text style={[typography.h3, styles.sectionTitle]}>Accès rapide</Text>
-
-        {/* 5 · Grille 2×2 */}
-        <View style={styles.grid}>
-          {quick.map((q) => (
-            <Pressable key={q.title} onPress={() => openQuick(q)} style={styles.quickWrap}>
-              <Card style={styles.quickCard}>
-                <View style={styles.quickIcon}><Text style={styles.quickEmoji}>{q.emoji}</Text></View>
-                <Text style={styles.quickTitle}>{q.title}</Text>
-                <Text style={styles.quickSub}>{q.sub}</Text>
-              </Card>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* 6 · Anneau du cycle segmenté par phase */}
-        <Card style={styles.ringCard}>
-          <CycleRing
-            cycleLength={ringN}
-            currentDay={day ?? null}
-            periodLength={periodLen}
-            fertileStartDay={fertileStartDay}
-            fertileEndDay={fertileEndDay}
-            ovulationDay={ovulationDay}
-          />
-        </Card>
-
-        {/* 7 · Pilule de confiance */}
-        {hasData ? (
-          <View style={styles.confPill}>
-            <View style={[styles.confDot, { backgroundColor: conf.color }]} />
-            <Text style={styles.confText}>Confiance {conf.label} — Fiabilité des prévisions</Text>
-          </View>
-        ) : null}
-
-        {/* 8 · Cartes de prédiction */}
-        {hasData ? (
-          <View style={styles.predList}>
-            <PredCard
-              label="PROCHAINES RÈGLES"
-              value={formatShort(prediction?.nextPeriodStart)}
-              extra={periodIn != null && periodIn >= 0 ? `dans ${periodIn} jour${periodIn > 1 ? "s" : ""}` : undefined}
-            />
-            <PredCard label="OVULATION ESTIMÉE" value={formatShort(prediction?.nextOvulation)} />
-            <PredCard label="FENÊTRE FERTILE" value={`${formatShort(fertileStart)} → ${formatShort(fertileEnd)}`} />
-          </View>
-        ) : null}
-
-        {/* Rappel : les prédictions sont indicatives, pas un avis médical. */}
-        {hasData ? (
-          <MedicalDisclaimer text="Les prédictions sont des estimations indicatives et ne constituent pas un avis médical." />
-        ) : null}
       </ScrollView>
     </Screen>
   );
