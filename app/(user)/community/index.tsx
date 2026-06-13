@@ -16,6 +16,7 @@ import {
   formatRelativeTime,
   communityService,
   COMMUNITY_CATEGORIES,
+  REPORT_REASONS,
   categoryLabel,
   type CommunityPostWithAuthor,
 } from "@/lib/community-service";
@@ -58,6 +59,22 @@ export default function CommunityHome() {
         },
       },
     ]);
+  }
+
+  // Signale la publication d'un autre : choix de la raison puis insertion.
+  function reportPost(post: CommunityPostWithAuthor) {
+    const buttons = REPORT_REASONS.map((r) => ({
+      text: r,
+      onPress: async () => {
+        try {
+          await communityService.reportPost(post.id, post.user_id ?? null, r);
+          Alert.alert("Merci", "Ce contenu a été signalé à la modération.");
+        } catch (e) {
+          Alert.alert("Erreur", e instanceof Error ? e.message : "Signalement impossible");
+        }
+      },
+    }));
+    Alert.alert("Signaler la publication", "Pour quelle raison ?", [...buttons, { text: "Annuler", style: "cancel" }]);
   }
 
   // Supprime MA propre publication (confirmation + haptique).
@@ -195,6 +212,7 @@ export default function CommunityHome() {
                   isMine={!!post.user_id && post.user_id === meId}
                   canBlock={!post.is_anonymous && !!post.user_id && post.user_id !== meId}
                   onBlock={() => post.user_id && blockAuthor(post.user_id)}
+                  onReport={() => reportPost(post)}
                   onEdit={() => router.push({ pathname: "/(user)/community/new", params: { id: post.id } })}
                   onDelete={() => deleteMyPost(post.id)}
                   onPress={() => router.push(`/(user)/community/${post.id}`)}
@@ -229,6 +247,7 @@ function PostRow({
   isMine,
   canBlock,
   onBlock,
+  onReport,
   onEdit,
   onDelete,
   onPress,
@@ -241,6 +260,7 @@ function PostRow({
   isMine: boolean;
   canBlock: boolean;
   onBlock: () => void;
+  onReport: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onPress: () => void;
@@ -248,7 +268,7 @@ function PostRow({
 }) {
   const name = authorDisplayName(post.is_anonymous, post.author);
 
-  // Menu ⋯ : sur MON post → Modifier/Supprimer ; sur celui d'un autre → Bloquer.
+  // Menu ⋯ : sur MON post → Modifier/Supprimer ; sur celui d'un autre → Signaler (+ Bloquer si non anonyme).
   function openMenu() {
     if (isMine) {
       Alert.alert("Ma publication", undefined, [
@@ -257,11 +277,16 @@ function PostRow({
         { text: "Annuler", style: "cancel" },
       ]);
     } else {
-      onBlock();
+      Alert.alert("Publication", undefined, [
+        { text: "Signaler", onPress: onReport },
+        ...(canBlock ? [{ text: "Bloquer cet utilisateur", style: "destructive" as const, onPress: onBlock }] : []),
+        { text: "Annuler", style: "cancel" as const },
+      ]);
     }
   }
 
-  const showMenu = isMine || canBlock;
+  // Toujours visible : mon contenu (modifier/supprimer) ou celui d'un autre (signaler/bloquer).
+  const showMenu = true;
 
   return (
     <Pressable onPress={onPress}>

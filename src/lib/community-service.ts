@@ -160,6 +160,15 @@ async function enrichSafePosts(rows: CommunityPostSafe[]): Promise<CommunityPost
     }));
 }
 
+// Raisons de signalement proposées à l'utilisatrice (modération).
+export const REPORT_REASONS = [
+  "Spam",
+  "Contenu inapproprié",
+  "Harcèlement",
+  "Désinformation",
+  "Autre",
+] as const;
+
 // Message affiché quand un trigger SQL rejette le contenu (mot interdit actif).
 export const BANNED_WORD_MESSAGE =
   "Votre message contient un terme non autorisé. Merci de le reformuler.";
@@ -443,6 +452,44 @@ export const communityService = {
   async deleteComment(id: string): Promise<void> {
     await supabase.from("comment_likes").delete().eq("comment_id", id);
     const { error } = await supabase.from("community_comments").delete().eq("id", id);
+    if (error) throw error;
+  },
+
+  // ---------------- Signalements (modération) ----------------
+  // Signale une publication. `reportedUserId` peut être null (post anonyme/auteur
+  // inconnu) ; post_id suffit alors à la modération. Empêche de se signaler soi-même.
+  async reportPost(postId: string, reportedUserId: string | null, reason: string): Promise<void> {
+    const me = await currentUserId();
+    if (!me) throw new Error("Vous devez être connectée.");
+    if (reportedUserId && reportedUserId === me) {
+      throw new Error("Vous ne pouvez pas vous signaler vous-même.");
+    }
+    const payload: TablesInsert<"user_reports"> = {
+      reporter_id: me,
+      reported_user_id: reportedUserId,
+      post_id: postId,
+      reason,
+    };
+    const { error } = await supabase.from("user_reports").insert(payload);
+    if (error) throw error;
+  },
+
+  // Signale un commentaire. Pas de colonne comment_id → on rattache au post
+  // (post_id = comment.post_id) et on préfixe la raison « Commentaire : … ».
+  async reportComment(comment: CommunityComment, reason: string): Promise<void> {
+    const me = await currentUserId();
+    if (!me) throw new Error("Vous devez être connectée.");
+    if (comment.user_id && comment.user_id === me) {
+      throw new Error("Vous ne pouvez pas vous signaler vous-même.");
+    }
+    const payload: TablesInsert<"user_reports"> = {
+      reporter_id: me,
+      // Anonymat préservé : on n'expose pas l'auteur d'un commentaire anonyme.
+      reported_user_id: comment.is_anonymous ? null : (comment.user_id ?? null),
+      post_id: comment.post_id,
+      reason: `Commentaire : ${reason}`,
+    };
+    const { error } = await supabase.from("user_reports").insert(payload);
     if (error) throw error;
   },
 

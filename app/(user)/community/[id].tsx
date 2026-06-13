@@ -25,6 +25,7 @@ import {
   communityService,
   authorDisplayName,
   formatRelativeTime,
+  REPORT_REASONS,
   type CommunityPostWithAuthor,
   type CommunityCommentWithAuthor,
 } from "@/lib/community-service";
@@ -232,6 +233,43 @@ export default function PostDetail() {
     ]);
   }
 
+  // ---- Signalement (contenu des autres) ----
+  function reportReasonAlert(title: string, onPick: (reason: string) => Promise<void>) {
+    const buttons = REPORT_REASONS.map((r) => ({
+      text: r,
+      onPress: async () => {
+        try {
+          await onPick(r);
+          Alert.alert("Merci", "Ce contenu a été signalé à la modération.");
+        } catch (e) {
+          Alert.alert("Erreur", e instanceof Error ? e.message : "Signalement impossible");
+        }
+      },
+    }));
+    Alert.alert(title, "Pour quelle raison ?", [...buttons, { text: "Annuler", style: "cancel" }]);
+  }
+
+  // Menu ⋯ d'un post qui n'est pas le mien : Signaler (+ Bloquer si non anonyme).
+  function postOtherMenu() {
+    if (!post) return;
+    const canBlock = !post.is_anonymous && !!post.user_id && post.user_id !== meId;
+    Alert.alert("Publication", undefined, [
+      { text: "Signaler", onPress: () => reportReasonAlert("Signaler la publication", (r) => communityService.reportPost(post.id, post.user_id ?? null, r)) },
+      ...(canBlock ? [{ text: "Bloquer cet utilisateur", style: "destructive" as const, onPress: () => confirmBlock(post.user_id!, () => router.back()) }] : []),
+      { text: "Annuler", style: "cancel" as const },
+    ]);
+  }
+
+  // Menu ⋯ d'un commentaire qui n'est pas le mien : Signaler (+ Bloquer si non anonyme).
+  function commentOtherMenu(c: CommunityCommentWithAuthor) {
+    const canBlock = !c.is_anonymous && c.user_id !== meId;
+    Alert.alert("Commentaire", undefined, [
+      { text: "Signaler", onPress: () => reportReasonAlert("Signaler le commentaire", (r) => communityService.reportComment(c, r)) },
+      ...(canBlock ? [{ text: "Bloquer cet utilisateur", style: "destructive" as const, onPress: () => confirmBlock(c.user_id, () => load()) }] : []),
+      { text: "Annuler", style: "cancel" as const },
+    ]);
+  }
+
   if (loading) return <Loading />;
   if (!post) return null;
 
@@ -274,11 +312,11 @@ export default function PostDetail() {
                 <Pressable onPress={() => commentMenu(c)} hitSlop={8} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de mon commentaire">
                   <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
                 </Pressable>
-              ) : !c.is_anonymous && c.user_id !== meId ? (
-                <Pressable onPress={() => confirmBlock(c.user_id, () => load())} hitSlop={8} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Bloquer cet utilisateur">
+              ) : (
+                <Pressable onPress={() => commentOtherMenu(c)} hitSlop={8} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options du commentaire">
                   <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
                 </Pressable>
-              ) : null}
+              )}
             </View>
           </View>
           {editingCommentId === c.id ? (
@@ -348,11 +386,11 @@ export default function PostDetail() {
                 <Pressable onPress={postMenu} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de ma publication">
                   <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
                 </Pressable>
-              ) : !post.is_anonymous && post.user_id && post.user_id !== meId ? (
-                <Pressable onPress={() => confirmBlock(post.user_id!, () => router.back())} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Bloquer cet utilisateur">
+              ) : (
+                <Pressable onPress={postOtherMenu} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de la publication">
                   <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
                 </Pressable>
-              ) : null}
+              )}
             </View>
 
             <Text style={styles.body}>{post.content}</Text>
