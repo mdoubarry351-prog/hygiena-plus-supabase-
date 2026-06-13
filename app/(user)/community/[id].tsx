@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   Alert,
   Image,
@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -29,7 +30,7 @@ import {
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { useBookmarks } from "@/hooks/useBookmarks";
-import { hapticLight } from "@/lib/haptics";
+import { hapticLight, hapticWarning } from "@/lib/haptics";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 export default function PostDetail() {
@@ -47,6 +48,9 @@ export default function PostDetail() {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [sending, setSending] = useState(false);
   const [replyTo, setReplyTo] = useState<CommunityCommentWithAuthor | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -69,7 +73,8 @@ export default function PostDetail() {
     }
   }, [id, session?.user]);
 
-  useEffect(() => { load(); }, [load]);
+  // Recharge à chaque focus (ex. retour depuis l'écran de modification du post).
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   async function handleLike() {
     if (!session?.user || !post) return;
@@ -128,6 +133,86 @@ export default function PostDetail() {
 
   const meId = session?.user?.id;
 
+  // ---- Mon post : modifier / supprimer ----
+  function postMenu() {
+    if (!post) return;
+    Alert.alert("Ma publication", undefined, [
+      { text: "Modifier", onPress: () => router.push({ pathname: "/(user)/community/new", params: { id: post.id } }) },
+      { text: "Supprimer", style: "destructive", onPress: deleteMyPost },
+      { text: "Annuler", style: "cancel" },
+    ]);
+  }
+
+  function deleteMyPost() {
+    if (!post) return;
+    Alert.alert("Supprimer la publication ?", "Cette action est définitive.", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: async () => {
+          hapticWarning();
+          try {
+            await communityService.deletePost(post.id);
+            router.back();
+          } catch (e) {
+            Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+          }
+        },
+      },
+    ]);
+  }
+
+  // ---- Mon commentaire : modifier (inline) / supprimer ----
+  function startEditComment(c: CommunityCommentWithAuthor) {
+    setEditingCommentId(c.id);
+    setEditText(c.content);
+  }
+  function cancelEditComment() {
+    setEditingCommentId(null);
+    setEditText("");
+  }
+  async function saveEditComment(c: CommunityCommentWithAuthor) {
+    const t = editText.trim();
+    if (!t) return;
+    setSavingEdit(true);
+    try {
+      await communityService.updateComment(c.id, t);
+      setEditingCommentId(null);
+      setEditText("");
+      if (post) setComments(await communityService.getComments(post.id));
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Modification échouée");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+  function commentMenu(c: CommunityCommentWithAuthor) {
+    Alert.alert("Mon commentaire", undefined, [
+      { text: "Modifier", onPress: () => startEditComment(c) },
+      { text: "Supprimer", style: "destructive", onPress: () => deleteCommentConfirm(c) },
+      { text: "Annuler", style: "cancel" },
+    ]);
+  }
+  function deleteCommentConfirm(c: CommunityCommentWithAuthor) {
+    Alert.alert("Supprimer le commentaire ?", "Cette action est définitive.", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: async () => {
+          hapticWarning();
+          try {
+            await communityService.deleteComment(c.id);
+            if (post) setComments(await communityService.getComments(post.id));
+          } catch (e) {
+            Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+          }
+        },
+      },
+    ]);
+  }
+
   // Bloque un utilisateur (auteur d'un post ou d'un commentaire).
   function confirmBlock(userId: string, afterBlock: () => void) {
     Alert.alert("Bloquer cet utilisateur ?", "Vous ne verrez plus les publications de cette personne.", [
@@ -185,24 +270,50 @@ export default function PostDetail() {
             </View>
             <View style={styles.commentRight}>
               <Text style={styles.commentTime}>{formatRelativeTime(c.created_at)}</Text>
-              {!c.is_anonymous && c.user_id !== meId ? (
+              {c.user_id === meId ? (
+                <Pressable onPress={() => commentMenu(c)} hitSlop={8} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de mon commentaire">
+                  <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
+                </Pressable>
+              ) : !c.is_anonymous && c.user_id !== meId ? (
                 <Pressable onPress={() => confirmBlock(c.user_id, () => load())} hitSlop={8} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Bloquer cet utilisateur">
                   <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
                 </Pressable>
               ) : null}
             </View>
           </View>
-          <Text style={styles.commentText}>{c.content}</Text>
-          <View style={styles.commentActions}>
-            <Pressable onPress={() => handleCommentLike(c)} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel={c.likedByMe ? "Je n'aime plus" : "J'aime"}>
-              <Ionicons name={c.likedByMe ? "heart" : "heart-outline"} size={16} color={c.likedByMe ? colors.primary : colors.textMuted} />
-              <Text style={[styles.commentActionText, c.likedByMe && styles.likeCountActive]}>{c.likes_count}</Text>
-            </Pressable>
-            <Pressable onPress={() => setReplyTo(c)} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel="Répondre">
-              <Ionicons name="return-down-forward-outline" size={15} color={colors.textMuted} />
-              <Text style={styles.commentActionText}>Répondre</Text>
-            </Pressable>
-          </View>
+          {editingCommentId === c.id ? (
+            <View style={styles.editBox}>
+              <Input
+                value={editText}
+                onChangeText={setEditText}
+                placeholder="Modifier le commentaire…"
+                multiline
+                style={styles.editInput}
+              />
+              <View style={styles.editActions}>
+                <Pressable onPress={cancelEditComment} hitSlop={8} style={styles.editCancel}>
+                  <Text style={styles.editCancelText}>Annuler</Text>
+                </Pressable>
+                <Pressable onPress={() => saveEditComment(c)} disabled={savingEdit} hitSlop={8} style={styles.editSave}>
+                  <Text style={styles.editSaveText}>{savingEdit ? "…" : "Enregistrer"}</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.commentText}>{c.content}</Text>
+              <View style={styles.commentActions}>
+                <Pressable onPress={() => handleCommentLike(c)} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel={c.likedByMe ? "Je n'aime plus" : "J'aime"}>
+                  <Ionicons name={c.likedByMe ? "heart" : "heart-outline"} size={16} color={c.likedByMe ? colors.primary : colors.textMuted} />
+                  <Text style={[styles.commentActionText, c.likedByMe && styles.likeCountActive]}>{c.likes_count}</Text>
+                </Pressable>
+                <Pressable onPress={() => setReplyTo(c)} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel="Répondre">
+                  <Ionicons name="return-down-forward-outline" size={15} color={colors.textMuted} />
+                  <Text style={styles.commentActionText}>Répondre</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
         </View>
       </View>
     );
@@ -233,7 +344,11 @@ export default function PostDetail() {
                 <Text style={styles.time}>{formatRelativeTime(post.created_at)}</Text>
               </View>
               <CategoryTag category={post.category} />
-              {!post.is_anonymous && post.user_id && post.user_id !== meId ? (
+              {post.user_id === meId ? (
+                <Pressable onPress={postMenu} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de ma publication">
+                  <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
+                </Pressable>
+              ) : !post.is_anonymous && post.user_id && post.user_id !== meId ? (
                 <Pressable onPress={() => confirmBlock(post.user_id!, () => router.back())} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Bloquer cet utilisateur">
                   <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
                 </Pressable>
@@ -364,6 +479,13 @@ const styles = StyleSheet.create({
   commentActions: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },
   commentAction: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   commentActionText: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
+  editBox: { gap: spacing.xs, marginTop: spacing.xs },
+  editInput: { minHeight: 40, height: undefined, textAlignVertical: "top", paddingTop: spacing.sm, marginBottom: 0 },
+  editActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.md, alignItems: "center" },
+  editCancel: { paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
+  editCancelText: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
+  editSave: { paddingVertical: spacing.xs, paddingHorizontal: spacing.md, borderRadius: radius.pill, backgroundColor: colors.primary },
+  editSaveText: { ...typography.caption, color: colors.white, fontWeight: "700" },
   replyBanner: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.primaryLight, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   replyBannerText: { ...typography.caption, color: colors.primaryDark, fontWeight: "600", flex: 1 },
   composer: {

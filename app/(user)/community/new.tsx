@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -8,6 +8,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { communityService, COMMUNITY_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "@/lib/community-service";
 import { uploadCommunityImage } from "@/lib/storage";
@@ -16,6 +17,9 @@ import { colors, radius, spacing, typography } from "@/theme";
 export default function NewPost() {
   const { session } = useAuth();
   const router = useRouter();
+  // En mode édition, `id` est l'id du post à modifier (sinon création).
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const isEdit = !!id;
 
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<string>(DEFAULT_CATEGORY);
@@ -24,8 +28,29 @@ export default function NewPost() {
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadingPost, setLoadingPost] = useState(isEdit);
 
   const previewUri = localPreview ?? (imageUrl || null);
+
+  // Édition : charge le post existant et préremplit le formulaire.
+  useEffect(() => {
+    if (!isEdit) return;
+    (async () => {
+      try {
+        const p = await communityService.getPost(id!);
+        if (p) {
+          setContent(p.content);
+          setCategory(p.category ?? DEFAULT_CATEGORY);
+          setIsAnonymous(p.is_anonymous);
+          setImageUrl(p.image_url ?? "");
+        }
+      } catch {
+        Alert.alert("Erreur", "Publication introuvable.", [{ text: "OK", onPress: () => router.back() }]);
+      } finally {
+        setLoadingPost(false);
+      }
+    })();
+  }, [isEdit, id]);
 
   // Sélection d'une photo (optionnelle) + upload dans community-images.
   async function pickImage() {
@@ -70,16 +95,25 @@ export default function NewPost() {
     }
     setSaving(true);
     try {
-      await communityService.createPost({
-        userId: session.user.id,
-        content: text,
-        isAnonymous,
-        category,
-        imageUrl: imageUrl.trim() || null,
-      });
-      Alert.alert("Publié", "Votre publication a été partagée.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      if (isEdit) {
+        await communityService.updatePost(id!, {
+          content: text,
+          category,
+          imageUrl: imageUrl.trim() || null,
+        });
+        router.back();
+      } else {
+        await communityService.createPost({
+          userId: session.user.id,
+          content: text,
+          isAnonymous,
+          category,
+          imageUrl: imageUrl.trim() || null,
+        });
+        Alert.alert("Publié", "Votre publication a été partagée.", [
+          { text: "OK", onPress: () => router.back() },
+        ]);
+      }
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Publication échouée");
     } finally {
@@ -87,9 +121,11 @@ export default function NewPost() {
     }
   }
 
+  if (loadingPost) return <Loading />;
+
   return (
     <Screen>
-      <ScreenHeader title="Nouvelle publication" />
+      <ScreenHeader title={isEdit ? "Modifier la publication" : "Nouvelle publication"} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
         <Input
@@ -140,23 +176,26 @@ export default function NewPost() {
           ) : null}
         </View>
 
-        <Card style={styles.anonRow}>
-          <View style={styles.anonIcon}>
-            <Ionicons name="eye-off-outline" size={20} color={colors.primary} />
-          </View>
-          <View style={styles.anonText}>
-            <Text style={styles.anonTitle}>Publier anonymement</Text>
-            <Text style={styles.anonHint}>Votre nom sera masqué et remplacé par « Anonyme ».</Text>
-          </View>
-          <Switch
-            value={isAnonymous}
-            onValueChange={setIsAnonymous}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor={colors.white}
-          />
-        </Card>
+        {/* L'anonymat est défini à la création (non modifiable ensuite). */}
+        {!isEdit ? (
+          <Card style={styles.anonRow}>
+            <View style={styles.anonIcon}>
+              <Ionicons name="eye-off-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.anonText}>
+              <Text style={styles.anonTitle}>Publier anonymement</Text>
+              <Text style={styles.anonHint}>Votre nom sera masqué et remplacé par « Anonyme ».</Text>
+            </View>
+            <Switch
+              value={isAnonymous}
+              onValueChange={setIsAnonymous}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.white}
+            />
+          </Card>
+        ) : null}
 
-        <Button title="Publier" onPress={handlePublish} loading={saving} disabled={uploading} />
+        <Button title={isEdit ? "Enregistrer" : "Publier"} onPress={handlePublish} loading={saving} disabled={uploading} />
         <Button title="Annuler" variant="outline" onPress={() => router.back()} />
       </ScrollView>
     </Screen>

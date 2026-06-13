@@ -20,6 +20,7 @@ import {
   type CommunityPostWithAuthor,
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
+import { hapticWarning } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
 // Minuscules + suppression des accents pour une recherche tolérante.
@@ -53,6 +54,26 @@ export default function CommunityHome() {
             await reload();
           } catch (e) {
             Alert.alert("Erreur", e instanceof Error ? e.message : "Action impossible");
+          }
+        },
+      },
+    ]);
+  }
+
+  // Supprime MA propre publication (confirmation + haptique).
+  function deleteMyPost(postId: string) {
+    Alert.alert("Supprimer la publication ?", "Cette action est définitive.", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: async () => {
+          hapticWarning();
+          try {
+            await communityService.deletePost(postId);
+            await reload();
+          } catch (e) {
+            Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
           }
         },
       },
@@ -171,8 +192,11 @@ export default function CommunityHome() {
                   liked={likedIds.has(post.id)}
                   saved={savedIds.has(post.id)}
                   onToggleSave={() => toggleSave(post.id)}
+                  isMine={!!post.user_id && post.user_id === meId}
                   canBlock={!post.is_anonymous && !!post.user_id && post.user_id !== meId}
                   onBlock={() => post.user_id && blockAuthor(post.user_id)}
+                  onEdit={() => router.push({ pathname: "/(user)/community/new", params: { id: post.id } })}
+                  onDelete={() => deleteMyPost(post.id)}
                   onPress={() => router.push(`/(user)/community/${post.id}`)}
                   onLike={() => toggleLike(post.id)}
                 />
@@ -202,8 +226,11 @@ function PostRow({
   liked,
   saved,
   onToggleSave,
+  isMine,
   canBlock,
   onBlock,
+  onEdit,
+  onDelete,
   onPress,
   onLike,
 }: {
@@ -211,12 +238,31 @@ function PostRow({
   liked: boolean;
   saved: boolean;
   onToggleSave: () => void;
+  isMine: boolean;
   canBlock: boolean;
   onBlock: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
   onPress: () => void;
   onLike: () => void;
 }) {
   const name = authorDisplayName(post.is_anonymous, post.author);
+
+  // Menu ⋯ : sur MON post → Modifier/Supprimer ; sur celui d'un autre → Bloquer.
+  function openMenu() {
+    if (isMine) {
+      Alert.alert("Ma publication", undefined, [
+        { text: "Modifier", onPress: onEdit },
+        { text: "Supprimer", style: "destructive", onPress: onDelete },
+        { text: "Annuler", style: "cancel" },
+      ]);
+    } else {
+      onBlock();
+    }
+  }
+
+  const showMenu = isMine || canBlock;
+
   return (
     <Pressable onPress={onPress}>
       <Card style={styles.post}>
@@ -236,8 +282,8 @@ function PostRow({
             <Text style={styles.time}>{formatRelativeTime(post.created_at)}</Text>
           </View>
           <CategoryTag category={post.category} />
-          {canBlock ? (
-            <Pressable onPress={onBlock} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Bloquer cet utilisateur">
+          {showMenu ? (
+            <Pressable onPress={openMenu} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel={isMine ? "Options de ma publication" : "Bloquer cet utilisateur"}>
               <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
             </Pressable>
           ) : null}

@@ -5,6 +5,7 @@ import type {
   CommunityComment,
   Profile,
   TablesInsert,
+  TablesUpdate,
 } from "@/lib/database.types";
 
 // Catégories de la communauté (liste fixe, FR). Défaut = « Général ».
@@ -254,6 +255,40 @@ export const communityService = {
     return data;
   },
 
+  // Modifie SA propre publication. La RLS (own_or_admin) limite l'accès.
+  // `imageUrl` : undefined = inchangé, null = retirée, string = nouvelle image.
+  async updatePost(
+    id: string,
+    patch: { content: string; category: string; imageUrl?: string | null }
+  ): Promise<CommunityPost> {
+    const update: TablesUpdate<"community_posts"> = {
+      content: patch.content,
+      category: patch.category,
+      updated_at: new Date().toISOString(),
+    };
+    if (patch.imageUrl !== undefined) update.image_url = patch.imageUrl;
+    const { data, error } = await supabase
+      .from("community_posts")
+      .update(update)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) {
+      if (isBannedWordError(error)) throw new Error(BANNED_WORD_MESSAGE);
+      throw error;
+    }
+    return data;
+  },
+
+  // Supprime SA propre publication (la RLS own_or_admin protège). On retire
+  // d'abord les dépendances (likes, commentaires) pour éviter les orphelins.
+  async deletePost(id: string): Promise<void> {
+    await supabase.from("community_likes").delete().eq("post_id", id);
+    await supabase.from("community_comments").delete().eq("post_id", id);
+    const { error } = await supabase.from("community_posts").delete().eq("id", id);
+    if (error) throw error;
+  },
+
   // Identifiants des publications déjà aimées par l'utilisateur.
   async getLikedPostIds(userId: string): Promise<string[]> {
     const { data, error } = await supabase
@@ -386,6 +421,29 @@ export const communityService = {
         .insert({ comment_id: commentId, user_id: me });
       if (error && error.code !== "23505") throw error; // ignore le doublon (unique)
     }
+  },
+
+  // Modifie SON propre commentaire (la RLS own_or_admin protège).
+  async updateComment(id: string, content: string): Promise<CommunityComment> {
+    const { data, error } = await supabase
+      .from("community_comments")
+      .update({ content, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) {
+      if (isBannedWordError(error)) throw new Error(BANNED_WORD_MESSAGE);
+      throw error;
+    }
+    return data;
+  },
+
+  // Supprime SON propre commentaire (la RLS own_or_admin protège).
+  // Retire d'abord les likes liés pour éviter les orphelins.
+  async deleteComment(id: string): Promise<void> {
+    await supabase.from("comment_likes").delete().eq("comment_id", id);
+    const { error } = await supabase.from("community_comments").delete().eq("id", id);
+    if (error) throw error;
   },
 
   // ---------------- Blocage d'utilisateurs ----------------
