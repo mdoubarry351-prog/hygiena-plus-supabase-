@@ -50,6 +50,7 @@ export type Database = {
           is_premium: boolean;
           date_of_birth: string | null;
           onboarding_completed: boolean;
+          community_rules_accepted: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -65,6 +66,7 @@ export type Database = {
           is_premium?: boolean;
           date_of_birth?: string | null;
           onboarding_completed?: boolean;
+          community_rules_accepted?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -80,6 +82,7 @@ export type Database = {
           is_premium?: boolean;
           date_of_birth?: string | null;
           onboarding_completed?: boolean;
+          community_rules_accepted?: boolean;
           created_at?: string;
           updated_at?: string;
         };

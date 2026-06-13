@@ -10,16 +10,22 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
+import { authService } from "@/lib/auth-service";
 import { communityService, COMMUNITY_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "@/lib/community-service";
+import { CommunityRules } from "@/components/CommunityRules";
 import { uploadCommunityImage } from "@/lib/storage";
 import { colors, radius, spacing, typography } from "@/theme";
 
 export default function NewPost() {
-  const { session } = useAuth();
+  const { session, profile, refreshProfile } = useAuth();
   const router = useRouter();
   // En mode édition, `id` est l'id du post à modifier (sinon création).
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEdit = !!id;
+
+  // Acceptation de la charte requise avant la 1ʳᵉ publication (pas en édition).
+  const needsRules = !isEdit && profile?.community_rules_accepted === false;
+  const [accepting, setAccepting] = useState(false);
 
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<string>(DEFAULT_CATEGORY);
@@ -85,8 +91,23 @@ export default function NewPost() {
     setLocalPreview(null);
   }
 
+  // Accepte la charte → on ne la redemandera plus.
+  async function acceptRules() {
+    if (!session?.user) return;
+    setAccepting(true);
+    try {
+      await authService.updateProfile(session.user.id, { community_rules_accepted: true });
+      await refreshProfile();
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Action impossible");
+    } finally {
+      setAccepting(false);
+    }
+  }
+
   async function handlePublish() {
     if (!session?.user) return;
+    if (needsRules) { Alert.alert("Règles à accepter", "Veuillez accepter les règles de la communauté avant de publier."); return; }
     if (uploading) { Alert.alert("Patientez", "La photo est encore en cours d'envoi."); return; }
     const text = content.trim();
     if (!text) {
@@ -127,6 +148,15 @@ export default function NewPost() {
     <Screen>
       <ScreenHeader title={isEdit ? "Modifier la publication" : "Nouvelle publication"} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+
+        {needsRules ? (
+          <Card style={styles.rulesCard}>
+            <Text style={styles.rulesTitle}>Avant de publier</Text>
+            <Text style={styles.rulesIntro}>Merci de lire et d'accepter les règles de la communauté.</Text>
+            <CommunityRules />
+            <Button title="J'accepte les règles de la communauté" onPress={acceptRules} loading={accepting} />
+          </Card>
+        ) : null}
 
         <Input
           label="Votre message"
@@ -195,7 +225,7 @@ export default function NewPost() {
           </Card>
         ) : null}
 
-        <Button title={isEdit ? "Enregistrer" : "Publier"} onPress={handlePublish} loading={saving} disabled={uploading} />
+        <Button title={isEdit ? "Enregistrer" : "Publier"} onPress={handlePublish} loading={saving} disabled={uploading || needsRules} />
         <Button title="Annuler" variant="outline" onPress={() => router.back()} />
       </ScrollView>
     </Screen>
@@ -204,6 +234,9 @@ export default function NewPost() {
 
 const styles = StyleSheet.create({
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.sm },
+  rulesCard: { gap: spacing.md, marginBottom: spacing.sm },
+  rulesTitle: { ...typography.h3 },
+  rulesIntro: { ...typography.caption, color: colors.textMuted, marginTop: -spacing.xs },
   textArea: { height: 140, textAlignVertical: "top", paddingTop: spacing.sm },
   catLabel: { ...typography.caption, color: colors.textMuted, fontWeight: "700", marginTop: spacing.xs },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginBottom: spacing.xs },

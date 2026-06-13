@@ -49,6 +49,7 @@ export default function UserLayout() {
           <Tabs.Screen name="community/new" options={{ href: null }} />
           <Tabs.Screen name="community/[id]" options={{ href: null }} />
           <Tabs.Screen name="community/saved" options={{ href: null }} />
+          <Tabs.Screen name="community/rules" options={{ href: null }} />
           <Tabs.Screen name="appointments/[id]" options={{ href: null }} />
           <Tabs.Screen name="appointments/mine" options={{ href: null }} />
           <Tabs.Screen name="appointments/receipt" options={{ href: null }} />

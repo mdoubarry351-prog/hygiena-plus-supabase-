@@ -116,6 +116,9 @@ export default function CommunityHome() {
       <View style={styles.topBar}>
         <Text style={typography.h2}>Communauté</Text>
         <View style={styles.topActions}>
+          <Pressable onPress={() => router.push("/(user)/community/rules")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Règles de la communauté">
+            <Ionicons name="information-circle-outline" size={23} color={colors.text} />
+          </Pressable>
           <Pressable onPress={() => router.push("/(user)/community/saved")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Publications enregistrées">
             <Ionicons name="bookmark-outline" size={22} color={colors.text} />
           </Pressable>
