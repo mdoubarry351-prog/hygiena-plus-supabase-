@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { MenstrualCycle, TablesInsert } from "@/lib/database.types";
+import type { MenstrualCycle, TablesInsert, TablesUpdate } from "@/lib/database.types";
 
 export const SYMPTOMS = [
   "Crampes", "Maux de tête", "Ballonnements", "Fatigue", "Sautes d'humeur",
@@ -46,6 +46,22 @@ export const cycleService = {
   async addCycle(entry: TablesInsert<"menstrual_cycles">): Promise<MenstrualCycle> {
     const { data, error } = await supabase
       .from("menstrual_cycles").insert(entry).select("*").single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Récupère une saisie unique (mode édition).
+  async getCycle(id: string): Promise<MenstrualCycle | null> {
+    const { data, error } = await supabase
+      .from("menstrual_cycles").select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  // Met à jour une saisie existante (édition). user_id non modifié.
+  async updateCycle(id: string, patch: TablesUpdate<"menstrual_cycles">): Promise<MenstrualCycle> {
+    const { data, error } = await supabase
+      .from("menstrual_cycles").update(patch).eq("id", id).select("*").single();
     if (error) throw error;
     return data;
   },

@@ -1,16 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { cycleService, SYMPTOMS, FLOW_OPTIONS, MOOD_OPTIONS } from "@/lib/cycle-service";
 import { colors, radius, spacing, typography } from "@/theme";
+
+// Parse une date SQL « AAAA-MM-JJ » en Date locale (midi → évite les décalages DST/fuseau).
+function parseISODate(iso: string): Date {
+  return new Date(`${iso}T12:00:00`);
+}
 
 // Format date en YYYY-MM-DD à partir des composants LOCAUX (évite le décalage de
 // fuseau qu'introduirait toISOString() pour les minuits locaux).
@@ -39,6 +45,9 @@ export default function LogCycle() {
   const { session } = useAuth();
   const toast = useToast();
   const router = useRouter();
+  // En mode édition, `id` est l'id de la saisie à modifier (sinon création).
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const isEdit = !!id;
 
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | null>(null);
@@ -49,6 +58,32 @@ export default function LogCycle() {
   const [pain, setPain] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loadingCycle, setLoadingCycle] = useState(isEdit);
+
+  // Édition : charge la saisie existante et préremplit le formulaire.
+  useEffect(() => {
+    if (!isEdit) return;
+    (async () => {
+      try {
+        const c = await cycleService.getCycle(id!);
+        if (c) {
+          setStartDate(parseISODate(c.period_start));
+          setEndDate(c.period_end ? parseISODate(c.period_end) : null);
+          setSelectedSymptoms(c.symptoms ?? []);
+          setFlow(c.flow);
+          setMood(c.mood);
+          setPain(c.pain);
+          setNotes(c.notes ?? "");
+        } else {
+          Alert.alert("Introuvable", "Cette saisie n'existe plus.", [{ text: "OK", onPress: () => router.back() }]);
+        }
+      } catch {
+        Alert.alert("Erreur", "Impossible de charger la saisie.", [{ text: "OK", onPress: () => router.back() }]);
+      } finally {
+        setLoadingCycle(false);
+      }
+    })();
+  }, [isEdit, id]);
 
   function toggleSymptom(s: string) {
     setSelectedSymptoms((prev) =>
@@ -81,8 +116,7 @@ export default function LogCycle() {
     }
     setSaving(true);
     try {
-      await cycleService.addCycle({
-        user_id: session.user.id,
+      const payload = {
         period_start: toISODate(startDate),
         period_end: endDate ? toISODate(endDate) : null,
         symptoms: selectedSymptoms.length ? selectedSymptoms : null,
@@ -90,8 +124,14 @@ export default function LogCycle() {
         mood,
         pain,
         notes: notes.trim() ? notes.trim() : null,
-      });
-      toast.success("Vos règles ont été enregistrées.");
+      };
+      if (isEdit) {
+        await cycleService.updateCycle(id!, payload);
+        toast.success("Saisie modifiée.");
+      } else {
+        await cycleService.addCycle({ user_id: session.user.id, ...payload });
+        toast.success("Vos règles ont été enregistrées.");
+      }
       router.back();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
@@ -108,9 +148,11 @@ export default function LogCycle() {
   // Valeur affichée dans le picker quand on édite la fin sans date encore choisie.
   const pickerValue = picker === "end" ? endDate ?? startDate : startDate;
 
+  if (loadingCycle) return <Loading />;
+
   return (
     <Screen>
-      <ScreenHeader title="Enregistrer mes règles" />
+      <ScreenHeader title={isEdit ? "Modifier la saisie" : "Enregistrer mes règles"} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
         {/* Dates via picker natif */}

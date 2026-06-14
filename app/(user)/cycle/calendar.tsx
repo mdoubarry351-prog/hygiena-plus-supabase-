@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useCycles } from "@/hooks/useCycles";
@@ -162,6 +163,19 @@ export default function CalendarScreen() {
           </Card>
         </Pressable>
 
+        <Pressable onPress={() => router.push("/(user)/cycle/history")}>
+          <Card style={styles.summaryCard}>
+            <View style={styles.summaryIcon}>
+              <Ionicons name="list-outline" size={20} color={colors.primaryDark} />
+            </View>
+            <View style={styles.summaryText}>
+              <Text style={styles.summaryTitle}>Historique des cycles</Text>
+              <Text style={styles.summarySub}>Tous tes cycles, modifier ou supprimer</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
         <Pressable onPress={() => router.push("/(user)/pregnancy")}>
           <Card style={styles.summaryCard}>
             <View style={styles.summaryIcon}>
@@ -247,15 +261,26 @@ export default function CalendarScreen() {
             </View>
 
             {selected ? (
-              <View style={styles.sheetBody}>
-                {selected.flow ? <DetailRow icon="water-outline" label="Flux" value={selected.flow} /> : null}
-                {selected.mood ? <DetailRow icon="happy-outline" label="Humeur" value={selected.mood} /> : null}
-                {selected.pain != null ? <DetailRow icon="pulse-outline" label="Douleur" value={`${selected.pain}/10 · ${painDescriptor(selected.pain)}`} /> : null}
-                {selected.symptoms && selected.symptoms.length > 0 ? (
-                  <DetailRow icon="medkit-outline" label="Symptômes" value={selected.symptoms.join(", ")} />
-                ) : null}
-                {selected.notes ? <DetailRow icon="document-text-outline" label="Notes" value={selected.notes} /> : null}
-              </View>
+              <>
+                <View style={styles.sheetBody}>
+                  {selected.flow ? <DetailRow icon="water-outline" label="Flux" value={selected.flow} /> : null}
+                  {selected.mood ? <DetailRow icon="happy-outline" label="Humeur" value={selected.mood} /> : null}
+                  {selected.pain != null ? <DetailRow icon="pulse-outline" label="Douleur" value={`${selected.pain}/10 · ${painDescriptor(selected.pain)}`} /> : null}
+                  {selected.symptoms && selected.symptoms.length > 0 ? (
+                    <DetailRow icon="medkit-outline" label="Symptômes" value={selected.symptoms.join(", ")} />
+                  ) : null}
+                  {selected.notes ? <DetailRow icon="document-text-outline" label="Notes" value={selected.notes} /> : null}
+                </View>
+                <Button
+                  title="Modifier"
+                  variant="outline"
+                  onPress={() => {
+                    const id = selected.id;
+                    setSelected(null);
+                    router.push({ pathname: "/(user)/cycle/log", params: { id } });
+                  }}
+                />
+              </>
             ) : null}
           </Pressable>
         </Pressable>
