@@ -15,6 +15,11 @@ export type ChatMessage = {
   created_at: string;
 };
 
+// Horodatage court d'un message (ex. « 14:30 »).
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
 type Props = {
   title: string;
   subtitle?: string;
@@ -88,6 +93,7 @@ export function ChatThread({ title, subtitle, note, banner, messages, currentRol
                     <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
                       <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{m.content}</Text>
                     </View>
+                    <Text style={styles.time}>{formatTime(m.created_at)}</Text>
                   </View>
                 );
               })
@@ -131,9 +137,10 @@ const styles = StyleSheet.create({
   noteText: { ...typography.caption, color: colors.primaryDark, flex: 1 },
   messages: { padding: spacing.lg, gap: spacing.sm },
   emptyHint: { ...typography.caption, color: colors.textMuted, textAlign: "center", marginTop: spacing.xl },
-  bubbleRow: { flexDirection: "row" },
-  rowMine: { justifyContent: "flex-end" },
-  rowOther: { justifyContent: "flex-start" },
+  bubbleRow: { flexDirection: "column" },
+  rowMine: { alignItems: "flex-end" },
+  rowOther: { alignItems: "flex-start" },
+  time: { ...typography.caption, fontSize: 10, color: colors.textMuted, marginTop: 2, marginHorizontal: 4 },
   bubble: { maxWidth: "82%", borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: radius.sm },
   bubbleOther: { backgroundColor: colors.surface, borderBottomLeftRadius: radius.sm, borderWidth: 1, borderColor: colors.border },

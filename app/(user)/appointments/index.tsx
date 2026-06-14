@@ -10,11 +10,12 @@ import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
 import { AppImage } from "@/components/AppImage";
+import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
 import { useAuth } from "@/providers/AuthProvider";
 import { useDoctors } from "@/hooks/useDoctors";
-import { useAppSettings } from "@/hooks/useAppSettings";
+import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { StarRating } from "@/components/StarRating";
-import { doctorDisplayName, type DoctorWithProfile } from "@/lib/appointments-service";
+import { doctorDisplayName, hasAnyAvailability, type DoctorWithProfile } from "@/lib/appointments-service";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
@@ -24,10 +25,20 @@ function norm(s: string): string {
 }
 
 export default function AppointmentsHome() {
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const { doctors, loading, reload } = useDoctors();
-  const { doctors_enabled } = useAppSettings();
+  const { doctors_enabled, premium_enabled } = useAppSettings();
   const router = useRouter();
+
+  // Contacter = messagerie premium (même règle que la fiche : Premium → chat, sinon page Premium).
+  const contactDoctor = useCallback((d: DoctorWithProfile) => {
+    if (!premium_enabled) return showServiceUnavailable();
+    if (profile?.is_premium) {
+      router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: d.id, doctorName: doctorDisplayName(d.profile) } });
+    } else {
+      router.push("/(user)/premium");
+    }
+  }, [premium_enabled, profile?.is_premium, router]);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [activeSpec, setActiveSpec] = useState<string>("all");
@@ -137,7 +148,12 @@ export default function AppointmentsHome() {
               <EmptyState icon="search-outline" title="Aucun médecin trouvé" message="Essayez un autre nom ou une autre spécialité." />
             ) : (
               list.map((d) => (
-                <DoctorRow key={d.id} doctor={d} onPress={() => router.push(`/(user)/appointments/${d.id}`)} />
+                <DoctorRow
+                  key={d.id}
+                  doctor={d}
+                  onPress={() => router.push(`/(user)/appointments/${d.id}`)}
+                  onContact={() => contactDoctor(d)}
+                />
               ))
             )}
           </>
@@ -147,10 +163,12 @@ export default function AppointmentsHome() {
   );
 }
 
-function DoctorRow({ doctor, onPress }: { doctor: DoctorWithProfile; onPress: () => void }) {
+function DoctorRow({ doctor, onPress, onContact }: { doctor: DoctorWithProfile; onPress: () => void; onContact: () => void }) {
   const name = doctorDisplayName(doctor.profile);
+  const available = hasAnyAvailability(doctor.availability);
   return (
     <Card onPress={onPress} accessibilityLabel={name} style={styles.row}>
+      <View style={styles.rowTop}>
         {doctor.profile?.avatar_url ? (
           <AppImage source={doctor.profile.avatar_url} style={styles.avatar} />
         ) : (
@@ -159,8 +177,12 @@ function DoctorRow({ doctor, onPress }: { doctor: DoctorWithProfile; onPress: ()
           </View>
         )}
         <View style={styles.rowInfo}>
-          <Text style={styles.name} numberOfLines={1}>{name}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.name} numberOfLines={1}>{name}</Text>
+            {doctor.is_validated ? <VerifiedDoctorBadge /> : null}
+          </View>
           <Text style={styles.specialty} numberOfLines={1}>{doctor.specialty}</Text>
+          {doctor.bio ? <Text style={styles.bio} numberOfLines={1}>{doctor.bio}</Text> : null}
           {doctor.rating_count > 0 ? (
             <StarRating value={doctor.rating_avg} count={doctor.rating_count} size={13} compact />
           ) : null}
@@ -170,9 +192,23 @@ function DoctorRow({ doctor, onPress }: { doctor: DoctorWithProfile; onPress: ()
             ) : (
               <Text style={styles.feeFree}>Tarif sur place</Text>
             )}
+            <View style={[styles.availPill, !available && styles.availPillOff]}>
+              <View style={[styles.availDot, { backgroundColor: available ? colors.success : colors.textMuted }]} />
+              <Text style={styles.availText}>{available ? "Disponible" : "Bientôt"}</Text>
+            </View>
           </View>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+      </View>
+      <View style={styles.cardActions}>
+        <Pressable onPress={onPress} style={[styles.cardBtn, styles.cardBtnPrimary]} accessibilityRole="button" accessibilityLabel={`Prendre rendez-vous avec ${name}`}>
+          <Ionicons name="calendar" size={16} color={colors.white} />
+          <Text style={styles.cardBtnPrimaryText}>Prendre rendez-vous</Text>
+        </Pressable>
+        <Pressable onPress={onContact} style={[styles.cardBtn, styles.cardBtnOutline]} accessibilityRole="button" accessibilityLabel={`Contacter ${name}`}>
+          <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.primary} />
+          <Text style={styles.cardBtnOutlineText}>Contacter</Text>
+        </Pressable>
+      </View>
     </Card>
   );
 }
@@ -205,13 +241,26 @@ const styles = StyleSheet.create({
   sortTextActive: { color: colors.white },
   empty: { alignItems: "center", gap: spacing.sm },
   muted: { color: colors.textMuted, textAlign: "center" },
-  row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  row: { gap: spacing.md },
+  rowTop: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: radius.pill, backgroundColor: colors.primaryLight },
   avatarPlaceholder: { alignItems: "center", justifyContent: "center" },
   rowInfo: { flex: 1, gap: 2 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
   name: { ...typography.name },
   specialty: { ...typography.caption, color: colors.secondary, fontWeight: "600" },
+  bio: { ...typography.caption, color: colors.textMuted },
   rowFoot: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.xs },
   fee: { ...typography.body, fontWeight: "700", color: colors.primary },
   feeFree: { ...typography.caption, color: colors.textMuted },
+  availPill: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.surface, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill },
+  availPillOff: { opacity: 0.7 },
+  availDot: { width: 7, height: 7, borderRadius: 3.5 },
+  availText: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
+  cardActions: { flexDirection: "row", gap: spacing.sm },
+  cardBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, height: 42, borderRadius: radius.md, borderWidth: 1.5 },
+  cardBtnPrimary: { backgroundColor: colors.primary, borderColor: colors.primary },
+  cardBtnPrimaryText: { ...typography.caption, color: colors.white, fontWeight: "700" },
+  cardBtnOutline: { borderColor: colors.primary, backgroundColor: colors.card },
+  cardBtnOutlineText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
 });
