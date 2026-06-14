@@ -10,6 +10,8 @@ import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { PostImages } from "@/components/PostImages";
+import { HeartButton } from "@/components/HeartButton";
+import { FadeInView } from "@/components/FadeInView";
 import { useFavorites } from "@/hooks/useFavorites";
 import { hapticLight } from "@/lib/haptics";
 import { useToast } from "@/providers/ToastProvider";
@@ -71,14 +73,11 @@ export default function ProductDetail() {
 
   return (
     <Screen>
+      <FadeInView>
       <ScreenHeader
         right={
           <Pressable onPress={() => toggle(product.id)} hitSlop={10} accessibilityRole="button" accessibilityLabel={favIds.has(product.id) ? "Retirer des favoris" : "Ajouter aux favoris"}>
-            <Ionicons
-              name={favIds.has(product.id) ? "heart" : "heart-outline"}
-              size={24}
-              color={favIds.has(product.id) ? colors.danger : colors.text}
-            />
+            <HeartButton active={favIds.has(product.id)} size={24} activeColor={colors.danger} inactiveColor={colors.text} />
           </Pressable>
         }
       />
@@ -145,6 +144,7 @@ export default function ProductDetail() {
           onChanged={reloadProduct}
         />
       </ScrollView>
+      </FadeInView>
     </Screen>
   );
 }

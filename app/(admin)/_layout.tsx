@@ -19,13 +19,13 @@ export default function AdminLayout() {
           <View style={styles.row}>
             <AdminSidebar />
             <View style={styles.content}>
-              <Stack screenOptions={{ headerShown: false }} />
+              <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", animationDuration: 200 }} />
             </View>
           </View>
         ) : (
           // Mobile : barre supérieure (dans chaque écran) + drawer coulissant en overlay.
           <View style={styles.flex}>
-            <Stack screenOptions={{ headerShown: false }} />
+            <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", animationDuration: 200 }} />
             <AdminDrawer />
           </View>
         )}

@@ -24,6 +24,7 @@ import {
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
+import { HeartButton } from "@/components/HeartButton";
 import { hapticWarning } from "@/lib/haptics";
 import { useToast } from "@/providers/ToastProvider";
 import { APP_DOWNLOAD_URL } from "@/lib/app-config";
@@ -317,11 +318,7 @@ function PostRow({
 
         <View style={styles.postFoot}>
           <Pressable onPress={onLike} hitSlop={8} style={styles.likeBtn}>
-            <Ionicons
-              name={liked ? "heart" : "heart-outline"}
-              size={20}
-              color={liked ? colors.primary : colors.textMuted}
-            />
+            <HeartButton active={liked} size={20} />
             <Text style={[styles.likeCount, liked && styles.likeCountActive]}>
               {post.likes_count}
             </Text>

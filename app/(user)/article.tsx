@@ -6,6 +6,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Loading } from "@/components/Loading";
 import { EmptyState } from "@/components/EmptyState";
 import { AppImage } from "@/components/AppImage";
+import { FadeInView } from "@/components/FadeInView";
 import { articlesService } from "@/lib/articles-service";
 import type { Article } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -46,6 +47,7 @@ export default function ArticleDetail() {
 
   return (
     <Screen>
+      <FadeInView>
       <ScreenHeader title="Article" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {article.cover_image_url ? (
@@ -60,6 +62,7 @@ export default function ArticleDetail() {
           ))}
         </View>
       </ScrollView>
+      </FadeInView>
     </Screen>
   );
 }

@@ -7,6 +7,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
+import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   appointmentsService,
@@ -49,6 +50,7 @@ export default function Receipt() {
 
   return (
     <Screen>
+      <FadeInView>
       <ScreenHeader />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.badge}>
@@ -89,6 +91,7 @@ export default function Receipt() {
 
         <Button title="Voir mes rendez-vous" onPress={() => router.replace("/(user)/appointments/mine")} />
       </ScrollView>
+      </FadeInView>
     </Screen>
   );
 }

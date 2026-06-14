@@ -9,6 +9,7 @@ import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { EmptyState } from "@/components/EmptyState";
 import { OrderTimeline } from "@/components/OrderTimeline";
+import { FadeInView } from "@/components/FadeInView";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
 import {
   ORDER_STATUS_LABELS,
@@ -102,6 +103,7 @@ export default function OrderDetail() {
 
   return (
     <Screen>
+      <FadeInView>
       <ScreenHeader
         title="Reçu"
         right={
@@ -167,6 +169,7 @@ export default function OrderDetail() {
           </Pressable>
         ) : null}
       </ScrollView>
+      </FadeInView>
     </Screen>
   );
 }

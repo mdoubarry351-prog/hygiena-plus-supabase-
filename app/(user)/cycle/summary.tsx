@@ -8,6 +8,7 @@ import { Loading } from "@/components/Loading";
 import { EmptyState } from "@/components/EmptyState";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
+import { FadeInView } from "@/components/FadeInView";
 import { useCycles } from "@/hooks/useCycles";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -95,6 +96,7 @@ export default function CycleSummary() {
 
   return (
     <Screen>
+      <FadeInView>
       <ScreenHeader title="Résumé de mon cycle" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {offline ? <OfflineBanner cachedAt={cachedAt} /> : null}
@@ -173,6 +175,7 @@ export default function CycleSummary() {
 
         <MedicalDisclaimer text="Les prédictions sont des estimations indicatives et ne constituent pas un avis médical." />
       </ScrollView>
+      </FadeInView>
     </Screen>
   );
 }

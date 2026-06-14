@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
 import { StarRating } from "@/components/StarRating";
 import { AppImage } from "@/components/AppImage";
+import { HeartButton } from "@/components/HeartButton";
 import { useProducts } from "@/hooks/useProducts";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -212,11 +213,7 @@ function ProductRow({ product, isFav, onToggleFav, onAdd, onPress }: { product: 
         </View>
         <View style={styles.rowActions}>
           <Pressable onPress={onToggleFav} hitSlop={10} style={styles.favBtn} accessibilityRole="button" accessibilityLabel={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}>
-            <Ionicons
-              name={isFav ? "heart" : "heart-outline"}
-              size={22}
-              color={isFav ? colors.danger : colors.textMuted}
-            />
+            <HeartButton active={isFav} size={22} activeColor={colors.danger} />
           </Pressable>
           <Pressable
             onPress={quickAdd}

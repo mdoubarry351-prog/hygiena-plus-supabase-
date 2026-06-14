@@ -33,6 +33,8 @@ import {
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
+import { HeartButton } from "@/components/HeartButton";
+import { FadeInView } from "@/components/FadeInView";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { hapticLight, hapticWarning } from "@/lib/haptics";
 import { useToast } from "@/providers/ToastProvider";
@@ -391,7 +393,7 @@ export default function PostDetail() {
               <Text style={styles.commentText}>{c.content}</Text>
               <View style={styles.commentActions}>
                 <Pressable onPress={() => handleCommentLike(c)} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel={c.likedByMe ? "Je n'aime plus" : "J'aime"}>
-                  <Ionicons name={c.likedByMe ? "heart" : "heart-outline"} size={16} color={c.likedByMe ? colors.primary : colors.textMuted} />
+                  <HeartButton active={c.likedByMe} size={16} />
                   <Text style={[styles.commentActionText, c.likedByMe && styles.likeCountActive]}>{c.likes_count}</Text>
                 </Pressable>
                 <Pressable onPress={() => setReplyTo(c)} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel="Répondre">
@@ -408,6 +410,7 @@ export default function PostDetail() {
 
   return (
     <Screen>
+      <FadeInView>
       <ScreenHeader title="Publication" />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -448,11 +451,7 @@ export default function PostDetail() {
 
             <View style={styles.postFoot}>
               <Pressable onPress={handleLike} hitSlop={8} style={styles.likeBtn}>
-                <Ionicons
-                  name={liked ? "heart" : "heart-outline"}
-                  size={22}
-                  color={liked ? colors.primary : colors.textMuted}
-                />
+                <HeartButton active={liked} size={22} />
                 <Text style={[styles.likeCount, liked && styles.likeCountActive]}>
                   {post.likes_count}
                 </Text>
@@ -531,6 +530,7 @@ export default function PostDetail() {
           </View>
         </View>
       </KeyboardAvoidingView>
+      </FadeInView>
 
       <ActionSheet
         visible={!!sheet}

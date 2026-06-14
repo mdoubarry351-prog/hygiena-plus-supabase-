@@ -9,5 +9,5 @@ export default function AuthLayout() {
   // Déjà connecté : on renvoie vers l'aiguilleur racine.
   if (session) return <Redirect href="/" />;
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", animationDuration: 200 }} />;
 }

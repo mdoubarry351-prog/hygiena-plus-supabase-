@@ -6,6 +6,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -53,6 +54,7 @@ export default function Premium() {
 
   return (
     <Screen>
+      <FadeInView>
       <ScreenHeader />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
@@ -91,6 +93,7 @@ export default function Premium() {
           <Button title="S'abonner (simulé)" onPress={() => setPremium(true)} loading={saving} />
         )}
       </ScrollView>
+      </FadeInView>
     </Screen>
   );
 }

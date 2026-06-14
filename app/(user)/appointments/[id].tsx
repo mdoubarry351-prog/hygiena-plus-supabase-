@@ -12,6 +12,7 @@ import { StarRating } from "@/components/StarRating";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
 import { AppImage } from "@/components/AppImage";
+import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import {
@@ -217,6 +218,7 @@ export default function BookAppointment() {
 
   return (
     <Screen>
+      <FadeInView>
       <ScreenHeader title="Prendre rendez-vous" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* En-tête profil */}
@@ -381,6 +383,7 @@ export default function BookAppointment() {
           onChanged={reloadDoctor}
         />
       </ScrollView>
+      </FadeInView>
     </Screen>
   );
 }
