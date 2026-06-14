@@ -12,6 +12,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
 import { AppLockProvider, useAppLock } from "@/providers/AppLockProvider";
+import { ToastProvider } from "@/providers/ToastProvider";
 import { LockScreen } from "@/components/LockScreen";
 import { Onboarding } from "@/components/Onboarding";
 
@@ -56,8 +57,10 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <AppLockProvider>
-          <StatusBar style="dark" />
-          <Slot />
+          <ToastProvider>
+            <StatusBar style="dark" />
+            <Slot />
+          </ToastProvider>
           {/* Onboarding par-dessus l'app ; le verrou reste au-dessus de tout. */}
           <OnboardingGate />
           <AppLockGate />

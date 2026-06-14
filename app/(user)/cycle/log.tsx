@@ -7,6 +7,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { cycleService, SYMPTOMS, FLOW_OPTIONS, MOOD_OPTIONS } from "@/lib/cycle-service";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -17,6 +18,7 @@ function toISODate(d: Date): string {
 
 export default function LogCycle() {
   const { session } = useAuth();
+  const toast = useToast();
   const router = useRouter();
 
   const [startDate, setStartDate] = useState(toISODate(new Date()));
@@ -53,9 +55,8 @@ export default function LogCycle() {
         mood,
         notes: notes.trim() ? notes.trim() : null,
       });
-      Alert.alert("Enregistré", "Vos règles ont été enregistrées.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      toast.success("Vos règles ont été enregistrées.");
+      router.back();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
       const isNetwork = /network request failed|fetch|timeout|offline/i.test(msg);

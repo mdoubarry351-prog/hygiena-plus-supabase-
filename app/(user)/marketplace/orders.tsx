@@ -7,7 +7,7 @@ import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
-import { Loading } from "@/components/Loading";
+import { SkeletonList } from "@/components/Skeleton";
 import { OrderTimeline } from "@/components/OrderTimeline";
 import { useAuth } from "@/providers/AuthProvider";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
@@ -44,7 +44,7 @@ export default function Orders() {
     setRefreshing(false);
   }
 
-  if (loading && orders.length === 0) return <Loading />;
+  if (loading && orders.length === 0) return <SkeletonList variant="order" />;
 
   return (
     <Screen>

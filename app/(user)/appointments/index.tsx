@@ -8,7 +8,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
-import { Loading } from "@/components/Loading";
+import { SkeletonList } from "@/components/Skeleton";
 import { useAuth } from "@/providers/AuthProvider";
 import { useDoctors } from "@/hooks/useDoctors";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -43,7 +43,7 @@ export default function AppointmentsHome() {
   // Un médecin ne prend pas de RDV en tant que patient.
   if (role === "doctor") return <Redirect href="/(user)" />;
 
-  if (loading && doctors.length === 0) return <Loading />;
+  if (loading && doctors.length === 0) return <SkeletonList variant="doctor" />;
 
   // Module désactivé par l'admin : accès aux médecins/consultations bloqué.
   if (!doctors_enabled) {

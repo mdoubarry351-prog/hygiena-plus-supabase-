@@ -35,6 +35,7 @@ import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { hapticLight, hapticWarning } from "@/lib/haptics";
+import { useToast } from "@/providers/ToastProvider";
 import { APP_DOWNLOAD_URL } from "@/lib/app-config";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
@@ -45,6 +46,7 @@ export default function PostDetail() {
   const { savedIds, toggle: toggleSave } = useBookmarks();
   const scrollRef = useRef<ScrollView>(null);
   const didFocusScroll = useRef(false);
+  const toast = useToast();
   const [sheet, setSheet] = useState<{ title?: string; options: ActionSheetOption[] } | null>(null);
 
   const [post, setPost] = useState<CommunityPostWithAuthor | null>(null);
@@ -262,9 +264,9 @@ export default function PostDetail() {
       onPress: async () => {
         try {
           await onPick(r);
-          Alert.alert("Merci", "Ce contenu a été signalé à la modération.");
+          toast.success("Ce contenu a été signalé à la modération.");
         } catch (e) {
-          Alert.alert("Erreur", e instanceof Error ? e.message : "Signalement impossible");
+          toast.error(e instanceof Error ? e.message : "Signalement impossible");
         }
       },
     }));

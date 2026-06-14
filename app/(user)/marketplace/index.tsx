@@ -7,7 +7,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
-import { Loading } from "@/components/Loading";
+import { SkeletonList } from "@/components/Skeleton";
 import { StarRating } from "@/components/StarRating";
 import { useProducts } from "@/hooks/useProducts";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -57,7 +57,7 @@ export default function MarketplaceHome() {
     if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 220) loadMore();
   }
 
-  if (loading && products.length === 0) return <Loading />;
+  if (loading && products.length === 0) return <SkeletonList variant="product" />;
 
   // Module désactivé par l'admin : on bloque l'accès à la boutique.
   if (!marketplace_enabled) {

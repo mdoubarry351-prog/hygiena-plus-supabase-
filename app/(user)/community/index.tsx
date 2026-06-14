@@ -7,7 +7,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
-import { Loading } from "@/components/Loading";
+import { SkeletonList } from "@/components/Skeleton";
 import { ActionSheet, type ActionSheetOption } from "@/components/ActionSheet";
 import { useCommunity } from "@/hooks/useCommunity";
 import { useBookmarks } from "@/hooks/useBookmarks";
@@ -25,6 +25,7 @@ import {
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
 import { hapticWarning } from "@/lib/haptics";
+import { useToast } from "@/providers/ToastProvider";
 import { APP_DOWNLOAD_URL } from "@/lib/app-config";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -44,6 +45,7 @@ export default function CommunityHome() {
   const { session } = useAuth();
   const router = useRouter();
   const meId = session?.user?.id;
+  const toast = useToast();
   const isFiltering = !!search.trim() || activeCat !== "all";
 
   // Menu ⋯ en action sheet (une seule instance pour tout le fil).
@@ -104,9 +106,9 @@ export default function CommunityHome() {
       onPress: async () => {
         try {
           await communityService.reportPost(post.id, post.user_id ?? null, r);
-          Alert.alert("Merci", "Ce contenu a été signalé à la modération.");
+          toast.success("Ce contenu a été signalé à la modération.");
         } catch (e) {
-          Alert.alert("Erreur", e instanceof Error ? e.message : "Signalement impossible");
+          toast.error(e instanceof Error ? e.message : "Signalement impossible");
         }
       },
     }));
@@ -145,7 +147,7 @@ export default function CommunityHome() {
     if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 220) loadMore();
   }
 
-  if (loading && posts.length === 0) return <Loading />;
+  if (loading && posts.length === 0) return <SkeletonList variant="post" />;
 
   return (
     <Screen>

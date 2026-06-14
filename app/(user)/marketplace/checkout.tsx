@@ -8,6 +8,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { useCart } from "@/providers/CartProvider";
 import {
   marketplaceService,
@@ -29,6 +30,7 @@ export default function Checkout() {
   const { session, profile } = useAuth();
   const { items, total, clear } = useCart();
   const router = useRouter();
+  const toast = useToast();
 
   const [phone, setPhone] = useState(profile?.phone ?? "");
   const [neighborhood, setNeighborhood] = useState("");
@@ -129,13 +131,8 @@ export default function Checkout() {
       });
       clear();
       hapticSuccess();
-      Alert.alert(
-        isMobileMoney ? "Paiement réussi 🎉" : "Commande confirmée",
-        isMobileMoney
-          ? "Votre paiement (simulé) a été accepté et votre commande est créée."
-          : "Votre commande a été enregistrée. Vous paierez à la livraison.",
-        [{ text: "OK", onPress: () => router.replace("/(user)/marketplace") }]
-      );
+      toast.success(isMobileMoney ? "Paiement réussi 🎉 Commande créée." : "Commande confirmée — paiement à la livraison.");
+      router.replace("/(user)/marketplace");
     } catch (e) {
       hapticError();
       Alert.alert("Erreur", e instanceof Error ? e.message : "Commande échouée");

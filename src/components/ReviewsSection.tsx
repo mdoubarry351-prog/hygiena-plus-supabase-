@@ -7,6 +7,7 @@ import { Input } from "@/components/Input";
 import { StarRating, StarSelector } from "@/components/StarRating";
 import { reviewsService } from "@/lib/reviews-service";
 import { hapticSuccess } from "@/lib/haptics";
+import { useToast } from "@/providers/ToastProvider";
 import { colors, radius, spacing, typography } from "@/theme";
 
 type ReviewItem = { id: string; authorName: string; rating: number; comment: string | null; created_at: string };
@@ -33,6 +34,7 @@ export function ReviewsSection({
   ratingCount: number;
   onChanged?: () => void;
 }) {
+  const toast = useToast();
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [myRating, setMyRating] = useState(0);
   const [myComment, setMyComment] = useState("");
@@ -82,7 +84,7 @@ export function ReviewsSection({
       await load();
       onChanged?.();
       hapticSuccess();
-      Alert.alert("Merci !", "Votre avis a été enregistré.");
+      toast.success("Votre avis a été enregistré.");
     } catch (e) {
       Alert.alert("Action impossible", e instanceof Error ? e.message : "Réessayez plus tard.");
     } finally {

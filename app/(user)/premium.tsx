@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -7,6 +7,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { hapticSuccess } from "@/lib/haptics";
 import { authService } from "@/lib/auth-service";
@@ -21,6 +22,7 @@ const BENEFITS: { icon: keyof typeof Ionicons.glyphMap; title: string; sub: stri
 export default function Premium() {
   const { profile, session, refreshProfile } = useAuth();
   const { premium_enabled } = useAppSettings();
+  const toast = useToast();
   const [saving, setSaving] = useState(false);
   const isPremium = !!profile?.is_premium;
 
@@ -31,12 +33,9 @@ export default function Premium() {
       await authService.updateProfile(session.user.id, { is_premium: next });
       await refreshProfile();
       if (next) hapticSuccess();
-      Alert.alert(
-        next ? "Bienvenue en Premium 🌿" : "Premium désactivé",
-        next ? "Vous pouvez maintenant écrire aux médecins." : "Votre abonnement a été désactivé."
-      );
+      toast.success(next ? "Bienvenue en Premium 🌿" : "Premium désactivé.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+      toast.error(e instanceof Error ? e.message : "Action échouée");
     } finally {
       setSaving(false);
     }

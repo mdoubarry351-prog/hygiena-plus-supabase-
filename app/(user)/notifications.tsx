@@ -7,7 +7,7 @@ import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
-import { Loading } from "@/components/Loading";
+import { SkeletonList } from "@/components/Skeleton";
 import { useNotifications } from "@/hooks/useNotifications";
 import { formatRelativeTime } from "@/lib/community-service";
 import type { Notification } from "@/lib/database.types";
@@ -64,7 +64,7 @@ export default function Notifications() {
     setRefreshing(false);
   }
 
-  if (loading && notifications.length === 0) return <Loading />;
+  if (loading && notifications.length === 0) return <SkeletonList variant="notification" />;
 
   return (
     <Screen>

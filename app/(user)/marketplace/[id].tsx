@@ -12,6 +12,7 @@ import { ReviewsSection } from "@/components/ReviewsSection";
 import { PostImages } from "@/components/PostImages";
 import { useFavorites } from "@/hooks/useFavorites";
 import { hapticLight } from "@/lib/haptics";
+import { useToast } from "@/providers/ToastProvider";
 import { useCart } from "@/providers/CartProvider";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
@@ -22,6 +23,7 @@ export default function ProductDetail() {
   const router = useRouter();
   const { addItem } = useCart();
   const { favIds, toggle } = useFavorites();
+  const toast = useToast();
 
   const [product, setProduct] = useState<MarketplaceProduct | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,10 +66,7 @@ export default function ProductDetail() {
     if (!product) return;
     addItem(product, quantity);
     hapticLight();
-    Alert.alert("Ajouté au panier", `${quantity} × ${product.name}`, [
-      { text: "Continuer mes achats", style: "cancel", onPress: () => router.back() },
-      { text: "Voir le panier", onPress: () => router.replace("/(user)/marketplace/cart") },
-    ]);
+    toast.success(`${quantity} × ${product.name} ajouté au panier`);
   }
 
   return (

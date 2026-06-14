@@ -13,6 +13,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { authService } from "@/lib/auth-service";
 import { communityService, COMMUNITY_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "@/lib/community-service";
 import { CommunityRules } from "@/components/CommunityRules";
+import { useToast } from "@/providers/ToastProvider";
 import { uploadCommunityImage } from "@/lib/storage";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -22,6 +23,7 @@ export default function NewPost() {
   // En mode édition, `id` est l'id du post à modifier (sinon création).
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEdit = !!id;
+  const toast = useToast();
 
   // Acceptation de la charte requise avant la 1ʳᵉ publication (pas en édition).
   const needsRules = !isEdit && profile?.community_rules_accepted === false;
@@ -126,6 +128,7 @@ export default function NewPost() {
           category,
           imageUrls: images,
         });
+        toast.success("Publication modifiée.");
         router.back();
       } else {
         await communityService.createPost({
@@ -135,9 +138,8 @@ export default function NewPost() {
           category,
           imageUrls: images,
         });
-        Alert.alert("Publié", "Votre publication a été partagée.", [
-          { text: "OK", onPress: () => router.back() },
-        ]);
+        toast.success("Votre publication a été partagée.");
+        router.back();
       }
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Publication échouée");

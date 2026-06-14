@@ -6,7 +6,7 @@ import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
-import { Loading } from "@/components/Loading";
+import { SkeletonList } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { articlesService, ARTICLE_CATEGORIES } from "@/lib/articles-service";
 import type { Article } from "@/lib/database.types";
@@ -50,7 +50,7 @@ export default function Library() {
       .filter((a) => !q || a.title.toLowerCase().includes(q));
   }, [articles, filter, search]);
 
-  if (loading && articles.length === 0) return <Loading />;
+  if (loading && articles.length === 0) return <SkeletonList variant="article" />;
 
   return (
     <Screen>

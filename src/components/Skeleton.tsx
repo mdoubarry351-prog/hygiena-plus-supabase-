@@ -1,0 +1,136 @@
+import { useEffect, useRef } from "react";
+import { Animated, StyleSheet, View, type DimensionValue } from "react-native";
+import { Screen } from "@/components/Screen";
+import { Card } from "@/components/Card";
+import { colors, radius, spacing } from "@/theme";
+
+// Bloc gris animé (pulse doux en boucle). Native driver (opacity).
+export function Skeleton({
+  width = "100%",
+  height = 12,
+  radius: r = radius.sm,
+  style,
+}: {
+  width?: DimensionValue;
+  height?: number;
+  radius?: number;
+  style?: object;
+}) {
+  const opacity = useRef(new Animated.Value(0.5)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.5, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+  return <Animated.View style={[{ width, height, borderRadius: r, backgroundColor: colors.border, opacity }, style]} />;
+}
+
+// Quelques lignes de texte fantômes (la dernière plus courte).
+export function SkeletonLines({ lines = 2, lineHeight = 10 }: { lines?: number; lineHeight?: number }) {
+  return (
+    <View style={{ gap: spacing.xs }}>
+      {Array.from({ length: lines }).map((_, i) => (
+        <Skeleton key={i} height={lineHeight} width={i === lines - 1 ? "60%" : "100%"} />
+      ))}
+    </View>
+  );
+}
+
+type Variant = "post" | "product" | "order" | "doctor" | "notification" | "article";
+
+// Une carte fantôme représentative d'un type de contenu.
+function GhostCard({ variant }: { variant: Variant }) {
+  switch (variant) {
+    case "product":
+    case "doctor":
+      return (
+        <Card style={styles.row}>
+          <Skeleton width={variant === "product" ? 96 : 56} height={variant === "product" ? 96 : 56} radius={radius.md} />
+          <View style={styles.rowBody}>
+            <Skeleton width="70%" height={14} />
+            <Skeleton width="40%" height={10} />
+            <Skeleton width="30%" height={12} />
+          </View>
+        </Card>
+      );
+    case "order":
+      return (
+        <Card style={styles.block}>
+          <View style={styles.between}>
+            <Skeleton width="45%" height={12} />
+            <Skeleton width={70} height={18} radius={radius.pill} />
+          </View>
+          <Skeleton width="100%" height={20} radius={radius.pill} />
+          <View style={styles.between}>
+            <Skeleton width="30%" height={12} />
+            <Skeleton width="25%" height={14} />
+          </View>
+        </Card>
+      );
+    case "notification":
+      return (
+        <Card style={styles.row}>
+          <Skeleton width={36} height={36} radius={18} />
+          <View style={styles.rowBody}>
+            <Skeleton width="80%" height={12} />
+            <Skeleton width="55%" height={10} />
+          </View>
+        </Card>
+      );
+    case "article":
+      return (
+        <Card style={styles.articleCard}>
+          <Skeleton width="100%" height={150} radius={radius.md} />
+          <Skeleton width="35%" height={10} />
+          <Skeleton width="85%" height={16} />
+          <SkeletonLines lines={2} />
+        </Card>
+      );
+    case "post":
+    default:
+      return (
+        <Card style={styles.block}>
+          <View style={styles.row}>
+            <Skeleton width={38} height={38} radius={19} />
+            <View style={styles.rowBody}>
+              <Skeleton width="50%" height={12} />
+              <Skeleton width="30%" height={10} />
+            </View>
+          </View>
+          <SkeletonLines lines={3} />
+          <View style={styles.between}>
+            <Skeleton width={48} height={16} />
+            <Skeleton width={48} height={16} />
+            <Skeleton width={24} height={16} />
+          </View>
+        </Card>
+      );
+  }
+}
+
+// Écran de chargement initial : liste de cartes fantômes (remplace le spinner).
+export function SkeletonList({ variant, count = 5 }: { variant: Variant; count?: number }) {
+  return (
+    <Screen>
+      <View style={styles.list}>
+        {Array.from({ length: count }).map((_, i) => (
+          <GhostCard key={i} variant={variant} />
+        ))}
+      </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  list: { paddingTop: spacing.lg, gap: spacing.md },
+  row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  rowBody: { flex: 1, gap: spacing.xs },
+  block: { gap: spacing.sm },
+  between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  articleCard: { gap: spacing.sm },
+});
