@@ -8,10 +8,11 @@ export const SYMPTOMS = [
 ] as const;
 
 // Flux menstruel (sélection unique, désélectionnable).
-export const FLOW_OPTIONS = ["Léger", "Moyen", "Abondant"] as const;
+export const FLOW_OPTIONS = ["Léger", "Moyen", "Abondant", "Très abondant"] as const;
 
-// Humeur du jour (sélection unique, désélectionnable).
-export const MOOD_OPTIONS = ["Bien", "Fatiguée", "Irritable", "Triste", "Anxieuse", "Énergique"] as const;
+// Humeur du jour (sélection unique, désélectionnable). Les anciennes valeurs déjà
+// enregistrées (ex. « Bien », « Énergique ») restent valides à l'affichage.
+export const MOOD_OPTIONS = ["Très heureuse", "Heureuse", "Neutre", "Triste", "Stressée", "Anxieuse", "En colère"] as const;
 
 export type CyclePrediction = {
   averageCycleLength: number;

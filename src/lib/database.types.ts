@@ -110,6 +110,7 @@ export type Database = {
           symptoms: string[] | null;
           flow: string | null;
           mood: string | null;
+          pain: number | null;
           notes: string | null;
           created_at: string;
           updated_at: string;
@@ -124,6 +125,7 @@ export type Database = {
           symptoms?: string[] | null;
           flow?: string | null;
           mood?: string | null;
+          pain?: number | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -138,6 +140,7 @@ export type Database = {
           symptoms?: string[] | null;
           flow?: string | null;
           mood?: string | null;
+          pain?: number | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
