@@ -237,6 +237,7 @@ export default function LogCycle() {
               <Pressable
                 key={n}
                 onPress={() => setPain((c) => (c === n ? null : n))}
+                hitSlop={6}
                 style={[styles.painDot, active && styles.painDotActive]}
                 accessibilityRole="button"
                 accessibilityLabel={`Douleur ${n} sur 10`}

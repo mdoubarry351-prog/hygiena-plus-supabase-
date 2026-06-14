@@ -3,7 +3,7 @@ import type { MenstrualCycle, TablesInsert, TablesUpdate } from "@/lib/database.
 
 export const SYMPTOMS = [
   "Crampes", "Maux de tête", "Ballonnements", "Fatigue", "Sautes d'humeur",
-  "Sensibilité des seins", "Acné", "Fringales", "Nausées", "Douleurs lombaires",
+  "Sensibilité des seins", "Acné", "Pertes", "Fringales", "Nausées", "Douleurs lombaires",
   "Insomnie", "Anxiété", "Irritabilité", "Baisse de libido", "Hausse de libido",
 ] as const;
 
