@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, LayoutAnimation, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -25,6 +25,11 @@ import { colors, radius, spacing, typography } from "@/theme";
 type PayMethod = "orange_money" | "mtn" | "cod" | "whatsapp";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// Active l'animation de transition (apparition/disparition des champs) sur Android.
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function Checkout() {
   const { session, profile } = useAuth();
@@ -80,6 +85,12 @@ export default function Checkout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codAvailable, whatsappAvailable]);
 
+  // Bascule Livraison/Retrait avec une transition douce des champs affichés.
+  function selectMode(m: DeliveryMode) {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setDeliveryMode(m);
+  }
+
   function openWhatsApp() {
     const num = (store?.whatsapp_number ?? "").replace(/[^\d]/g, "");
     const lines = items.map((it) => `• ${it.quantity} × ${it.product.name}`).join("\n");
@@ -122,7 +133,7 @@ export default function Checkout() {
         phone: phone.trim(),
         neighborhood: deliveryMode === "delivery" ? neighborhood.trim() : null,
         deliveryMode,
-        instructions: instructions.trim() ? instructions.trim() : null,
+        instructions: deliveryMode === "delivery" && instructions.trim() ? instructions.trim() : null,
         items: orderItems,
         totalAmount: grandTotal,
         paymentMethod: method,
@@ -184,9 +195,24 @@ export default function Checkout() {
 
         <Text style={[typography.h3, styles.sectionTitle]}>Mode de réception</Text>
         <View style={styles.modes}>
-          <ModeOption label="Livraison" active={deliveryMode === "delivery"} onPress={() => setDeliveryMode("delivery")} />
-          <ModeOption label="Retrait" active={deliveryMode === "pickup"} onPress={() => setDeliveryMode("pickup")} />
+          <ModeOption label="Livraison" active={deliveryMode === "delivery"} onPress={() => selectMode("delivery")} />
+          <ModeOption label="Retrait" active={deliveryMode === "pickup"} onPress={() => selectMode("pickup")} />
         </View>
+
+        {deliveryMode === "delivery" ? (
+          <View style={styles.noticeRow}>
+            <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
+            <Text style={styles.noticeText}>Les frais de livraison sont à la charge du client.</Text>
+          </View>
+        ) : (
+          <Card style={styles.pickupCard}>
+            <Ionicons name="storefront-outline" size={18} color={colors.primaryDark} />
+            <View style={styles.pickupInfo}>
+              <Text style={styles.pickupText}>Contactez-nous à ce numéro pour obtenir les informations concernant le retrait en boutique.</Text>
+              {store?.whatsapp_number ? <Text style={styles.pickupNumber}>{store.whatsapp_number}</Text> : null}
+            </View>
+          </Card>
+        )}
 
         <Input
           label="Téléphone"
@@ -206,15 +232,17 @@ export default function Checkout() {
           />
         )}
 
-        <Input
-          label="Instructions (optionnel)"
-          value={instructions}
-          onChangeText={setInstructions}
-          placeholder="Précisions sur la livraison ou le retrait"
-          multiline
-          numberOfLines={3}
-          style={styles.notes}
-        />
+        {deliveryMode === "delivery" && (
+          <Input
+            label="Instructions (optionnel)"
+            value={instructions}
+            onChangeText={setInstructions}
+            placeholder="Précisions sur la livraison"
+            multiline
+            numberOfLines={3}
+            style={styles.notes}
+          />
+        )}
 
         {/* Mode de paiement */}
         <Text style={[typography.h3, styles.sectionTitle]}>Mode de paiement</Text>
@@ -292,6 +320,12 @@ const styles = StyleSheet.create({
   modeActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   modeText: { ...typography.body, color: colors.text },
   modeTextActive: { color: colors.primaryDark, fontWeight: "600" },
+  noticeRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginBottom: spacing.sm },
+  noticeText: { ...typography.caption, color: colors.textMuted, flex: 1 },
+  pickupCard: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, backgroundColor: colors.primaryLight, marginBottom: spacing.sm },
+  pickupInfo: { flex: 1, gap: spacing.xs },
+  pickupText: { ...typography.caption, color: colors.primaryDark, lineHeight: 18 },
+  pickupNumber: { ...typography.name, color: colors.primaryDark },
   notes: { height: 90, textAlignVertical: "top", paddingTop: spacing.sm },
   // Paiement
   payRow: {
