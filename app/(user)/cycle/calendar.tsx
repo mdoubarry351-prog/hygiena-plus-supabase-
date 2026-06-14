@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -7,13 +7,15 @@ import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useCycles } from "@/hooks/useCycles";
-import { colors, fonts, phase, radius, spacing, typography } from "@/theme";
+import type { MenstrualCycle } from "@/lib/database.types";
+import { colors, durations, fonts, phase, radius, spacing, typography } from "@/theme";
 
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
 const MONTHS = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
 ];
+const SLIDE = 26; // amplitude du glissement horizontal entre deux mois
 
 type DayType = "period" | "ovulation" | "fertile" | "predicted" | null;
 
@@ -21,15 +23,44 @@ function sameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+// Clé jour alignée sur le reste du calendrier (toISOString → AAAA-MM-JJ).
+function dayKey(d: Date): string {
+  return d.toISOString().split("T")[0];
+}
+
+// Un cycle « avec saisie » = au moins un champ de ressenti renseigné ce jour-là.
+function hasEntry(c: MenstrualCycle): boolean {
+  return (
+    (!!c.symptoms && c.symptoms.length > 0) ||
+    !!c.flow ||
+    !!c.mood ||
+    c.pain != null ||
+    (!!c.notes && c.notes.trim().length > 0)
+  );
+}
+
+function painDescriptor(p: number): string {
+  if (p === 0) return "aucune";
+  if (p <= 3) return "légère";
+  if (p <= 6) return "modérée";
+  if (p <= 9) return "forte";
+  return "intense";
+}
+
 export default function CalendarScreen() {
   const { cycles, prediction, loading, offline, cachedAt } = useCycles();
   const [viewDate, setViewDate] = useState(new Date());
+  const [selected, setSelected] = useState<MenstrualCycle | null>(null);
   const router = useRouter();
+
+  // Animation de transition entre mois (fondu + slide), native driver.
+  const fade = useRef(new Animated.Value(1)).current;
+  const slide = useRef(new Animated.Value(0)).current;
+  const animating = useRef(false);
 
   // Construit l'ensemble des jours marqués
   const dayTypes = useMemo(() => {
     const map = new Map<string, DayType>();
-    const key = (d: Date) => d.toISOString().split("T")[0];
 
     // Jours de règles réels
     for (const c of cycles) {
@@ -37,7 +68,7 @@ export default function CalendarScreen() {
       const end = c.period_end ? new Date(c.period_end) : start;
       const cur = new Date(start);
       while (cur <= end) {
-        map.set(key(cur), "period");
+        map.set(dayKey(cur), "period");
         cur.setDate(cur.getDate() + 1);
       }
     }
@@ -48,23 +79,33 @@ export default function CalendarScreen() {
         const s = new Date(prediction.nextPeriodStart);
         for (let i = 0; i < prediction.averagePeriodLength; i++) {
           const d = new Date(s); d.setDate(d.getDate() + i);
-          if (!map.has(key(d))) map.set(key(d), "predicted");
+          if (!map.has(dayKey(d))) map.set(dayKey(d), "predicted");
         }
       }
       if (prediction.fertileWindowStart && prediction.fertileWindowEnd) {
         const cur = new Date(prediction.fertileWindowStart);
         const end = new Date(prediction.fertileWindowEnd);
         while (cur <= end) {
-          if (!map.has(key(cur))) map.set(key(cur), "fertile");
+          if (!map.has(dayKey(cur))) map.set(dayKey(cur), "fertile");
           cur.setDate(cur.getDate() + 1);
         }
       }
       if (prediction.nextOvulation) {
-        map.set(key(new Date(prediction.nextOvulation)), "ovulation");
+        map.set(dayKey(new Date(prediction.nextOvulation)), "ovulation");
       }
     }
     return map;
   }, [cycles, prediction]);
+
+  // Jours pour lesquels une saisie existe → pastille + aperçu au tap.
+  // Clé = period_start (déjà AAAA-MM-JJ), normalisée comme dayKey pour matcher la grille.
+  const entriesByDay = useMemo(() => {
+    const map = new Map<string, MenstrualCycle>();
+    for (const c of cycles) {
+      if (hasEntry(c)) map.set(dayKey(new Date(c.period_start)), c);
+    }
+    return map;
+  }, [cycles]);
 
   const grid = useMemo(() => {
     const year = viewDate.getFullYear();
@@ -78,8 +119,23 @@ export default function CalendarScreen() {
     return cells;
   }, [viewDate]);
 
+  // Change de mois avec animation : sortie (fondu + slide dans le sens), bascule
+  // de la date, puis entrée depuis le côté opposé.
   function changeMonth(delta: number) {
-    setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1));
+    if (animating.current) return;
+    animating.current = true;
+    const out = delta > 0 ? -SLIDE : SLIDE;
+    Animated.parallel([
+      Animated.timing(fade, { toValue: 0, duration: durations.fast, useNativeDriver: true }),
+      Animated.timing(slide, { toValue: out, duration: durations.fast, useNativeDriver: true }),
+    ]).start(() => {
+      slide.setValue(-out);
+      setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1));
+      Animated.parallel([
+        Animated.timing(fade, { toValue: 1, duration: durations.normal, useNativeDriver: true }),
+        Animated.timing(slide, { toValue: 0, duration: durations.normal, useNativeDriver: true }),
+      ]).start(() => { animating.current = false; });
+    });
   }
 
   if (loading && cycles.length === 0) return <Loading />;
@@ -122,7 +178,7 @@ export default function CalendarScreen() {
         <Card style={styles.calCard}>
           <View style={styles.header}>
             <Pressable onPress={() => changeMonth(-1)} hitSlop={12}><Text style={styles.nav}>‹</Text></Pressable>
-            <Text style={styles.monthLabel}>{MONTHS[viewDate.getMonth()]} {viewDate.getFullYear()}</Text>
+            <Animated.Text style={[styles.monthLabel, { opacity: fade }]}>{MONTHS[viewDate.getMonth()]} {viewDate.getFullYear()}</Animated.Text>
             <Pressable onPress={() => changeMonth(1)} hitSlop={12}><Text style={styles.nav}>›</Text></Pressable>
           </View>
 
@@ -130,32 +186,41 @@ export default function CalendarScreen() {
             {WEEKDAYS.map((w, i) => <Text key={i} style={styles.weekday}>{w}</Text>)}
           </View>
 
-          <View style={styles.grid}>
+          <Animated.View style={[styles.grid, { opacity: fade, transform: [{ translateX: slide }] }]}>
             {grid.map((d, i) => {
               if (!d) return <View key={i} style={styles.cell} />;
-              const type = dayTypes.get(d.toISOString().split("T")[0]);
+              const k = dayKey(d);
+              const type = dayTypes.get(k);
+              const entry = entriesByDay.get(k);
               const isToday = sameDay(d, today);
-              return (
-                <View key={i} style={styles.cell}>
-                  <View style={[
-                    styles.dayDot,
-                    type === "period" && styles.dayPeriod,
-                    type === "predicted" && styles.dayPredicted,
-                    type === "fertile" && styles.dayFertile,
-                    type === "ovulation" && styles.dayOvulation,
-                    isToday && styles.dayToday,
-                  ]}>
-                    <Text style={[
-                      styles.dayText,
-                      (type === "period" || type === "ovulation") && styles.dayTextLight,
-                      type === "predicted" && styles.dayTextPredicted,
-                      type === "fertile" && styles.dayTextFertile,
-                    ]}>{d.getDate()}</Text>
-                  </View>
+              const dot = (
+                <View style={[
+                  styles.dayDot,
+                  type === "period" && styles.dayPeriod,
+                  type === "predicted" && styles.dayPredicted,
+                  type === "fertile" && styles.dayFertile,
+                  type === "ovulation" && styles.dayOvulation,
+                  isToday && styles.dayToday,
+                ]}>
+                  <Text style={[
+                    styles.dayText,
+                    (type === "period" || type === "ovulation") && styles.dayTextLight,
+                    type === "predicted" && styles.dayTextPredicted,
+                    type === "fertile" && styles.dayTextFertile,
+                  ]}>{d.getDate()}</Text>
                 </View>
               );
+              if (entry) {
+                return (
+                  <Pressable key={i} style={styles.cell} onPress={() => setSelected(entry)} accessibilityRole="button" accessibilityLabel={`Voir la saisie du ${d.getDate()}`}>
+                    {dot}
+                    <View style={styles.entryMark} />
+                  </Pressable>
+                );
+              }
+              return <View key={i} style={styles.cell}>{dot}</View>;
             })}
-          </View>
+          </Animated.View>
         </Card>
 
         {/* Légende */}
@@ -164,17 +229,58 @@ export default function CalendarScreen() {
           <LegendItem color={phase.periodSoft} label="Règles prévues" borderColor={phase.period} />
           <LegendItem color={phase.fertileSoft} label="Fenêtre fertile" borderColor={phase.fertile} />
           <LegendItem color={phase.ovulation} label="Ovulation" />
+          <LegendItem color={colors.accent} label="Saisie / symptômes" small />
         </Card>
       </ScrollView>
+
+      {/* Aperçu (lecture seule) de la saisie d'un jour. */}
+      <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
+        <Pressable style={styles.sheetBackdrop} onPress={() => setSelected(null)}>
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <View style={styles.sheetBar}>
+              <Text style={styles.sheetTitle}>
+                {selected ? new Date(`${selected.period_start}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : ""}
+              </Text>
+              <Pressable onPress={() => setSelected(null)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Fermer">
+                <Ionicons name="close" size={22} color={colors.textMuted} />
+              </Pressable>
+            </View>
+
+            {selected ? (
+              <View style={styles.sheetBody}>
+                {selected.flow ? <DetailRow icon="water-outline" label="Flux" value={selected.flow} /> : null}
+                {selected.mood ? <DetailRow icon="happy-outline" label="Humeur" value={selected.mood} /> : null}
+                {selected.pain != null ? <DetailRow icon="pulse-outline" label="Douleur" value={`${selected.pain}/10 · ${painDescriptor(selected.pain)}`} /> : null}
+                {selected.symptoms && selected.symptoms.length > 0 ? (
+                  <DetailRow icon="medkit-outline" label="Symptômes" value={selected.symptoms.join(", ")} />
+                ) : null}
+                {selected.notes ? <DetailRow icon="document-text-outline" label="Notes" value={selected.notes} /> : null}
+              </View>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
 
-function LegendItem({ color, label, borderColor }: { color: string; label: string; borderColor?: string }) {
+function LegendItem({ color, label, borderColor, small }: { color: string; label: string; borderColor?: string; small?: boolean }) {
   return (
     <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: color }, borderColor ? { borderWidth: 1.5, borderColor } : null]} />
+      <View style={[small ? styles.legendDotSmall : styles.legendDot, { backgroundColor: color }, borderColor ? { borderWidth: 1.5, borderColor } : null]} />
       <Text style={typography.caption}>{label}</Text>
+    </View>
+  );
+}
+
+function DetailRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
+  return (
+    <View style={styles.detailRow}>
+      <View style={styles.detailIcon}><Ionicons name={icon} size={18} color={colors.primary} /></View>
+      <View style={styles.detailText}>
+        <Text style={styles.detailLabel}>{label}</Text>
+        <Text style={styles.detailValue}>{value}</Text>
+      </View>
     </View>
   );
 }
@@ -204,7 +310,22 @@ const styles = StyleSheet.create({
   dayFertile: { backgroundColor: phase.fertileSoft },
   dayOvulation: { backgroundColor: phase.ovulation },
   dayToday: { borderWidth: 2, borderColor: colors.text },
+  entryMark: { position: "absolute", bottom: 3, width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.accent },
   legend: { gap: spacing.sm },
   legendItem: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   legendDot: { width: 18, height: 18, borderRadius: 9 },
+  legendDotSmall: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 5 },
+  sheetBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+  sheet: {
+    backgroundColor: colors.background, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl, gap: spacing.md,
+  },
+  sheetBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sheetTitle: { ...typography.h3, flex: 1, textTransform: "capitalize" },
+  sheetBody: { gap: spacing.sm },
+  detailRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  detailIcon: { width: 34, height: 34, borderRadius: radius.md, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  detailText: { flex: 1, gap: 2 },
+  detailLabel: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
+  detailValue: { ...typography.body, color: colors.text },
 });
