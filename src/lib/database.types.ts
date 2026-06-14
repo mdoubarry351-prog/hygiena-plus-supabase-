@@ -310,6 +310,7 @@ export type Database = {
           doctor_id: string;
           sender_role: string;
           content: string;
+          read_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -318,6 +319,7 @@ export type Database = {
           doctor_id: string;
           sender_role: string;
           content: string;
+          read_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -326,6 +328,7 @@ export type Database = {
           doctor_id?: string;
           sender_role?: string;
           content?: string;
+          read_at?: string | null;
           created_at?: string;
         };
         Relationships: [
@@ -1312,6 +1315,11 @@ export type Database = {
       admin_broadcast: {
         Args: { p_title: string; p_message: string; p_audience: string };
         Returns: { ok: boolean; count?: number; error?: string };
+      };
+      // Marque comme lus les messages reçus par l'appelant dans un fil patient ↔ médecin.
+      mark_doctor_thread_read: {
+        Args: { p_doctor: string; p_patient: string };
+        Returns: undefined;
       };
     };
     Enums: {

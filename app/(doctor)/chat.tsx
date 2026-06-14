@@ -19,6 +19,8 @@ export default function DoctorChat() {
     setLoading(true);
     try {
       setMessages(await messagesService.getThread(patientId, doctor.id));
+      // Marque comme lus les messages reçus de la patiente (best-effort).
+      messagesService.markThreadRead(doctor.id, patientId).catch(() => {});
     } catch {
       setMessages([]);
     } finally {

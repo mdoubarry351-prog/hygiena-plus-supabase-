@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -30,29 +30,19 @@ import {
 import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
 import { formatPrice } from "@/lib/marketplace-service";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
-import { colors, fonts, radius, spacing, typography } from "@/theme";
+import { colors, durations, fonts, radius, spacing, typography } from "@/theme";
 
-// Construit les 14 prochains jours (à partir d'aujourd'hui).
-type DayOption = { date: string; weekday: string; day: string; month: string };
+// Calendrier mensuel (cohérent avec cycle/calendar.tsx : semaine Lun→Dim).
+const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
+const MONTHS = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
+const SLIDE = 26; // amplitude du glissement horizontal entre deux mois
+const MONTHS_AHEAD = 2; // nombre de mois navigables au-delà du mois courant
 
 function toISO(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function buildDays(): DayOption[] {
-  const days: DayOption[] = [];
-  const today = new Date();
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    days.push({
-      date: toISO(d),
-      weekday: d.toLocaleDateString("fr-FR", { weekday: "short" }),
-      day: String(d.getDate()),
-      month: d.toLocaleDateString("fr-FR", { month: "short" }),
-    });
-  }
-  return days;
 }
 
 // Violation de l'index unique anti double-réservation (créneau pris entre-temps).
@@ -75,36 +65,87 @@ export default function BookAppointment() {
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const days = useMemo(buildDays, []);
   const todayISO = useMemo(() => toISO(new Date()), []);
   const [bookedSet, setBookedSet] = useState<Set<string>>(new Set());
 
-  // Récupère les créneaux occupés du médecin sur la plage affichée.
+  // Mois affiché (1er du mois) + bornes de navigation (mois courant → +MONTHS_AHEAD).
+  const [viewMonth, setViewMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
+  const monthFloor = useMemo(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); }, []);
+  const monthCeil = useMemo(() => new Date(monthFloor.getFullYear(), monthFloor.getMonth() + MONTHS_AHEAD, 1), [monthFloor]);
+  const canPrev = viewMonth > monthFloor;
+  const canNext = viewMonth < monthCeil;
+
+  // Plage des créneaux occupés à charger : mois courant → fin de (mois courant + MONTHS_AHEAD).
+  const range = useMemo(() => ({
+    from: toISO(monthFloor),
+    to: toISO(new Date(monthFloor.getFullYear(), monthFloor.getMonth() + MONTHS_AHEAD + 1, 0)),
+  }), [monthFloor]);
+
+  // Animation de transition entre mois (fondu + slide), native driver.
+  const fade = useRef(new Animated.Value(1)).current;
+  const slide = useRef(new Animated.Value(0)).current;
+  const animating = useRef(false);
+
+  // Récupère les créneaux occupés du médecin sur toute la plage navigable.
   const refreshSlots = useCallback(async () => {
-    if (days.length === 0) return;
     try {
-      const slots = await appointmentsService.getBookedSlots(id, days[0].date, days[days.length - 1].date);
+      const slots = await appointmentsService.getBookedSlots(id, range.from, range.to);
       setBookedSet(new Set(slots.map((s) => `${s.date}|${s.time}`)));
     } catch {
       setBookedSet(new Set());
     }
-  }, [days, id]);
+  }, [id, range.from, range.to]);
 
   useEffect(() => { refreshSlots(); }, [refreshSlots]);
 
-  // Créneaux proposés pour la date choisie : disponibilité du jour − occupés − passés.
-  const selectedSlots = useMemo(() => {
-    if (!selectedDate || !doctor) return [];
-    const avail = dayAvailability(doctor.availability, dayKeyForDate(selectedDate));
+  // Créneaux d'une date : disponibilité du jour − occupés − passés (logique inchangée).
+  const slotsForDate = useCallback((dateISO: string): string[] => {
+    if (!doctor) return [];
+    const avail = dayAvailability(doctor.availability, dayKeyForDate(dateISO));
     if (!avail) return [];
-    let slots = generateSlots(avail.start, avail.end).filter((t) => !bookedSet.has(`${selectedDate}|${t}`));
-    if (selectedDate === todayISO) {
+    let slots = generateSlots(avail.start, avail.end).filter((t) => !bookedSet.has(`${dateISO}|${t}`));
+    if (dateISO === todayISO) {
       const now = new Date();
       const nowMin = now.getHours() * 60 + now.getMinutes();
       slots = slots.filter((t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m > nowMin; });
     }
     return slots;
-  }, [selectedDate, doctor, bookedSet, todayISO]);
+  }, [doctor, bookedSet, todayISO]);
+
+  const selectedSlots = useMemo(() => (selectedDate ? slotsForDate(selectedDate) : []), [selectedDate, slotsForDate]);
+
+  // Grille du mois affiché (semaine Lun→Dim, cases vides en tête).
+  const grid = useMemo(() => {
+    const year = viewMonth.getFullYear();
+    const month = viewMonth.getMonth();
+    const first = new Date(year, month, 1);
+    const startWeekday = (first.getDay() + 6) % 7; // Lundi = 0
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells: (Date | null)[] = [];
+    for (let i = 0; i < startWeekday; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+    return cells;
+  }, [viewMonth]);
+
+  // Change de mois avec animation (fondu + slide), borné [mois courant, +MONTHS_AHEAD].
+  const changeMonth = useCallback((delta: number) => {
+    if (animating.current) return;
+    const target = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + delta, 1);
+    if (target < monthFloor || target > monthCeil) return;
+    animating.current = true;
+    const out = delta > 0 ? -SLIDE : SLIDE;
+    Animated.parallel([
+      Animated.timing(fade, { toValue: 0, duration: durations.fast, useNativeDriver: true }),
+      Animated.timing(slide, { toValue: out, duration: durations.fast, useNativeDriver: true }),
+    ]).start(() => {
+      slide.setValue(-out);
+      setViewMonth(target);
+      Animated.parallel([
+        Animated.timing(fade, { toValue: 1, duration: durations.normal, useNativeDriver: true }),
+        Animated.timing(slide, { toValue: 0, duration: durations.normal, useNativeDriver: true }),
+      ]).start(() => { animating.current = false; });
+    });
+  }, [viewMonth, monthFloor, monthCeil, fade, slide]);
 
   // Rafraîchit la note moyenne du médecin après un avis.
   async function reloadDoctor() {
@@ -299,24 +340,48 @@ export default function BookAppointment() {
         ) : (
           <>
             <Text style={[typography.h3, styles.sectionTitle]}>Choisir une date</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayRow}>
-              {days.map((d) => {
-                const available = dayAvailability(doctor.availability, dayKeyForDate(d.date)) !== null;
-                const active = selectedDate === d.date;
-                return (
-                  <Pressable
-                    key={d.date}
-                    disabled={!available}
-                    onPress={() => { hapticLight(); setSelectedDate(d.date); setSelectedTime(null); }}
-                    style={[styles.dayChip, active && styles.chipActive, !available && styles.dayChipDisabled]}
-                  >
-                    <Text style={[styles.dayWeekday, active && styles.chipTextActive, !available && styles.dayTextDisabled]}>{d.weekday}</Text>
-                    <Text style={[styles.dayNumber, active && styles.chipTextActive, !available && styles.dayTextDisabled]}>{d.day}</Text>
-                    <Text style={[styles.dayMonth, active && styles.chipTextActive, !available && styles.dayTextDisabled]}>{d.month}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            <Card style={styles.calCard}>
+              <View style={styles.calHeader}>
+                <Pressable onPress={() => changeMonth(-1)} disabled={!canPrev} hitSlop={12} style={styles.calNavBtn} accessibilityRole="button" accessibilityLabel="Mois précédent">
+                  <Ionicons name="chevron-back" size={22} color={canPrev ? colors.primary : colors.border} />
+                </Pressable>
+                <Animated.Text style={[styles.calMonth, { opacity: fade }]}>{MONTHS[viewMonth.getMonth()]} {viewMonth.getFullYear()}</Animated.Text>
+                <Pressable onPress={() => changeMonth(1)} disabled={!canNext} hitSlop={12} style={styles.calNavBtn} accessibilityRole="button" accessibilityLabel="Mois suivant">
+                  <Ionicons name="chevron-forward" size={22} color={canNext ? colors.primary : colors.border} />
+                </Pressable>
+              </View>
+
+              <View style={styles.calWeekRow}>
+                {WEEKDAYS.map((w, i) => <Text key={i} style={styles.calWeekday}>{w}</Text>)}
+              </View>
+
+              <Animated.View style={[styles.calGrid, { opacity: fade, transform: [{ translateX: slide }] }]}>
+                {grid.map((d, i) => {
+                  if (!d) return <View key={i} style={styles.calCell} />;
+                  const iso = toISO(d);
+                  const isPast = iso < todayISO;
+                  const hasAvail = dayAvailability(doctor.availability, dayKeyForDate(iso)) !== null;
+                  const full = hasAvail && !isPast && slotsForDate(iso).length === 0;
+                  const disabled = isPast || !hasAvail || full;
+                  const active = selectedDate === iso;
+                  return (
+                    <View key={i} style={styles.calCell}>
+                      <Pressable
+                        disabled={disabled}
+                        onPress={() => { hapticLight(); setSelectedDate(iso); setSelectedTime(null); }}
+                        style={[styles.calDay, active && styles.calDayActive, full && styles.calDayFull]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${d.getDate()} ${MONTHS[d.getMonth()]}${disabled ? " (indisponible)" : ""}`}
+                      >
+                        <Text style={[styles.calDayText, active && styles.calDayTextActive, disabled && styles.calDayTextDisabled, full && styles.calDayTextFull]}>{d.getDate()}</Text>
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </Animated.View>
+
+              <Text style={styles.calLegend}>Jours grisés : indisponibles · barrés : complets.</Text>
+            </Card>
 
             <Text style={[typography.h3, styles.sectionTitle]}>Choisir une heure</Text>
             {!selectedDate ? (
@@ -407,6 +472,22 @@ const styles = StyleSheet.create({
   availHours: { ...typography.body, color: colors.textMuted },
   muted: { color: colors.textMuted },
   sectionTitle: { marginTop: spacing.sm },
+  calCard: { gap: spacing.sm },
+  calHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  calNavBtn: { padding: spacing.xs },
+  calMonth: { ...typography.h3, textTransform: "capitalize" },
+  calWeekRow: { flexDirection: "row" },
+  calWeekday: { flex: 1, textAlign: "center", ...typography.caption, color: colors.textMuted, fontWeight: "600" },
+  calGrid: { flexDirection: "row", flexWrap: "wrap" },
+  calCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: "center", justifyContent: "center" },
+  calDay: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+  calDayActive: { backgroundColor: colors.primary },
+  calDayFull: { backgroundColor: colors.surface },
+  calDayText: { ...typography.body, color: colors.text },
+  calDayTextActive: { color: colors.white, fontWeight: "700" },
+  calDayTextDisabled: { color: colors.textMuted, opacity: 0.45 },
+  calDayTextFull: { textDecorationLine: "line-through", color: colors.textMuted, opacity: 0.7 },
+  calLegend: { ...typography.caption, color: colors.textMuted, textAlign: "center" },
   dayRow: { gap: spacing.sm, paddingVertical: spacing.xs },
   dayChip: {
     width: 64, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border,

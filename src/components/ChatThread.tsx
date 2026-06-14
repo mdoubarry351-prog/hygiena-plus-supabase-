@@ -13,6 +13,7 @@ export type ChatMessage = {
   sender_role: string; // 'patient' | 'doctor'
   content: string;
   created_at: string;
+  read_at?: string | null; // horodatage de lecture par le destinataire (null = non lu)
 };
 
 // Horodatage court d'un message (ex. « 14:30 »).
@@ -93,7 +94,14 @@ export function ChatThread({ title, subtitle, note, banner, messages, currentRol
                     <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
                       <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{m.content}</Text>
                     </View>
-                    <Text style={styles.time}>{formatTime(m.created_at)}</Text>
+                    <View style={styles.metaRow}>
+                      <Text style={styles.time}>{formatTime(m.created_at)}</Text>
+                      {mine ? (
+                        <Text style={[styles.receipt, m.read_at ? styles.receiptRead : null]}>
+                          {m.read_at ? "✓✓ Lu" : "✓ Envoyé"}
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
                 );
               })
@@ -140,7 +148,10 @@ const styles = StyleSheet.create({
   bubbleRow: { flexDirection: "column" },
   rowMine: { alignItems: "flex-end" },
   rowOther: { alignItems: "flex-start" },
-  time: { ...typography.caption, fontSize: 10, color: colors.textMuted, marginTop: 2, marginHorizontal: 4 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginTop: 2, marginHorizontal: 4 },
+  time: { ...typography.caption, fontSize: 10, color: colors.textMuted },
+  receipt: { ...typography.caption, fontSize: 10, color: colors.textMuted, fontWeight: "600" },
+  receiptRead: { color: colors.primary },
   bubble: { maxWidth: "82%", borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: radius.sm },
   bubbleOther: { backgroundColor: colors.surface, borderBottomLeftRadius: radius.sm, borderWidth: 1, borderColor: colors.border },

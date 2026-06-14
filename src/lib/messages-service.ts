@@ -70,6 +70,13 @@ export const messagesService = {
     return data;
   },
 
+  // Marque comme lus les messages reçus par l'appelant dans ce fil (RPC SECURITY DEFINER).
+  // Best-effort : un échec ne doit jamais bloquer l'affichage du chat.
+  async markThreadRead(doctorId: string, patientId: string): Promise<void> {
+    const { error } = await supabase.rpc("mark_doctor_thread_read", { p_doctor: doctorId, p_patient: patientId });
+    if (error) throw error;
+  },
+
   // Le médecin répond sur l'un de ses fils.
   async sendDoctorMessage(patientId: string, doctorId: string, content: string): Promise<DoctorMessage> {
     const { data, error } = await supabase
