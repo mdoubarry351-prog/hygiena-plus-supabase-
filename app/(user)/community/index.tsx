@@ -36,19 +36,21 @@ export default function CommunityHome() {
   const [activeCat, setActiveCat] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<"recent" | "trending">("recent");
+  const [doctorsOnly, setDoctorsOnly] = useState(false);
 
-  // Filtres appliqués CÔTÉ SERVEUR (recherche + catégorie + tri).
+  // Filtres appliqués CÔTÉ SERVEUR (recherche + catégorie + tri + médecins).
   const { posts, likedIds, loading, loadingMore, hasMore, reload, loadMore, toggleLike } = useCommunity({
     search,
     category: activeCat === "all" ? null : activeCat,
     sort: sortMode === "trending" ? "trending" : "recents",
+    doctorsOnly,
   });
   const { savedIds, toggle: toggleSave } = useBookmarks();
   const { session } = useAuth();
   const router = useRouter();
   const meId = session?.user?.id;
   const toast = useToast();
-  const isFiltering = !!search.trim() || activeCat !== "all";
+  const isFiltering = !!search.trim() || activeCat !== "all" || doctorsOnly;
 
   // Menu ⋯ en action sheet (une seule instance pour tout le fil).
   const [sheet, setSheet] = useState<{ title?: string; options: ActionSheetOption[] } | null>(null);
@@ -227,6 +229,14 @@ export default function CommunityHome() {
         style={styles.filterBar}
         contentContainerStyle={styles.filterChips}
       >
+        {/* Filtre dédié : publications des médecins vérifiés (indépendant des catégories) */}
+        <Pressable
+          onPress={() => setDoctorsOnly((v) => !v)}
+          style={[styles.filterChip, styles.doctorChip, doctorsOnly && styles.doctorChipActive]}
+        >
+          <Ionicons name="medkit" size={13} color={doctorsOnly ? colors.white : colors.primaryDark} />
+          <Text style={[styles.filterChipText, styles.doctorChipText, doctorsOnly && styles.filterChipTextActive]}>Médecins</Text>
+        </Pressable>
         {["all", ...COMMUNITY_CATEGORIES].map((c) => {
           const active = activeCat === c;
           return (
@@ -329,7 +339,10 @@ const PostRow = memo(function PostRow({
               <Text style={styles.author}>{name}</Text>
               {!post.is_anonymous && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
             </View>
-            <Text style={styles.time}>{formatRelativeTime(post.created_at)}{edited ? " · modifié" : ""}</Text>
+            <Text style={styles.time}>
+              {post.author?.isVerifiedDoctor && post.author?.specialty ? `${post.author.specialty} · ` : ""}
+              {formatRelativeTime(post.created_at)}{edited ? " · modifié" : ""}
+            </Text>
           </View>
           <CategoryTag category={post.category} />
           <Pressable onPress={() => onMenu(post)} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de la publication">
@@ -403,6 +416,9 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterChipText: { fontSize: 13, fontWeight: "700", color: colors.text },
   filterChipTextActive: { color: colors.white },
+  doctorChip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  doctorChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  doctorChipText: { color: colors.primaryDark },
   body: { ...typography.body, color: colors.text, lineHeight: 21 },
   postFoot: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },

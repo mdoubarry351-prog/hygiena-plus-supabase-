@@ -347,7 +347,9 @@ export default function PostDetail() {
           {highlighted ? (
             <View style={styles.doctorBanner}>
               <Ionicons name="medkit" size={13} color={colors.primaryDark} />
-              <Text style={styles.doctorBannerText}>Réponse de médecin vérifié</Text>
+              <Text style={styles.doctorBannerText}>
+                Réponse de médecin vérifié{c.doctorSpecialty ? ` · ${c.doctorSpecialty}` : ""}
+              </Text>
             </View>
           ) : null}
           <View style={styles.commentHead}>
@@ -419,7 +421,10 @@ export default function PostDetail() {
                   <Text style={styles.author}>{authorDisplayName(post.is_anonymous, post.author)}</Text>
                   {!post.is_anonymous && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
                 </View>
-                <Text style={styles.time}>{formatRelativeTime(post.created_at)}{wasEdited(post.created_at, post.updated_at) ? " · modifié" : ""}</Text>
+                <Text style={styles.time}>
+                  {post.author?.isVerifiedDoctor && post.author?.specialty ? `${post.author.specialty} · ` : ""}
+                  {formatRelativeTime(post.created_at)}{wasEdited(post.created_at, post.updated_at) ? " · modifié" : ""}
+                </Text>
               </View>
               <CategoryTag category={post.category} />
               {post.user_id === meId ? (

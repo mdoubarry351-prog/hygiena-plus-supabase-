@@ -39,7 +39,11 @@ export function categoryLabel(category: string | null | undefined): string {
 
 // Infos d'auteur jointes depuis profiles (uniquement ce dont l'UI a besoin).
 // `isVerifiedDoctor` : auteur médecin validé (badge « Médecin vérifié »).
-export type PostAuthor = Pick<Profile, "full_name" | "avatar_url"> & { isVerifiedDoctor: boolean };
+// `specialty` : spécialité du médecin validé (null sinon).
+export type PostAuthor = Pick<Profile, "full_name" | "avatar_url"> & {
+  isVerifiedDoctor: boolean;
+  specialty: string | null;
+};
 
 // Publication enrichie avec son auteur. Lue depuis la vue sécurisée
 // `community_posts_safe` → user_id peut être null (post anonyme d'autrui),
@@ -53,20 +57,28 @@ export type CommunityPostWithAuthor = CommunityPostSafe & {
 // Récupère les profils auteurs UNIQUEMENT pour des user_id non nuls
 // (donc jamais pour les posts anonymes), en une requête séparée — une vue
 // n'ayant pas de clé étrangère, on ne peut pas embarquer profiles directement.
-// Sous-ensemble des user_id qui sont des médecins VALIDÉS (badge vérifié).
-// Requête séparée sur `doctors` (RLS doctors_select_validated l'autorise).
-async function fetchVerifiedDoctorIds(ids: (string | null)[]): Promise<Set<string>> {
-  const set = new Set<string>();
+// Sous-ensemble des user_id qui sont des médecins VALIDÉS (badge vérifié),
+// avec leur spécialité. Requête séparée sur `doctors`
+// (RLS doctors_select_validated l'autorise).
+async function fetchVerifiedDoctors(ids: (string | null)[]): Promise<Map<string, { specialty: string | null }>> {
+  const map = new Map<string, { specialty: string | null }>();
   const unique = Array.from(new Set(ids.filter((x): x is string => !!x)));
-  if (unique.length === 0) return set;
+  if (unique.length === 0) return map;
   const { data, error } = await supabase
     .from("doctors")
-    .select("user_id")
+    .select("user_id, specialty")
     .in("user_id", unique)
     .eq("is_validated", true);
   if (error) throw error;
-  for (const d of data ?? []) set.add(d.user_id);
-  return set;
+  for (const d of data ?? []) map.set(d.user_id, { specialty: d.specialty ?? null });
+  return map;
+}
+
+// Tous les user_id des médecins VALIDÉS (pour le filtre « Médecins » du fil).
+async function fetchAllValidatedDoctorIds(): Promise<string[]> {
+  const { data, error } = await supabase.from("doctors").select("user_id").eq("is_validated", true);
+  if (error) throw error;
+  return (data ?? []).map((d) => d.user_id);
 }
 
 // Identifiant de l'utilisatrice courante (session locale).
@@ -90,11 +102,16 @@ async function fetchAuthors(ids: (string | null)[]): Promise<Map<string, PostAut
   if (unique.length === 0) return map;
   const [profilesRes, verified] = await Promise.all([
     supabase.from("profiles").select("id, full_name, avatar_url").in("id", unique),
-    fetchVerifiedDoctorIds(unique),
+    fetchVerifiedDoctors(unique),
   ]);
   if (profilesRes.error) throw profilesRes.error;
   for (const p of profilesRes.data ?? []) {
-    map.set(p.id, { full_name: p.full_name, avatar_url: p.avatar_url, isVerifiedDoctor: verified.has(p.id) });
+    map.set(p.id, {
+      full_name: p.full_name,
+      avatar_url: p.avatar_url,
+      isVerifiedDoctor: verified.has(p.id),
+      specialty: verified.get(p.id)?.specialty ?? null,
+    });
   }
   return map;
 }
@@ -103,6 +120,7 @@ async function fetchAuthors(ids: (string | null)[]): Promise<Map<string, PostAut
 export type CommunityCommentWithAuthor = CommunityComment & {
   author: Pick<Profile, "full_name" | "avatar_url"> | null;
   isVerifiedDoctor: boolean;
+  doctorSpecialty: string | null;
   likedByMe: boolean;
 };
 
@@ -198,6 +216,7 @@ export const communityService = {
     search?: string | null;
     category?: string | null;
     sort?: "recents" | "trending";
+    doctorsOnly?: boolean;
   }): Promise<{ posts: CommunityPostWithAuthor[]; rawCount: number }> {
     const limit = opts?.limit ?? 20;
     const offset = opts?.offset ?? 0;
@@ -205,6 +224,12 @@ export const communityService = {
     const s = opts?.search?.trim();
     if (s) query = query.ilike("content", `%${s}%`);
     if (opts?.category) query = query.eq("category", opts.category);
+    // Filtre « Médecins » : restreint aux publications d'auteurs médecins validés.
+    if (opts?.doctorsOnly) {
+      const docIds = await fetchAllValidatedDoctorIds();
+      if (docIds.length === 0) return { posts: [], rawCount: 0 };
+      query = query.in("user_id", docIds);
+    }
     if (opts?.sort === "trending") {
       query = query.order("likes_count", { ascending: false }).order("comments_count", { ascending: false });
     } else {
@@ -379,9 +404,9 @@ export const communityService = {
         .in("comment_id", rows.map((r) => r.id));
       likedSet = new Set((likes ?? []).map((l) => l.comment_id));
     }
-    // Badge « médecin vérifié » + exclusion des commentaires d'auteurs bloqués.
+    // Badge « médecin vérifié » (+ spécialité) + exclusion des commentaires d'auteurs bloqués.
     const [verified, blocked] = await Promise.all([
-      fetchVerifiedDoctorIds(rows.map((r) => r.user_id)),
+      fetchVerifiedDoctors(rows.map((r) => r.user_id)),
       fetchBlockedIds(),
     ]);
     return rows
@@ -389,6 +414,7 @@ export const communityService = {
       .map((r) => ({
         ...r,
         isVerifiedDoctor: r.user_id ? verified.has(r.user_id) : false,
+        doctorSpecialty: r.user_id ? verified.get(r.user_id)?.specialty ?? null : null,
         likedByMe: likedSet.has(r.id),
       }));
   },

@@ -9,6 +9,7 @@ export type CommunityFilters = {
   search?: string;
   category?: string | null;
   sort?: "recents" | "trending";
+  doctorsOnly?: boolean;
 };
 
 export function useCommunity(filters: CommunityFilters = {}) {
@@ -28,6 +29,7 @@ export function useCommunity(filters: CommunityFilters = {}) {
     search: filtersRef.current.search?.trim() || null,
     category: filtersRef.current.category ?? null,
     sort: filtersRef.current.sort ?? ("recents" as const),
+    doctorsOnly: filtersRef.current.doctorsOnly ?? false,
   });
 
   // (Re)charge la première page (au focus / au changement de filtres).
@@ -78,7 +80,7 @@ export function useCommunity(filters: CommunityFilters = {}) {
     if (firstRun.current) { firstRun.current = false; return; }
     const t = setTimeout(() => { load(); }, 350);
     return () => clearTimeout(t);
-  }, [filters.search, filters.category, filters.sort, load]);
+  }, [filters.search, filters.category, filters.sort, filters.doctorsOnly, load]);
 
   // Bascule le like d'une publication avec mise à jour optimiste de l'UI.
   const toggleLike = useCallback(
