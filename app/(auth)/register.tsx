@@ -58,6 +58,7 @@ export default function Register() {
       <Input label="Nom" value={lastName} onChangeText={setLastName} placeholder="Diop" autoCapitalize="words" />
       <Input
         label="Email"
+        icon="mail-outline"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -67,9 +68,12 @@ export default function Register() {
       />
       <Input
         label="Mot de passe"
+        icon="lock-closed-outline"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        secureToggle
+        validate={(v) => (v.length > 0 && v.length < 6 ? "Au moins 6 caractères." : null)}
         placeholder="Au moins 6 caractères"
       />
 

@@ -51,6 +51,7 @@ export default function Login() {
       <View style={styles.form}>
         <Input
           label="Email"
+          icon="mail-outline"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -60,9 +61,11 @@ export default function Login() {
         />
         <Input
           label="Mot de passe"
+          icon="lock-closed-outline"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          secureToggle
           placeholder="••••••••"
         />
 

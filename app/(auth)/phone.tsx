@@ -4,7 +4,7 @@ import { Link, useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, radius, shadows, spacing, typography } from "@/theme";
 
 const logo = require("../../assets/logo/hygiena-icon-1024.png");
 
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm,
     borderWidth: 1, borderColor: colors.border,
-    shadowColor: "#1A1525", shadowOpacity: 0.05, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 2,
+    ...shadows.sm,
   },
   label: { ...typography.caption, fontWeight: "700", color: colors.text },
   phoneRow: { flexDirection: "row", gap: spacing.sm },

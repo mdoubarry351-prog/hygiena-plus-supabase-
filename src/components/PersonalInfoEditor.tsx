@@ -130,6 +130,7 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
           <Text style={typography.h3}>Téléphone</Text>
           <Input
             label="Numéro de téléphone"
+            icon="call-outline"
             value={phone}
             onChangeText={setPhone}
             placeholder="Ex. +224 620 00 10 01"
@@ -143,6 +144,7 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
           <Text style={typography.h3}>Adresse email</Text>
           <Input
             label="Email"
+            icon="mail-outline"
             value={email}
             onChangeText={setEmail}
             placeholder="vous@exemple.com"
@@ -159,16 +161,22 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
           <Text style={typography.h3}>Mot de passe</Text>
           <Input
             label="Nouveau mot de passe"
+            icon="lock-closed-outline"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            secureToggle
+            validate={(v) => (v.length > 0 && v.length < 6 ? "Au moins 6 caractères." : null)}
             placeholder="Au moins 6 caractères"
           />
           <Input
             label="Confirmer le mot de passe"
+            icon="lock-closed-outline"
             value={confirm}
             onChangeText={setConfirm}
             secureTextEntry
+            secureToggle
+            validate={(v) => (v.length > 0 && v !== password ? "Les mots de passe ne correspondent pas." : null)}
             placeholder="Retapez le mot de passe"
           />
           <Button title="Changer le mot de passe" onPress={savePassword} loading={busy === "password"} />
