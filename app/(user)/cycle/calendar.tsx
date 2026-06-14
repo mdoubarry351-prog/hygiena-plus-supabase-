@@ -163,6 +163,19 @@ export default function CalendarScreen() {
           </Card>
         </Pressable>
 
+        <Pressable onPress={() => router.push("/(user)/cycle/stats")}>
+          <Card style={styles.summaryCard}>
+            <View style={styles.summaryIcon}>
+              <Ionicons name="bar-chart-outline" size={20} color={colors.primaryDark} />
+            </View>
+            <View style={styles.summaryText}>
+              <Text style={styles.summaryTitle}>Statistiques</Text>
+              <Text style={styles.summarySub}>Graphiques : durées, symptômes, humeur, douleur</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
         <Pressable onPress={() => router.push("/(user)/cycle/history")}>
           <Card style={styles.summaryCard}>
             <View style={styles.summaryIcon}>

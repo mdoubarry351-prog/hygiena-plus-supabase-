@@ -42,6 +42,7 @@ export default function UserLayout() {
           <Tabs.Screen name="cycle/log" options={{ href: null }} />
           <Tabs.Screen name="cycle/summary" options={{ href: null }} />
           <Tabs.Screen name="cycle/history" options={{ href: null }} />
+          <Tabs.Screen name="cycle/stats" options={{ href: null }} />
           <Tabs.Screen name="marketplace/[id]" options={{ href: null }} />
           <Tabs.Screen name="marketplace/cart" options={{ href: null }} />
           <Tabs.Screen name="marketplace/checkout" options={{ href: null }} />

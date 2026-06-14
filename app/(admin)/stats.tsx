@@ -5,6 +5,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
+import { BarChart } from "@/components/BarChart";
 import {
   adminService,
   type MonthlySeries,
@@ -13,24 +14,6 @@ import {
 } from "@/lib/admin-service";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, radius, spacing, typography } from "@/theme";
-
-// Histogramme minimaliste (barres en Views, aucune lib de charts).
-function BarChart({ labels, values, tint }: { labels: string[]; values: number[]; tint: string }) {
-  const max = Math.max(1, ...values);
-  return (
-    <View style={styles.chart}>
-      {values.map((v, i) => (
-        <View key={i} style={styles.barCol}>
-          <Text style={styles.barValue}>{v}</Text>
-          <View style={styles.barTrack}>
-            <View style={[styles.barFill, { height: `${(v / max) * 100}%`, backgroundColor: tint }]} />
-          </View>
-          <Text style={styles.barLabel}>{labels[i]}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
 
 function StatCard({ icon, label, value, tint, wide }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; tint: string; wide?: boolean }) {
   return (
