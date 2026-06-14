@@ -287,8 +287,7 @@ function PostRow({
   const edited = wasEdited(post.created_at, post.updated_at);
 
   return (
-    <Pressable onPress={onPress}>
-      <Card style={styles.post}>
+    <Card onPress={onPress} accessibilityLabel="Ouvrir la publication" style={styles.post}>
         <View style={styles.postHead}>
           <View style={styles.avatar}>
             <Ionicons
@@ -337,8 +336,7 @@ function PostRow({
             />
           </Pressable>
         </View>
-      </Card>
-    </Pressable>
+    </Card>
   );
 }
 

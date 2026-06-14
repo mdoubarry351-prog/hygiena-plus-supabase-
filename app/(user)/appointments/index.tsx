@@ -149,8 +149,7 @@ export default function AppointmentsHome() {
 function DoctorRow({ doctor, onPress }: { doctor: DoctorWithProfile; onPress: () => void }) {
   const name = doctorDisplayName(doctor.profile);
   return (
-    <Pressable onPress={onPress}>
-      <Card style={styles.row}>
+    <Card onPress={onPress} accessibilityLabel={name} style={styles.row}>
         {doctor.profile?.avatar_url ? (
           <Image source={{ uri: doctor.profile.avatar_url }} style={styles.avatar} />
         ) : (
@@ -173,8 +172,7 @@ function DoctorRow({ doctor, onPress }: { doctor: DoctorWithProfile; onPress: ()
           </View>
         </View>
         <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-      </Card>
-    </Pressable>
+    </Card>
   );
 }
 

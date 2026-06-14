@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -65,8 +65,7 @@ export default function Orders() {
           orders.map((o) => {
             const count = orderItemCount(o.items);
             return (
-              <Pressable key={o.id} onPress={() => router.push({ pathname: "/(user)/marketplace/order", params: { id: o.id } })}>
-                <Card style={styles.orderCard}>
+              <Card key={o.id} onPress={() => router.push({ pathname: "/(user)/marketplace/order", params: { id: o.id } })} accessibilityLabel="Voir la commande" style={styles.orderCard}>
                   <View style={styles.orderHead}>
                     <Text style={styles.date}>{formatOrderDate(o.created_at)}</Text>
                     <Text style={[styles.badge, { backgroundColor: ORDER_STATUS_COLORS[o.status] }]}>
@@ -86,8 +85,7 @@ export default function Orders() {
                     <Text style={styles.count}>{count} article{count > 1 ? "s" : ""}</Text>
                     <Text style={styles.total}>{formatPrice(o.total_amount)}</Text>
                   </View>
-                </Card>
-              </Pressable>
+              </Card>
             );
           })
         )}

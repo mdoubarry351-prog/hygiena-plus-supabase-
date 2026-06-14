@@ -221,13 +221,13 @@ export default function CycleHome() {
         {/* 6 · Grille 2×2 */}
         <View style={styles.grid}>
           {quick.map((q) => (
-            <Pressable key={q.title} onPress={() => openQuick(q)} style={styles.quickWrap}>
-              <Card style={styles.quickCard}>
+            <View key={q.title} style={styles.quickWrap}>
+              <Card onPress={() => openQuick(q)} haptic accessibilityLabel={q.title} style={styles.quickCard}>
                 <View style={styles.quickIcon}><Text style={styles.quickEmoji}>{q.emoji}</Text></View>
                 <Text style={styles.quickTitle}>{q.title}</Text>
                 <Text style={styles.quickSub}>{q.sub}</Text>
               </Card>
-            </Pressable>
+            </View>
           ))}
         </View>
 

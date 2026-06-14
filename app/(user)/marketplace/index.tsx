@@ -188,8 +188,7 @@ function ProductRow({ product, isFav, onToggleFav, onAdd, onPress }: { product: 
   }
 
   return (
-    <Pressable onPress={onPress}>
-      <Card style={styles.row}>
+    <Card onPress={onPress} accessibilityLabel={product.name} style={styles.row}>
         {thumbUrl ? (
           <Image source={{ uri: thumbUrl }} style={styles.thumb} resizeMode="cover" />
         ) : (
@@ -229,8 +228,7 @@ function ProductRow({ product, isFav, onToggleFav, onAdd, onPress }: { product: 
             <Ionicons name={justAdded ? "checkmark" : "add"} size={20} color={colors.white} />
           </Pressable>
         </View>
-      </Card>
-    </Pressable>
+    </Card>
   );
 }
 

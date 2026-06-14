@@ -31,6 +31,39 @@ export const radius = {
   pill: 999,
 } as const;
 
+// Ombres réutilisables (douces, premium) avec équivalent `elevation` Android.
+// sm = cartes au repos ; md = éléments surélevés / état pressé ; lg = modales.
+export const shadows = {
+  sm: {
+    shadowColor: "#1A1525",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  md: {
+    shadowColor: "#1A1525",
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
+  },
+  lg: {
+    shadowColor: "#1A1525",
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
+  },
+} as const;
+
+// Durées d'animation (ms) — micro-interactions cohérentes.
+export const durations = {
+  fast: 120,
+  normal: 200,
+  slow: 320,
+} as const;
+
 // Familles de polices chargées dans app/_layout.tsx (useFonts).
 // TOUT en Inter (sans-serif) — la hiérarchie se fait uniquement par la graisse.
 export const fonts = {
@@ -64,4 +97,4 @@ export const phase = {
   neutral: "#E5E7EB", // Reste du cycle → gris clair
 } as const;
 
-export const theme = { colors, spacing, radius, typography, fonts, phase };
+export const theme = { colors, spacing, radius, shadows, durations, typography, fonts, phase };
