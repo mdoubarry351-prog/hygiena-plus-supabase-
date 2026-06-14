@@ -4,11 +4,13 @@ import { categoryLabel } from "@/lib/community-service";
 import { colors, radius, spacing, typography } from "@/theme";
 
 // Badge « Médecin vérifié » (auteur médecin validé, non anonyme).
-export function VerifiedDoctorBadge() {
+// Avec `specialty`, affiche « Médecin vérifié · {spécialité} » (sobre, vert).
+export function VerifiedDoctorBadge({ specialty }: { specialty?: string | null }) {
+  const spec = specialty?.trim();
   return (
     <View style={styles.badge}>
       <Ionicons name="checkmark-circle" size={12} color={colors.primaryDark} />
-      <Text style={styles.badgeText}>Médecin vérifié</Text>
+      <Text style={styles.badgeText}>Médecin vérifié{spec ? ` · ${spec}` : ""}</Text>
     </View>
   );
 }

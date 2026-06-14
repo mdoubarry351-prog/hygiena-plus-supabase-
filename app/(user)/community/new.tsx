@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,7 +12,9 @@ import { Loading } from "@/components/Loading";
 import { AppImage } from "@/components/AppImage";
 import { useAuth } from "@/providers/AuthProvider";
 import { authService } from "@/lib/auth-service";
-import { communityService, COMMUNITY_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "@/lib/community-service";
+import { communityService, COMMUNITY_CATEGORIES, DEFAULT_CATEGORY, categoryLabel, authorDisplayName } from "@/lib/community-service";
+import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
+import { PostImages } from "@/components/PostImages";
 import { CommunityRules } from "@/components/CommunityRules";
 import { useToast } from "@/providers/ToastProvider";
 import { uploadCommunityImage } from "@/lib/storage";
@@ -38,6 +40,21 @@ export default function NewPost() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingPost, setLoadingPost] = useState(isEdit);
+  const [showPreview, setShowPreview] = useState(false);
+  // Spécialité de l'utilisatrice si elle est médecin VALIDÉE (badge dans l'aperçu).
+  const [myDoctorSpecialty, setMyDoctorSpecialty] = useState<string | null>(null);
+  const [isVerifiedDoctor, setIsVerifiedDoctor] = useState(false);
+
+  // Statut « médecin vérifié » de l'utilisatrice (pour l'aperçu).
+  useEffect(() => {
+    if (!session?.user) return;
+    let alive = true;
+    (async () => {
+      const info = await communityService.getVerifiedDoctorInfo(session.user.id);
+      if (alive && info) { setIsVerifiedDoctor(true); setMyDoctorSpecialty(info.specialty); }
+    })();
+    return () => { alive = false; };
+  }, [session?.user]);
 
   // Édition : charge le post existant et préremplit le formulaire.
   useEffect(() => {
@@ -149,6 +166,20 @@ export default function NewPost() {
     }
   }
 
+  // Ouvre l'aperçu (mêmes garde-fous que la publication, hors envoi en cours).
+  function openPreview() {
+    if (needsRules) { Alert.alert("Règles à accepter", "Veuillez accepter les règles de la communauté avant de publier."); return; }
+    if (uploading) { Alert.alert("Patientez", "Les photos sont encore en cours d'envoi."); return; }
+    if (!content.trim()) { Alert.alert("Publication vide", "Écrivez quelque chose avant de prévisualiser."); return; }
+    setShowPreview(true);
+  }
+
+  // Confirme la publication depuis l'aperçu.
+  async function confirmFromPreview() {
+    setShowPreview(false);
+    await handlePublish();
+  }
+
   if (loadingPost) return <Loading />;
 
   return (
@@ -235,9 +266,55 @@ export default function NewPost() {
           </Card>
         ) : null}
 
+        <Button title="Aperçu" variant="outline" onPress={openPreview} disabled={uploading || needsRules || saving} />
         <Button title={isEdit ? "Enregistrer" : "Publier"} onPress={handlePublish} loading={saving} disabled={uploading || needsRules} />
         <Button title="Annuler" variant="outline" onPress={() => router.back()} />
       </ScrollView>
+
+      {/* Aperçu avant publication : rendu tel qu'il apparaîtra dans le fil. */}
+      <Modal visible={showPreview} transparent animationType="slide" onRequestClose={() => setShowPreview(false)}>
+        <View style={styles.previewBackdrop}>
+          <View style={styles.previewSheet}>
+            <View style={styles.previewBar}>
+              <Text style={styles.previewBarTitle}>Aperçu</Text>
+              <Pressable onPress={() => setShowPreview(false)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Fermer l'aperçu">
+                <Ionicons name="close" size={22} color={colors.textMuted} />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.previewScroll}>
+              <Card style={styles.previewCard}>
+                <View style={styles.previewHead}>
+                  <View style={styles.previewAvatar}>
+                    <Ionicons name={isAnonymous ? "person-outline" : "person"} size={18} color={colors.primary} />
+                  </View>
+                  <View style={styles.previewHeadInfo}>
+                    <View style={styles.previewAuthorRow}>
+                      <Text style={styles.previewAuthor}>{authorDisplayName(isAnonymous, { full_name: profile?.full_name ?? null })}</Text>
+                      {!isAnonymous && isVerifiedDoctor ? <VerifiedDoctorBadge specialty={myDoctorSpecialty} /> : null}
+                    </View>
+                    <Text style={styles.previewTime}>à l'instant</Text>
+                  </View>
+                  <CategoryTag category={category} />
+                </View>
+
+                <Text style={styles.previewBody}>{content.trim()}</Text>
+
+                <PostImages imageUrls={images} imageUrl={null} />
+              </Card>
+            </ScrollView>
+
+            <View style={styles.previewActions}>
+              <View style={styles.previewActionItem}>
+                <Button title="Modifier" variant="outline" onPress={() => setShowPreview(false)} />
+              </View>
+              <View style={styles.previewActionItem}>
+                <Button title={isEdit ? "Enregistrer" : "Publier"} onPress={confirmFromPreview} loading={saving} />
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -272,4 +349,26 @@ const styles = StyleSheet.create({
   anonText: { flex: 1, gap: 2 },
   anonTitle: { ...typography.name },
   anonHint: { ...typography.caption, color: colors.textMuted },
+  previewBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+  previewSheet: {
+    backgroundColor: colors.background, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl, maxHeight: "88%",
+  },
+  previewBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.sm },
+  previewBarTitle: { ...typography.h3 },
+  previewScroll: { paddingBottom: spacing.md },
+  previewCard: { gap: spacing.sm },
+  previewHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  previewAvatar: {
+    width: 38, height: 38, borderRadius: radius.pill, backgroundColor: colors.primaryLight,
+    alignItems: "center", justifyContent: "center",
+  },
+  previewHeadInfo: { flex: 1 },
+  previewAuthorRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
+  previewAuthor: { ...typography.name },
+  previewTime: { ...typography.caption, color: colors.textMuted },
+  previewBody: { ...typography.body, color: colors.text, lineHeight: 21 },
+  previewActions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
+  previewActionItem: { flex: 1 },
 });
+

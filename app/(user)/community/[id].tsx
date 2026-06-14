@@ -355,7 +355,7 @@ export default function PostDetail() {
           <View style={styles.commentHead}>
             <View style={styles.authorRow}>
               <Text style={styles.commentAuthor}>{authorDisplayName(c.is_anonymous, c.author)}</Text>
-              {!c.is_anonymous && c.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
+              {!c.is_anonymous && c.isVerifiedDoctor ? <VerifiedDoctorBadge specialty={c.doctorSpecialty} /> : null}
             </View>
             <View style={styles.commentRight}>
               <Text style={styles.commentTime}>{formatRelativeTime(c.created_at)}{wasEdited(c.created_at, c.updated_at) ? " · modifié" : ""}</Text>
@@ -429,7 +429,7 @@ export default function PostDetail() {
               <View style={styles.headInfo}>
                 <View style={styles.authorRow}>
                   <Text style={styles.author}>{authorDisplayName(post.is_anonymous, post.author)}</Text>
-                  {!post.is_anonymous && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
+                  {!post.is_anonymous && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge specialty={post.author.doctorSpecialty} /> : null}
                 </View>
                 <Text style={styles.time}>{formatRelativeTime(post.created_at)}{wasEdited(post.created_at, post.updated_at) ? " · modifié" : ""}</Text>
               </View>

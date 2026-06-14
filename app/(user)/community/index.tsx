@@ -1,5 +1,5 @@
-import { memo, useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View, type ListRenderItemInfo } from "react-native";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, FlatList, Image, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View, type ListRenderItemInfo } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,6 +21,7 @@ import {
   REPORT_REASONS,
   categoryLabel,
   type CommunityPostWithAuthor,
+  type DoctorSearchResult,
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
@@ -33,21 +34,45 @@ import { colors, radius, spacing, typography } from "@/theme";
 export default function CommunityHome() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeCat, setActiveCat] = useState<string>("all");
+  const [doctorsOnly, setDoctorsOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<"recent" | "trending">("recent");
+  // Médecins correspondant à la recherche (section en tête du fil).
+  const [doctorResults, setDoctorResults] = useState<DoctorSearchResult[]>([]);
 
-  // Filtres appliqués CÔTÉ SERVEUR (recherche + catégorie + tri).
+  // Filtres appliqués CÔTÉ SERVEUR (recherche + catégorie + tri + filtre médecins).
   const { posts, likedIds, loading, loadingMore, hasMore, reload, loadMore, toggleLike } = useCommunity({
     search,
     category: activeCat === "all" ? null : activeCat,
     sort: sortMode === "trending" ? "trending" : "recents",
+    doctorsOnly,
   });
   const { savedIds, toggle: toggleSave } = useBookmarks();
   const { session } = useAuth();
   const router = useRouter();
   const meId = session?.user?.id;
   const toast = useToast();
-  const isFiltering = !!search.trim() || activeCat !== "all";
+  const isSearching = !!search.trim();
+  const isFiltering = isSearching || activeCat !== "all" || doctorsOnly;
+
+  // Recherche de médecins (identités publiques) — section en tête du fil quand on
+  // recherche. Débounce ~350 ms, alignée sur le rechargement des publications.
+  useEffect(() => {
+    const term = search.trim();
+    if (!term) { setDoctorResults([]); return; }
+    let alive = true;
+    const t = setTimeout(async () => {
+      try {
+        const docs = await communityService.searchDoctors(term);
+        if (alive) setDoctorResults(docs);
+      } catch {
+        if (alive) setDoctorResults([]);
+      }
+    }, 350);
+    return () => { alive = false; clearTimeout(t); };
+  }, [search]);
+
+  const onOpenDoctor = useCallback((id: string) => router.push(`/(user)/appointments/${id}`), [router]);
 
   // Menu ⋯ en action sheet (une seule instance pour tout le fil).
   const [sheet, setSheet] = useState<{ title?: string; options: ActionSheetOption[] } | null>(null);
@@ -217,15 +242,30 @@ export default function CommunityHome() {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterChips}>
-        {["all", ...COMMUNITY_CATEGORIES].map((c) => {
+        <Pressable onPress={() => setActiveCat("all")} style={[styles.filterChip, activeCat === "all" && styles.filterChipActive]}>
+          <Text style={[styles.filterChipText, activeCat === "all" && styles.filterChipTextActive]}>✨ Toutes</Text>
+        </Pressable>
+        <Pressable onPress={() => setDoctorsOnly((v) => !v)} style={[styles.filterChip, doctorsOnly && styles.filterChipActive]}>
+          <Text style={[styles.filterChipText, doctorsOnly && styles.filterChipTextActive]}>👩‍⚕️ Médecins</Text>
+        </Pressable>
+        {COMMUNITY_CATEGORIES.map((c) => {
           const active = activeCat === c;
           return (
             <Pressable key={c} onPress={() => setActiveCat(c)} style={[styles.filterChip, active && styles.filterChipActive]}>
-              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{c === "all" ? "✨ Toutes" : categoryLabel(c)}</Text>
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{categoryLabel(c)}</Text>
             </Pressable>
           );
         })}
       </ScrollView>
+
+      {isSearching && doctorResults.length > 0 ? (
+        <View style={styles.docSection}>
+          <Text style={styles.docSectionTitle}>Médecins</Text>
+          {doctorResults.map((d) => (
+            <DoctorResultRow key={d.id} doctor={d} onPress={onOpenDoctor} />
+          ))}
+        </View>
+      ) : null}
 
       {posts.length > 0 ? (
         <Text style={styles.count}>{posts.length} publication{posts.length > 1 ? "s" : ""}</Text>
@@ -255,11 +295,25 @@ export default function CommunityHome() {
         ListHeaderComponent={listHeader}
         ListFooterComponent={listFooter}
         ListEmptyComponent={
-          <EmptyState
-            emoji="💬"
-            title={isFiltering ? "Aucune publication trouvée" : "Aucune publication"}
-            message={isFiltering ? "Essayez un autre mot-clé ou une autre catégorie." : "Soyez la première à partager quelque chose avec la communauté."}
-          />
+          isSearching && doctorResults.length === 0 ? (
+            <EmptyState
+              emoji="🔍"
+              title="Aucun résultat"
+              message="Aucune publication ni médecin ne correspond à votre recherche."
+            />
+          ) : isSearching && doctorResults.length > 0 ? (
+            <EmptyState
+              emoji="💬"
+              title="Aucune publication trouvée"
+              message="Aucune publication ne correspond, mais des médecins oui — voir ci-dessus."
+            />
+          ) : (
+            <EmptyState
+              emoji="💬"
+              title={isFiltering ? "Aucune publication trouvée" : "Aucune publication"}
+              message={isFiltering ? "Essayez un autre mot-clé ou une autre catégorie." : "Soyez la première à partager quelque chose avec la communauté."}
+            />
+          )
         }
         onEndReached={onEndReached}
         onEndReachedThreshold={0.4}
@@ -319,7 +373,7 @@ const PostRow = memo(function PostRow({
           <View style={styles.headInfo}>
             <View style={styles.authorRow}>
               <Text style={styles.author}>{name}</Text>
-              {!post.is_anonymous && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge /> : null}
+              {!post.is_anonymous && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge specialty={post.author.doctorSpecialty} /> : null}
             </View>
             <Text style={styles.time}>{formatRelativeTime(post.created_at)}{edited ? " · modifié" : ""}</Text>
           </View>
@@ -353,6 +407,37 @@ const PostRow = memo(function PostRow({
           </Pressable>
         </View>
     </Card>
+  );
+});
+
+// Ligne « médecin » des résultats de recherche : avatar + nom + spécialité +
+// badge vérifié ; appui → fiche du médecin (/(user)/appointments/{id}).
+const DoctorResultRow = memo(function DoctorResultRow({
+  doctor,
+  onPress,
+}: {
+  doctor: DoctorSearchResult;
+  onPress: (id: string) => void;
+}) {
+  const name = doctor.full_name?.trim() || "Médecin";
+  return (
+    <Pressable onPress={() => onPress(doctor.id)} style={styles.docRow} accessibilityRole="button" accessibilityLabel={`Voir le médecin ${name}`}>
+      <View style={styles.docAvatar}>
+        {doctor.avatar_url ? (
+          <Image source={{ uri: doctor.avatar_url }} style={styles.docAvatarImg} />
+        ) : (
+          <Ionicons name="medkit" size={18} color={colors.primary} />
+        )}
+      </View>
+      <View style={styles.docInfo}>
+        <View style={styles.docNameRow}>
+          <Text style={styles.docName} numberOfLines={1}>{name}</Text>
+          <VerifiedDoctorBadge />
+        </View>
+        {doctor.specialty ? <Text style={styles.docSpec} numberOfLines={1}>{doctor.specialty}</Text> : null}
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+    </Pressable>
   );
 });
 
@@ -404,6 +489,22 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterChipText: { fontSize: 13, fontWeight: "700", color: colors.text },
   filterChipTextActive: { color: colors.white },
+  docSection: { marginTop: spacing.sm, gap: spacing.xs },
+  docSectionTitle: { ...typography.caption, color: colors.textMuted, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 },
+  docRow: {
+    flexDirection: "row", alignItems: "center", gap: spacing.sm,
+    backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+  },
+  docAvatar: {
+    width: 38, height: 38, borderRadius: radius.pill, backgroundColor: colors.primaryLight,
+    alignItems: "center", justifyContent: "center", overflow: "hidden",
+  },
+  docAvatarImg: { width: 38, height: 38 },
+  docInfo: { flex: 1, gap: 2 },
+  docNameRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
+  docName: { ...typography.name },
+  docSpec: { ...typography.caption, color: colors.primaryDark, fontWeight: "600" },
   body: { ...typography.body, color: colors.text, lineHeight: 21 },
   postImage: { width: "100%", height: 200, borderRadius: radius.md, backgroundColor: colors.surface },
   postFoot: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },
