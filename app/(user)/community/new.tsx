@@ -10,6 +10,10 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AppImage } from "@/components/AppImage";
+import { Avatar } from "@/components/Avatar";
+import { PostImages } from "@/components/PostImages";
+import { CategoryTag } from "@/components/CommunityBadges";
+import { authorDisplayName } from "@/lib/community-service";
 import { useAuth } from "@/providers/AuthProvider";
 import { authService } from "@/lib/auth-service";
 import { communityService, COMMUNITY_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "@/lib/community-service";
@@ -38,6 +42,7 @@ export default function NewPost() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingPost, setLoadingPost] = useState(isEdit);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Édition : charge le post existant et préremplit le formulaire.
   useEffect(() => {
@@ -235,6 +240,30 @@ export default function NewPost() {
           </Card>
         ) : null}
 
+        {/* Aperçu avant publication : rendu fidèle de la future carte */}
+        <Pressable onPress={() => setShowPreview((v) => !v)} style={styles.previewToggle} accessibilityRole="button" accessibilityLabel={showPreview ? "Masquer l'aperçu" : "Afficher l'aperçu"}>
+          <Ionicons name={showPreview ? "eye-off-outline" : "eye-outline"} size={18} color={colors.primary} />
+          <Text style={styles.previewToggleText}>{showPreview ? "Masquer l'aperçu" : "Aperçu"}</Text>
+        </Pressable>
+        {showPreview ? (
+          <Card style={styles.previewCard}>
+            <View style={styles.previewHead}>
+              <Avatar url={profile?.avatar_url} isAnonymous={isAnonymous} size={38} />
+              <View style={styles.previewHeadInfo}>
+                <Text style={styles.previewName}>{authorDisplayName(isAnonymous, profile ?? null)}</Text>
+                <Text style={styles.previewTime}>à l'instant</Text>
+              </View>
+              <CategoryTag category={category} />
+            </View>
+            {content.trim() ? (
+              <Text style={styles.previewBody}>{content.trim()}</Text>
+            ) : (
+              <Text style={styles.previewPlaceholder}>Votre message apparaîtra ici…</Text>
+            )}
+            {images.length ? <PostImages imageUrls={images} /> : null}
+          </Card>
+        ) : null}
+
         <Button title={isEdit ? "Enregistrer" : "Publier"} onPress={handlePublish} loading={saving} disabled={uploading || needsRules} />
         <Button title="Annuler" variant="outline" onPress={() => router.back()} />
       </ScrollView>
@@ -272,4 +301,13 @@ const styles = StyleSheet.create({
   anonText: { flex: 1, gap: 2 },
   anonTitle: { ...typography.name },
   anonHint: { ...typography.caption, color: colors.textMuted },
+  previewToggle: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, paddingVertical: spacing.sm, marginTop: spacing.xs },
+  previewToggleText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
+  previewCard: { gap: spacing.sm, marginBottom: spacing.sm, backgroundColor: colors.surface },
+  previewHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  previewHeadInfo: { flex: 1 },
+  previewName: { ...typography.name },
+  previewTime: { ...typography.caption, color: colors.textMuted },
+  previewBody: { ...typography.body, color: colors.text, lineHeight: 21 },
+  previewPlaceholder: { ...typography.body, color: colors.textMuted, fontStyle: "italic" },
 });
