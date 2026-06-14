@@ -9,6 +9,7 @@ import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
+import { Avatar } from "@/components/Avatar";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import {
   communityService,
@@ -16,7 +17,7 @@ import {
   formatRelativeTime,
   type CommunityPostWithAuthor,
 } from "@/lib/community-service";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, spacing, typography } from "@/theme";
 
 export default function SavedPosts() {
   const router = useRouter();
@@ -72,9 +73,7 @@ export default function SavedPosts() {
               <Pressable key={post.id} onPress={() => router.push(`/(user)/community/${post.id}`)}>
                 <Card style={styles.post}>
                   <View style={styles.postHead}>
-                    <View style={styles.avatar}>
-                      <Ionicons name={post.is_anonymous ? "person-outline" : "person"} size={18} color={colors.primary} />
-                    </View>
+                    <Avatar url={post.author?.avatar_url} isAnonymous={post.is_anonymous} size={38} />
                     <View style={styles.headInfo}>
                       <View style={styles.authorRow}>
                         <Text style={styles.author}>{name}</Text>
@@ -114,7 +113,6 @@ const styles = StyleSheet.create({
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   post: { gap: spacing.sm },
   postHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  avatar: { width: 38, height: 38, borderRadius: radius.pill, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
   headInfo: { flex: 1 },
   authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
   author: { ...typography.name },

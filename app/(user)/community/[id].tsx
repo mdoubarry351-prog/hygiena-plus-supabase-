@@ -33,6 +33,8 @@ import {
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
+import { Avatar } from "@/components/Avatar";
+import { LikeButton } from "@/components/LikeButton";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { hapticLight, hapticWarning } from "@/lib/haptics";
 import { useToast } from "@/providers/ToastProvider";
@@ -340,9 +342,7 @@ export default function PostDetail() {
           highlighted && styles.doctorComment,
         ]}
       >
-        <View style={[styles.commentAvatar, isReply && styles.replyAvatar, highlighted && styles.doctorAvatar]}>
-          <Ionicons name={c.is_anonymous ? "person-outline" : "person"} size={isReply ? 13 : 15} color={colors.primary} />
-        </View>
+        <Avatar url={c.author?.avatar_url} isAnonymous={c.is_anonymous} size={isReply ? 26 : 30} />
         <View style={styles.commentBody}>
           {highlighted ? (
             <View style={styles.doctorBanner}>
@@ -390,10 +390,7 @@ export default function PostDetail() {
             <>
               <Text style={styles.commentText}>{c.content}</Text>
               <View style={styles.commentActions}>
-                <Pressable onPress={() => handleCommentLike(c)} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel={c.likedByMe ? "Je n'aime plus" : "J'aime"}>
-                  <Ionicons name={c.likedByMe ? "heart" : "heart-outline"} size={16} color={c.likedByMe ? colors.primary : colors.textMuted} />
-                  <Text style={[styles.commentActionText, c.likedByMe && styles.likeCountActive]}>{c.likes_count}</Text>
-                </Pressable>
+                <LikeButton liked={c.likedByMe} count={c.likes_count} onPress={() => handleCommentLike(c)} size={16} />
                 <Pressable onPress={() => setReplyTo(c)} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel="Répondre">
                   <Ionicons name="return-down-forward-outline" size={15} color={colors.textMuted} />
                   <Text style={styles.commentActionText}>Répondre</Text>
@@ -416,13 +413,7 @@ export default function PostDetail() {
         <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
           <Card style={styles.post}>
             <View style={styles.postHead}>
-              <View style={styles.avatar}>
-                <Ionicons
-                  name={post.is_anonymous ? "person-outline" : "person"}
-                  size={20}
-                  color={colors.primary}
-                />
-              </View>
+              <Avatar url={post.author?.avatar_url} isAnonymous={post.is_anonymous} size={42} />
               <View style={styles.headInfo}>
                 <View style={styles.authorRow}>
                   <Text style={styles.author}>{authorDisplayName(post.is_anonymous, post.author)}</Text>
@@ -447,15 +438,9 @@ export default function PostDetail() {
             <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
             <View style={styles.postFoot}>
-              <Pressable onPress={handleLike} hitSlop={8} style={styles.likeBtn}>
-                <Ionicons
-                  name={liked ? "heart" : "heart-outline"}
-                  size={22}
-                  color={liked ? colors.primary : colors.textMuted}
-                />
-                <Text style={[styles.likeCount, liked && styles.likeCountActive]}>
-                  {post.likes_count}
-                </Text>
+              <LikeButton liked={liked} count={post.likes_count} onPress={handleLike} size={22} />
+              <Pressable onPress={sharePost} hitSlop={8} style={styles.footAction} accessibilityRole="button" accessibilityLabel="Partager la publication">
+                <Ionicons name="share-social-outline" size={21} color={colors.textMuted} />
               </Pressable>
               <Pressable onPress={() => toggleSave(post.id)} hitSlop={8} style={styles.bookmarkBtn} accessibilityRole="button" accessibilityLabel={savedIds.has(post.id) ? "Retirer des enregistrements" : "Enregistrer la publication"}>
                 <Ionicons
@@ -547,10 +532,6 @@ const styles = StyleSheet.create({
   content: { paddingTop: spacing.lg, paddingBottom: spacing.lg, gap: spacing.md },
   post: { gap: spacing.sm },
   postHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  avatar: {
-    width: 42, height: 42, borderRadius: radius.pill, backgroundColor: colors.primaryLight,
-    alignItems: "center", justifyContent: "center",
-  },
   headInfo: { flex: 1 },
   authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
   blockBtn: { padding: spacing.xs },
@@ -559,11 +540,9 @@ const styles = StyleSheet.create({
   time: { ...typography.caption, color: colors.textMuted },
   body: { ...typography.body, color: colors.text, lineHeight: 22 },
   postImage: { width: "100%", height: 200, borderRadius: radius.md, backgroundColor: colors.surface, marginTop: spacing.sm },
-  postFoot: { flexDirection: "row", alignItems: "center", marginTop: spacing.xs },
-  likeBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  postFoot: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },
+  footAction: { padding: spacing.xs },
   bookmarkBtn: { marginLeft: "auto", padding: spacing.xs },
-  likeCount: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
-  likeCountActive: { color: colors.primary },
   sectionTitle: { marginTop: spacing.sm },
   muted: { color: colors.textMuted },
   thread: { gap: spacing.md },
@@ -572,14 +551,8 @@ const styles = StyleSheet.create({
   replyIndent: { marginLeft: spacing.xl },
   // Mise en avant médecin vérifié : encart vert clair sobre + bordure verte.
   doctorComment: { backgroundColor: colors.primaryLight, borderWidth: 1.5, borderColor: colors.primary, borderRadius: radius.md, padding: spacing.sm },
-  doctorAvatar: { backgroundColor: colors.white },
   doctorBanner: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginBottom: 2 },
   doctorBannerText: { ...typography.caption, color: colors.primaryDark, fontWeight: "700" },
-  commentAvatar: {
-    width: 30, height: 30, borderRadius: radius.pill, backgroundColor: colors.primaryLight,
-    alignItems: "center", justifyContent: "center",
-  },
-  replyAvatar: { width: 26, height: 26 },
   commentBody: { flex: 1, gap: 2 },
   commentHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   commentAuthor: { ...typography.caption, color: colors.text, fontFamily: fonts.bodyBold, fontWeight: "700" },

@@ -24,6 +24,8 @@ import {
 } from "@/lib/community-service";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
+import { Avatar } from "@/components/Avatar";
+import { LikeButton } from "@/components/LikeButton";
 import { hapticWarning } from "@/lib/haptics";
 import { useToast } from "@/providers/ToastProvider";
 import { APP_DOWNLOAD_URL } from "@/lib/app-config";
@@ -147,9 +149,12 @@ export default function CommunityHome() {
   const toggleSaveRef = useRef(toggleSave); toggleSaveRef.current = toggleSave;
   const openPostMenuRef = useRef(openPostMenu); openPostMenuRef.current = openPostMenu;
 
+  const sharePostRef = useRef(sharePost); sharePostRef.current = sharePost;
+
   const onLike = useCallback((id: string) => toggleLikeRef.current(id), []);
   const onToggleSave = useCallback((id: string) => toggleSaveRef.current(id), []);
   const onMenu = useCallback((post: CommunityPostWithAuthor) => openPostMenuRef.current(post), []);
+  const onShare = useCallback((post: CommunityPostWithAuthor) => sharePostRef.current(post), []);
   const onOpen = useCallback((id: string) => router.push(`/(user)/community/${id}`), [router]);
   const onOpenComments = useCallback((id: string) => router.push(`/(user)/community/${id}?focus=comments`), [router]);
 
@@ -164,9 +169,10 @@ export default function CommunityHome() {
         onLike={onLike}
         onToggleSave={onToggleSave}
         onMenu={onMenu}
+        onShare={onShare}
       />
     ),
-    [likedIds, savedIds, onOpen, onOpenComments, onLike, onToggleSave, onMenu]
+    [likedIds, savedIds, onOpen, onOpenComments, onLike, onToggleSave, onMenu, onShare]
   );
 
   // En-tête de liste : titre + actions + recherche + tri + filtres + compteur.
@@ -299,6 +305,7 @@ const PostRow = memo(function PostRow({
   onPress,
   onOpenComments,
   onLike,
+  onShare,
 }: {
   post: CommunityPostWithAuthor;
   liked: boolean;
@@ -308,6 +315,7 @@ const PostRow = memo(function PostRow({
   onPress: (id: string) => void;
   onOpenComments: (id: string) => void;
   onLike: (id: string) => void;
+  onShare: (post: CommunityPostWithAuthor) => void;
 }) {
   const name = authorDisplayName(post.is_anonymous, post.author);
   const edited = wasEdited(post.created_at, post.updated_at);
@@ -315,13 +323,7 @@ const PostRow = memo(function PostRow({
   return (
     <Card onPress={() => onPress(post.id)} accessibilityLabel="Ouvrir la publication" style={styles.post}>
         <View style={styles.postHead}>
-          <View style={styles.avatar}>
-            <Ionicons
-              name={post.is_anonymous ? "person-outline" : "person"}
-              size={18}
-              color={colors.primary}
-            />
-          </View>
+          <Avatar url={post.author?.avatar_url} isAnonymous={post.is_anonymous} size={38} />
           <View style={styles.headInfo}>
             <View style={styles.authorRow}>
               <Text style={styles.author}>{name}</Text>
@@ -340,19 +342,13 @@ const PostRow = memo(function PostRow({
         <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
         <View style={styles.postFoot}>
-          <Pressable onPress={() => onLike(post.id)} hitSlop={8} style={styles.likeBtn}>
-            <Ionicons
-              name={liked ? "heart" : "heart-outline"}
-              size={20}
-              color={liked ? colors.primary : colors.textMuted}
-            />
-            <Text style={[styles.likeCount, liked && styles.likeCountActive]}>
-              {post.likes_count}
-            </Text>
-          </Pressable>
+          <LikeButton liked={liked} count={post.likes_count} onPress={() => onLike(post.id)} size={20} />
           <Pressable onPress={() => onOpenComments(post.id)} hitSlop={8} style={styles.likeBtn} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
             <Ionicons name="chatbubble-outline" size={20} color={colors.textMuted} />
             <Text style={styles.likeCount}>{post.comments_count}</Text>
+          </Pressable>
+          <Pressable onPress={() => onShare(post)} hitSlop={8} style={styles.likeBtn} accessibilityRole="button" accessibilityLabel="Partager la publication">
+            <Ionicons name="share-social-outline" size={19} color={colors.textMuted} />
           </Pressable>
           <Pressable onPress={() => onToggleSave(post.id)} hitSlop={8} style={styles.bookmarkBtn} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
             <Ionicons
@@ -381,10 +377,6 @@ const styles = StyleSheet.create({
   muted: { color: colors.textMuted },
   post: { gap: spacing.sm },
   postHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  avatar: {
-    width: 38, height: 38, borderRadius: radius.pill, backgroundColor: colors.primaryLight,
-    alignItems: "center", justifyContent: "center",
-  },
   headInfo: { flex: 1 },
   authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
   blockBtn: { padding: spacing.xs },
@@ -415,5 +407,4 @@ const styles = StyleSheet.create({
   postFoot: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   likeCount: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
-  likeCountActive: { color: colors.primary },
 });
