@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -8,6 +8,7 @@ import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { SkeletonList } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { AppImage } from "@/components/AppImage";
 import { articlesService, ARTICLE_CATEGORIES } from "@/lib/articles-service";
 import type { Article } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -95,7 +96,7 @@ export default function Library() {
             <Pressable key={a.id} onPress={() => router.push({ pathname: "/(user)/article", params: { id: a.id } })}>
               <Card style={styles.card}>
                 {a.cover_image_url ? (
-                  <Image source={{ uri: a.cover_image_url }} style={styles.cover} resizeMode="cover" />
+                  <AppImage source={a.cover_image_url} style={styles.cover} />
                 ) : null}
                 <View style={styles.cardBody}>
                   <Text style={styles.category}>{a.category}</Text>

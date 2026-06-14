@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Loading } from "@/components/Loading";
 import { EmptyState } from "@/components/EmptyState";
+import { AppImage } from "@/components/AppImage";
 import { articlesService } from "@/lib/articles-service";
 import type { Article } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -48,7 +49,7 @@ export default function ArticleDetail() {
       <ScreenHeader title="Article" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {article.cover_image_url ? (
-          <Image source={{ uri: article.cover_image_url }} style={styles.cover} resizeMode="cover" />
+          <AppImage source={article.cover_image_url} style={styles.cover} />
         ) : null}
         <Text style={styles.category}>{article.category}</Text>
         <Text style={styles.title}>{article.title}</Text>

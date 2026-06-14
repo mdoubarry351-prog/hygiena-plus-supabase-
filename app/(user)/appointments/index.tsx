@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +9,7 @@ import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
+import { AppImage } from "@/components/AppImage";
 import { useAuth } from "@/providers/AuthProvider";
 import { useDoctors } from "@/hooks/useDoctors";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -151,7 +152,7 @@ function DoctorRow({ doctor, onPress }: { doctor: DoctorWithProfile; onPress: ()
   return (
     <Card onPress={onPress} accessibilityLabel={name} style={styles.row}>
         {doctor.profile?.avatar_url ? (
-          <Image source={{ uri: doctor.profile.avatar_url }} style={styles.avatar} />
+          <AppImage source={doctor.profile.avatar_url} style={styles.avatar} />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder]}>
             <Ionicons name="medkit-outline" size={26} color={colors.primary} />

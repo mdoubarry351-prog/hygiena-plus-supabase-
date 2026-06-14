@@ -1,4 +1,5 @@
-import { Image, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { AppImage } from "@/components/AppImage";
 import { colors, radius, spacing } from "@/theme";
 
 /**
@@ -10,12 +11,12 @@ export function PostImages({ imageUrls, imageUrl }: { imageUrls?: string[] | nul
   const urls = imageUrls && imageUrls.length ? imageUrls : imageUrl ? [imageUrl] : [];
   if (urls.length === 0) return null;
   if (urls.length === 1) {
-    return <Image source={{ uri: urls[0] }} style={styles.single} resizeMode="cover" />;
+    return <AppImage source={urls[0]} style={styles.single} />;
   }
   return (
     <View style={styles.grid}>
       {urls.map((u, i) => (
-        <Image key={`${u}-${i}`} source={{ uri: u }} style={styles.cell} resizeMode="cover" />
+        <AppImage key={`${u}-${i}`} source={u} style={styles.cell} />
       ))}
     </View>
   );

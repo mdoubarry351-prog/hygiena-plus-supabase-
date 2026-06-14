@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +9,7 @@ import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
+import { AppImage } from "@/components/AppImage";
 import { favoritesService } from "@/lib/favorites-service";
 import { formatPrice } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
@@ -71,7 +72,7 @@ export default function Favorites() {
               <Pressable key={p.id} onPress={() => router.push(`/(user)/marketplace/${p.id}`)}>
                 <Card style={styles.row}>
                   {p.image_url ? (
-                    <Image source={{ uri: p.image_url }} style={styles.thumb} resizeMode="cover" />
+                    <AppImage source={p.image_url} style={styles.thumb} />
                   ) : (
                     <View style={[styles.thumb, styles.thumbPlaceholder]}>
                       <Ionicons name="bag-outline" size={26} color={colors.textMuted} />

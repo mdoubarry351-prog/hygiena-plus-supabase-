@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -10,6 +10,7 @@ import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { ExportButton } from "@/components/ExportButton";
+import { AppImage } from "@/components/AppImage";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
@@ -180,7 +181,7 @@ export default function AdminProducts() {
               <Card key={p.id} style={styles.row}>
                 <Pressable style={styles.rowMain} onPress={() => setEditing(p)}>
                   {p.image_url ? (
-                    <Image source={{ uri: p.image_url }} style={styles.adminThumb} resizeMode="cover" />
+                    <AppImage source={p.image_url} style={styles.adminThumb} />
                   ) : (
                     <View style={[styles.adminThumb, styles.adminThumbPlaceholder]}>
                       <Ionicons name="image-outline" size={22} color={colors.textMuted} />
@@ -324,7 +325,7 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
             <View style={styles.thumbGrid}>
               {images.map((url, i) => (
                 <View key={url} style={styles.thumbWrap}>
-                  <Image source={{ uri: url }} style={styles.thumb} resizeMode="cover" />
+                  <AppImage source={url} style={styles.thumb} />
                   {i === 0 ? <View style={styles.mainTag}><Text style={styles.mainTagText}>Principale</Text></View> : null}
                   <Pressable onPress={() => removeImage(i)} hitSlop={6} style={styles.thumbRemove} accessibilityRole="button" accessibilityLabel="Retirer cette photo">
                     <Ionicons name="close" size={14} color={colors.white} />

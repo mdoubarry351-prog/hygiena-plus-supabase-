@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +9,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
+import { AppImage } from "@/components/AppImage";
 import { useAuth } from "@/providers/AuthProvider";
 import { authService } from "@/lib/auth-service";
 import { communityService, COMMUNITY_CATEGORIES, DEFAULT_CATEGORY, categoryLabel } from "@/lib/community-service";
@@ -192,7 +193,7 @@ export default function NewPost() {
           <View style={styles.thumbGrid}>
             {images.map((url, i) => (
               <View key={url} style={styles.thumbWrap}>
-                <Image source={{ uri: url }} style={styles.thumb} resizeMode="cover" />
+                <AppImage source={url} style={styles.thumb} />
                 <Pressable onPress={() => removeImage(i)} hitSlop={6} style={styles.thumbRemove} accessibilityRole="button" accessibilityLabel="Retirer cette photo">
                   <Ionicons name="close" size={14} color={colors.white} />
                 </Pressable>

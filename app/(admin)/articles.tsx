@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -9,6 +9,7 @@ import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { AppImage } from "@/components/AppImage";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import { ARTICLE_CATEGORIES } from "@/lib/articles-service";
@@ -103,7 +104,7 @@ export default function AdminArticles() {
             <Card key={a.id} style={styles.row}>
               <Pressable style={styles.rowMain} onPress={() => setEditing(a)}>
                 {a.cover_image_url ? (
-                  <Image source={{ uri: a.cover_image_url }} style={styles.thumb} resizeMode="cover" />
+                  <AppImage source={a.cover_image_url} style={styles.thumb} />
                 ) : (
                   <View style={[styles.thumb, styles.thumbPlaceholder]}>
                     <Ionicons name="document-text-outline" size={22} color={colors.textMuted} />
@@ -238,7 +239,7 @@ function ArticleForm({ article, onDone, onCancel }: { article: Article | null; o
           <Text style={styles.photoLabel}>Image de couverture (facultatif)</Text>
           {previewUri ? (
             <View style={styles.previewWrap}>
-              <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="cover" />
+              <AppImage source={previewUri} style={styles.preview} />
               {uploading && (
                 <View style={styles.previewOverlay}>
                   <ActivityIndicator color={colors.white} />

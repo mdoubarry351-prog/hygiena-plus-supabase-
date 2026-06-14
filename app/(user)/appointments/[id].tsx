@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -11,6 +11,7 @@ import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
+import { AppImage } from "@/components/AppImage";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import {
@@ -221,7 +222,7 @@ export default function BookAppointment() {
         {/* En-tête profil */}
         <Card style={styles.doctorCard}>
           {doctor.profile?.avatar_url ? (
-            <Image source={{ uri: doctor.profile.avatar_url }} style={styles.avatar} />
+            <AppImage source={doctor.profile.avatar_url} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]}>
               <Text style={styles.avatarInitial}>{name.trim().charAt(0).toUpperCase()}</Text>

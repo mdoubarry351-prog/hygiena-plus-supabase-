@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -11,6 +11,7 @@ import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { ExportButton } from "@/components/ExportButton";
 import { StarRating } from "@/components/StarRating";
+import { AppImage } from "@/components/AppImage";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, type DoctorRow, type DoctorActivity } from "@/lib/admin-service";
@@ -363,7 +364,7 @@ export default function AdminDoctors() {
             <View style={styles.avatarBlock}>
               {avatarPreview ? (
                 <View>
-                  <Image source={{ uri: avatarPreview }} style={styles.avatarPreview} />
+                  <AppImage source={avatarPreview} style={styles.avatarPreview} />
                   {avatarUploading && (
                     <View style={styles.avatarOverlay}><ActivityIndicator color={colors.white} /></View>
                   )}
@@ -497,7 +498,7 @@ export default function AdminDoctors() {
                         <Text style={styles.kycPending}>● En attente de vérification</Text>
                       ) : null}
                       {kycUrl ? (
-                        <Image source={{ uri: kycUrl }} style={styles.kycImage} resizeMode="contain" />
+                        <AppImage source={kycUrl} style={styles.kycImage} contentFit="contain" />
                       ) : null}
                       <View style={styles.kycActions}>
                         <Pressable onPress={() => viewKyc(d.license_document_url!)} disabled={kycLoading} style={[styles.btn, styles.btnOutlineMuted, kycLoading && styles.kycBtnDisabled]}>

@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from "react";
-import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +9,7 @@ import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
 import { StarRating } from "@/components/StarRating";
+import { AppImage } from "@/components/AppImage";
 import { useProducts } from "@/hooks/useProducts";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -190,7 +191,7 @@ function ProductRow({ product, isFav, onToggleFav, onAdd, onPress }: { product: 
   return (
     <Card onPress={onPress} accessibilityLabel={product.name} style={styles.row}>
         {thumbUrl ? (
-          <Image source={{ uri: thumbUrl }} style={styles.thumb} resizeMode="cover" />
+          <AppImage source={thumbUrl} style={styles.thumb} />
         ) : (
           <View style={[styles.thumb, styles.thumbPlaceholder]}>
             <Ionicons name="bag-outline" size={28} color={colors.textMuted} />
