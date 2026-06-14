@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { memo, useCallback, useRef, useState } from "react";
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -141,16 +141,39 @@ export default function CommunityHome() {
     setRefreshing(false);
   }
 
-  // Charge la page suivante quand on approche du bas.
-  function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
-    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 220) loadMore();
-  }
+  // ---- Callbacks de ligne STABLES (via refs) : permettent de mémoïser PostRow
+  // pour qu'un like/un save ne re-rende QUE la carte concernée, pas tout le fil.
+  const toggleLikeRef = useRef(toggleLike); toggleLikeRef.current = toggleLike;
+  const toggleSaveRef = useRef(toggleSave); toggleSaveRef.current = toggleSave;
+  const openPostMenuRef = useRef(openPostMenu); openPostMenuRef.current = openPostMenu;
 
-  if (loading && posts.length === 0) return <SkeletonList variant="post" />;
+  const onLike = useCallback((id: string) => toggleLikeRef.current(id), []);
+  const onToggleSave = useCallback((id: string) => toggleSaveRef.current(id), []);
+  const onMenu = useCallback((post: CommunityPostWithAuthor) => openPostMenuRef.current(post), []);
+  const onOpen = useCallback((id: string) => router.push(`/(user)/community/${id}`), [router]);
+  const onOpenComments = useCallback((id: string) => router.push(`/(user)/community/${id}?focus=comments`), [router]);
 
-  return (
-    <Screen>
+  const renderItem = useCallback(
+    ({ item }: { item: CommunityPostWithAuthor }) => (
+      <PostRow
+        post={item}
+        liked={likedIds.has(item.id)}
+        saved={savedIds.has(item.id)}
+        onPress={onOpen}
+        onOpenComments={onOpenComments}
+        onLike={onLike}
+        onToggleSave={onToggleSave}
+        onMenu={onMenu}
+      />
+    ),
+    [likedIds, savedIds, onOpen, onOpenComments, onLike, onToggleSave, onMenu]
+  );
+
+  // En-tête de liste : titre + actions + recherche + tri + filtres + compteur.
+  // Rendu comme élément (et non fonction recréée) pour que le champ de
+  // recherche conserve le focus à chaque frappe.
+  const header = (
+    <View>
       <View style={styles.topBar}>
         <Text style={typography.h2}>Communauté</Text>
         <View style={styles.topActions}>
@@ -160,11 +183,7 @@ export default function CommunityHome() {
           <Pressable onPress={() => router.push("/(user)/community/saved")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Publications enregistrées">
             <Ionicons name="bookmark-outline" size={22} color={colors.text} />
           </Pressable>
-          <Pressable
-            onPress={() => router.push("/(user)/community/new")}
-            hitSlop={10}
-            style={styles.newBtn}
-          >
+          <Pressable onPress={() => router.push("/(user)/community/new")} hitSlop={10} style={styles.newBtn}>
             <Ionicons name="create-outline" size={18} color={colors.white} />
             <Text style={styles.newBtnText}>Publier</Text>
           </Pressable>
@@ -198,6 +217,7 @@ export default function CommunityHome() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         style={styles.filterBar}
         contentContainerStyle={styles.filterChips}
       >
@@ -211,50 +231,54 @@ export default function CommunityHome() {
         })}
       </ScrollView>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-        onScroll={handleScroll}
-        scrollEventThrottle={400}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-      >
-        {posts.length === 0 ? (
+      {posts.length > 0 ? (
+        <Text style={styles.count}>{posts.length} publication{posts.length > 1 ? "s" : ""}</Text>
+      ) : null}
+    </View>
+  );
+
+  if (loading && posts.length === 0) return <SkeletonList variant="post" />;
+
+  return (
+    <Screen>
+      <FlatList
+        data={posts}
+        keyExtractor={(p) => p.id}
+        renderItem={renderItem}
+        extraData={likedIds}
+        ListHeaderComponent={header}
+        ListEmptyComponent={
           <EmptyState
             emoji="💬"
             title={isFiltering ? "Aucune publication trouvée" : "Aucune publication"}
             message={isFiltering ? "Essayez un autre mot-clé ou une autre catégorie." : "Soyez la première à partager quelque chose avec la communauté."}
           />
-        ) : (
-          <>
-            <Text style={styles.count}>{posts.length} publication{posts.length > 1 ? "s" : ""}</Text>
-            {posts.map((post) => (
-              <PostRow
-                key={post.id}
-                post={post}
-                liked={likedIds.has(post.id)}
-                saved={savedIds.has(post.id)}
-                onToggleSave={() => toggleSave(post.id)}
-                onMenu={() => openPostMenu(post)}
-                onPress={() => router.push(`/(user)/community/${post.id}`)}
-                onOpenComments={() => router.push(`/(user)/community/${post.id}?focus=comments`)}
-                onLike={() => toggleLike(post.id)}
-              />
-            ))}
-          </>
-        )}
-
-        {hasMore ? (
-          <View style={styles.footer}>
-            {loadingMore ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : (
-              <Pressable onPress={loadMore} style={styles.loadMore}>
-                <Text style={styles.loadMoreText}>Charger plus</Text>
-              </Pressable>
-            )}
-          </View>
-        ) : null}
-      </ScrollView>
+        }
+        ListFooterComponent={
+          hasMore ? (
+            <View style={styles.footer}>
+              {loadingMore ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Pressable onPress={loadMore} style={styles.loadMore}>
+                  <Text style={styles.loadMoreText}>Charger plus</Text>
+                </Pressable>
+              )}
+            </View>
+          ) : null
+        }
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        onEndReached={() => loadMore()}
+        onEndReachedThreshold={0.4}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        // Réglages de virtualisation pour un défilement fluide sur longues listes.
+        initialNumToRender={6}
+        maxToRenderPerBatch={8}
+        windowSize={11}
+        removeClippedSubviews
+      />
 
       <ActionSheet
         visible={!!sheet}
@@ -266,7 +290,7 @@ export default function CommunityHome() {
   );
 }
 
-function PostRow({
+const PostRow = memo(function PostRow({
   post,
   liked,
   saved,
@@ -279,17 +303,17 @@ function PostRow({
   post: CommunityPostWithAuthor;
   liked: boolean;
   saved: boolean;
-  onToggleSave: () => void;
-  onMenu: () => void;
-  onPress: () => void;
-  onOpenComments: () => void;
-  onLike: () => void;
+  onToggleSave: (id: string) => void;
+  onMenu: (post: CommunityPostWithAuthor) => void;
+  onPress: (id: string) => void;
+  onOpenComments: (id: string) => void;
+  onLike: (id: string) => void;
 }) {
   const name = authorDisplayName(post.is_anonymous, post.author);
   const edited = wasEdited(post.created_at, post.updated_at);
 
   return (
-    <Card onPress={onPress} accessibilityLabel="Ouvrir la publication" style={styles.post}>
+    <Card onPress={() => onPress(post.id)} accessibilityLabel="Ouvrir la publication" style={styles.post}>
         <View style={styles.postHead}>
           <View style={styles.avatar}>
             <Ionicons
@@ -306,7 +330,7 @@ function PostRow({
             <Text style={styles.time}>{formatRelativeTime(post.created_at)}{edited ? " · modifié" : ""}</Text>
           </View>
           <CategoryTag category={post.category} />
-          <Pressable onPress={onMenu} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de la publication">
+          <Pressable onPress={() => onMenu(post)} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de la publication">
             <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
           </Pressable>
         </View>
@@ -316,7 +340,7 @@ function PostRow({
         <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
         <View style={styles.postFoot}>
-          <Pressable onPress={onLike} hitSlop={8} style={styles.likeBtn}>
+          <Pressable onPress={() => onLike(post.id)} hitSlop={8} style={styles.likeBtn}>
             <Ionicons
               name={liked ? "heart" : "heart-outline"}
               size={20}
@@ -326,11 +350,11 @@ function PostRow({
               {post.likes_count}
             </Text>
           </Pressable>
-          <Pressable onPress={onOpenComments} hitSlop={8} style={styles.likeBtn} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
+          <Pressable onPress={() => onOpenComments(post.id)} hitSlop={8} style={styles.likeBtn} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
             <Ionicons name="chatbubble-outline" size={20} color={colors.textMuted} />
             <Text style={styles.likeCount}>{post.comments_count}</Text>
           </Pressable>
-          <Pressable onPress={onToggleSave} hitSlop={8} style={styles.bookmarkBtn} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
+          <Pressable onPress={() => onToggleSave(post.id)} hitSlop={8} style={styles.bookmarkBtn} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
             <Ionicons
               name={saved ? "bookmark" : "bookmark-outline"}
               size={20}
@@ -340,7 +364,7 @@ function PostRow({
         </View>
     </Card>
   );
-}
+});
 
 const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
@@ -354,8 +378,6 @@ const styles = StyleSheet.create({
   },
   newBtnText: { color: colors.white, fontSize: 14, fontWeight: "600" },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  empty: { gap: spacing.sm, alignItems: "center" },
-  emptyEmoji: { fontSize: 34 },
   muted: { color: colors.textMuted },
   post: { gap: spacing.sm },
   postHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
@@ -376,7 +398,7 @@ const styles = StyleSheet.create({
   segBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   segText: { fontSize: 13, fontWeight: "700", color: colors.text },
   segTextActive: { color: colors.white },
-  count: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
+  count: { ...typography.caption, color: colors.textMuted, fontWeight: "700", marginTop: spacing.xs },
   footer: { alignItems: "center", paddingVertical: spacing.md },
   loadMore: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.primary },
   loadMoreText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
@@ -390,11 +412,8 @@ const styles = StyleSheet.create({
   filterChipText: { fontSize: 13, fontWeight: "700", color: colors.text },
   filterChipTextActive: { color: colors.white },
   body: { ...typography.body, color: colors.text, lineHeight: 21 },
-  postImage: { width: "100%", height: 200, borderRadius: radius.md, backgroundColor: colors.surface },
   postFoot: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   likeCount: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
   likeCountActive: { color: colors.primary },
-  commentHint: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  commentHintText: { ...typography.caption, color: colors.textMuted },
 });
