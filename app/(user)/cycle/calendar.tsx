@@ -189,6 +189,19 @@ export default function CalendarScreen() {
           </Card>
         </Pressable>
 
+        <Pressable onPress={() => router.push("/(user)/cycle/learn")}>
+          <Card style={styles.summaryCard}>
+            <View style={styles.summaryIcon}>
+              <Ionicons name="bulb-outline" size={20} color={colors.primaryDark} />
+            </View>
+            <View style={styles.summaryText}>
+              <Text style={styles.summaryTitle}>Comprendre mon cycle</Text>
+              <Text style={styles.summarySub}>Phases, ovulation, fertilité, irrégularités</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
         <Pressable onPress={() => router.push("/(user)/pregnancy")}>
           <Card style={styles.summaryCard}>
             <View style={styles.summaryIcon}>
