@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { memo, useCallback, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View, type ListRenderItemInfo } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -55,34 +55,16 @@ export default function CommunityHome() {
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
   // Partage natif d'une publication + lien de téléchargement de l'app.
-  async function sharePost(post: CommunityPostWithAuthor) {
+  const sharePost = useCallback(async (post: CommunityPostWithAuthor) => {
     try {
       await Share.share({ message: `${post.content}\n\nVu sur Hygiena+ 🌸 Télécharge l'app : ${APP_DOWNLOAD_URL}` });
     } catch {
       // partage annulé
     }
-  }
-
-  // Construit le menu ⋯ : MON post → Modifier/Partager/Supprimer ; autre → Partager/Signaler (+ Bloquer).
-  function openPostMenu(post: CommunityPostWithAuthor) {
-    const isMine = !!post.user_id && post.user_id === meId;
-    const canBlock = !post.is_anonymous && !!post.user_id && post.user_id !== meId;
-    const options: ActionSheetOption[] = isMine
-      ? [
-          { label: "Modifier", icon: "create-outline", onPress: () => router.push({ pathname: "/(user)/community/new", params: { id: post.id } }) },
-          { label: "Partager", icon: "share-social-outline", onPress: () => sharePost(post) },
-          { label: "Supprimer", icon: "trash-outline", destructive: true, onPress: () => deleteMyPost(post.id) },
-        ]
-      : [
-          { label: "Partager", icon: "share-social-outline", onPress: () => sharePost(post) },
-          { label: "Signaler", icon: "flag-outline", onPress: () => reportPost(post) },
-          ...(canBlock ? [{ label: "Bloquer cet utilisateur", icon: "ban-outline" as const, destructive: true, onPress: () => post.user_id && blockAuthor(post.user_id) }] : []),
-        ];
-    setSheet({ title: isMine ? "Ma publication" : "Publication", options });
-  }
+  }, []);
 
   // Bloque l'auteur d'une publication → ses contenus disparaissent du fil.
-  function blockAuthor(userId: string) {
+  const blockAuthor = useCallback((userId: string) => {
     Alert.alert("Bloquer cet utilisateur ?", "Vous ne verrez plus les publications de cette personne.", [
       { text: "Annuler", style: "cancel" },
       {
@@ -98,10 +80,10 @@ export default function CommunityHome() {
         },
       },
     ]);
-  }
+  }, [reload]);
 
   // Signale la publication d'un autre : choix de la raison puis insertion.
-  function reportPost(post: CommunityPostWithAuthor) {
+  const reportPost = useCallback((post: CommunityPostWithAuthor) => {
     const buttons = REPORT_REASONS.map((r) => ({
       text: r,
       onPress: async () => {
@@ -114,10 +96,10 @@ export default function CommunityHome() {
       },
     }));
     Alert.alert("Signaler la publication", "Pour quelle raison ?", [...buttons, { text: "Annuler", style: "cancel" }]);
-  }
+  }, [toast]);
 
   // Supprime MA propre publication (confirmation + haptique).
-  function deleteMyPost(postId: string) {
+  const deleteMyPost = useCallback((postId: string) => {
     Alert.alert("Supprimer la publication ?", "Cette action est définitive.", [
       { text: "Annuler", style: "cancel" },
       {
@@ -134,24 +116,69 @@ export default function CommunityHome() {
         },
       },
     ]);
-  }
+  }, [reload]);
 
-  async function onRefresh() {
+  // Construit le menu ⋯ : MON post → Modifier/Partager/Supprimer ; autre → Partager/Signaler (+ Bloquer).
+  const openPostMenu = useCallback((post: CommunityPostWithAuthor) => {
+    const isMine = !!post.user_id && post.user_id === meId;
+    const canBlock = !post.is_anonymous && !!post.user_id && post.user_id !== meId;
+    const options: ActionSheetOption[] = isMine
+      ? [
+          { label: "Modifier", icon: "create-outline", onPress: () => router.push({ pathname: "/(user)/community/new", params: { id: post.id } }) },
+          { label: "Partager", icon: "share-social-outline", onPress: () => sharePost(post) },
+          { label: "Supprimer", icon: "trash-outline", destructive: true, onPress: () => deleteMyPost(post.id) },
+        ]
+      : [
+          { label: "Partager", icon: "share-social-outline", onPress: () => sharePost(post) },
+          { label: "Signaler", icon: "flag-outline", onPress: () => reportPost(post) },
+          ...(canBlock ? [{ label: "Bloquer cet utilisateur", icon: "ban-outline" as const, destructive: true, onPress: () => post.user_id && blockAuthor(post.user_id) }] : []),
+        ];
+    setSheet({ title: isMine ? "Ma publication" : "Publication", options });
+  }, [meId, router, sharePost, reportPost, blockAuthor, deleteMyPost]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await reload();
     setRefreshing(false);
-  }
+  }, [reload]);
 
-  // Charge la page suivante quand on approche du bas.
-  function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
-    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 220) loadMore();
-  }
+  // Pagination via FlatList (remplace l'écoute onScroll).
+  const onEndReached = useCallback(() => {
+    if (hasMore && !loadingMore) loadMore();
+  }, [hasMore, loadingMore, loadMore]);
+
+  // Handlers stables (id-based) pour mémoïser les cartes.
+  const onPressPost = useCallback((id: string) => router.push(`/(user)/community/${id}`), [router]);
+  const onOpenCommentsPost = useCallback((id: string) => router.push(`/(user)/community/${id}?focus=comments`), [router]);
+  const onLikePost = useCallback((id: string) => toggleLike(id), [toggleLike]);
+  const onSavePost = useCallback((id: string) => toggleSave(id), [toggleSave]);
+
+  // Déclenche un re-render des items quand les likes/signets changent.
+  const extra = useMemo(() => ({ likedIds, savedIds }), [likedIds, savedIds]);
+
+  const keyExtractor = useCallback((item: CommunityPostWithAuthor) => item.id, []);
+
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<CommunityPostWithAuthor>) => (
+      <PostRow
+        post={item}
+        liked={likedIds.has(item.id)}
+        saved={savedIds.has(item.id)}
+        onToggleSave={onSavePost}
+        onMenu={openPostMenu}
+        onPress={onPressPost}
+        onOpenComments={onOpenCommentsPost}
+        onLike={onLikePost}
+      />
+    ),
+    [likedIds, savedIds, onSavePost, openPostMenu, onPressPost, onOpenCommentsPost, onLikePost]
+  );
 
   if (loading && posts.length === 0) return <SkeletonList variant="post" />;
 
-  return (
-    <Screen>
+  // En-tête du fil (barre + recherche + tri + chips + compteur) — défile avec la liste.
+  const listHeader = (
+    <View>
       <View style={styles.topBar}>
         <Text style={typography.h2}>Communauté</Text>
         <View style={styles.topActions}>
@@ -161,18 +188,13 @@ export default function CommunityHome() {
           <Pressable onPress={() => router.push("/(user)/community/saved")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Publications enregistrées">
             <Ionicons name="bookmark-outline" size={22} color={colors.text} />
           </Pressable>
-          <Pressable
-            onPress={() => router.push("/(user)/community/new")}
-            hitSlop={10}
-            style={styles.newBtn}
-          >
+          <Pressable onPress={() => router.push("/(user)/community/new")} hitSlop={10} style={styles.newBtn}>
             <Ionicons name="create-outline" size={18} color={colors.white} />
             <Text style={styles.newBtnText}>Publier</Text>
           </Pressable>
         </View>
       </View>
 
-      {/* Recherche */}
       <View style={styles.searchRow}>
         <Input
           value={search}
@@ -183,7 +205,6 @@ export default function CommunityHome() {
         />
       </View>
 
-      {/* Tri : Récents / Tendances */}
       <View style={styles.segment}>
         <Pressable onPress={() => setSortMode("recent")} style={[styles.segBtn, sortMode === "recent" && styles.segBtnActive]}>
           <Ionicons name="time-outline" size={15} color={sortMode === "recent" ? colors.white : colors.textMuted} />
@@ -195,13 +216,7 @@ export default function CommunityHome() {
         </Pressable>
       </View>
 
-      {/* Filtres par catégorie */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterBar}
-        contentContainerStyle={styles.filterChips}
-      >
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterChips}>
         {["all", ...COMMUNITY_CATEGORIES].map((c) => {
           const active = activeCat === c;
           return (
@@ -212,50 +227,51 @@ export default function CommunityHome() {
         })}
       </ScrollView>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-        onScroll={handleScroll}
-        scrollEventThrottle={400}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-      >
-        {posts.length === 0 ? (
+      {posts.length > 0 ? (
+        <Text style={styles.count}>{posts.length} publication{posts.length > 1 ? "s" : ""}</Text>
+      ) : null}
+    </View>
+  );
+
+  const listFooter = hasMore ? (
+    <View style={styles.footer}>
+      {loadingMore ? (
+        <ActivityIndicator color={colors.primary} />
+      ) : (
+        <Pressable onPress={loadMore} style={styles.loadMore}>
+          <Text style={styles.loadMoreText}>Charger plus</Text>
+        </Pressable>
+      )}
+    </View>
+  ) : null;
+
+  return (
+    <Screen>
+      <FlatList
+        data={posts}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        extraData={extra}
+        ListHeaderComponent={listHeader}
+        ListFooterComponent={listFooter}
+        ListEmptyComponent={
           <EmptyState
             emoji="💬"
             title={isFiltering ? "Aucune publication trouvée" : "Aucune publication"}
             message={isFiltering ? "Essayez un autre mot-clé ou une autre catégorie." : "Soyez la première à partager quelque chose avec la communauté."}
           />
-        ) : (
-          <>
-            <Text style={styles.count}>{posts.length} publication{posts.length > 1 ? "s" : ""}</Text>
-            {posts.map((post) => (
-              <PostRow
-                key={post.id}
-                post={post}
-                liked={likedIds.has(post.id)}
-                saved={savedIds.has(post.id)}
-                onToggleSave={() => toggleSave(post.id)}
-                onMenu={() => openPostMenu(post)}
-                onPress={() => router.push(`/(user)/community/${post.id}`)}
-                onOpenComments={() => router.push(`/(user)/community/${post.id}?focus=comments`)}
-                onLike={() => toggleLike(post.id)}
-              />
-            ))}
-          </>
-        )}
-
-        {hasMore ? (
-          <View style={styles.footer}>
-            {loadingMore ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : (
-              <Pressable onPress={loadMore} style={styles.loadMore}>
-                <Text style={styles.loadMoreText}>Charger plus</Text>
-              </Pressable>
-            )}
-          </View>
-        ) : null}
-      </ScrollView>
+        }
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.4}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        removeClippedSubviews
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={11}
+        keyboardShouldPersistTaps="handled"
+      />
 
       <ActionSheet
         visible={!!sheet}
@@ -267,7 +283,8 @@ export default function CommunityHome() {
   );
 }
 
-function PostRow({
+// Carte de post mémoïsée : ne se re-render que si ses props changent (perf liste).
+const PostRow = memo(function PostRow({
   post,
   liked,
   saved,
@@ -280,17 +297,17 @@ function PostRow({
   post: CommunityPostWithAuthor;
   liked: boolean;
   saved: boolean;
-  onToggleSave: () => void;
-  onMenu: () => void;
-  onPress: () => void;
-  onOpenComments: () => void;
-  onLike: () => void;
+  onToggleSave: (id: string) => void;
+  onMenu: (post: CommunityPostWithAuthor) => void;
+  onPress: (id: string) => void;
+  onOpenComments: (id: string) => void;
+  onLike: (id: string) => void;
 }) {
   const name = authorDisplayName(post.is_anonymous, post.author);
   const edited = wasEdited(post.created_at, post.updated_at);
 
   return (
-    <Card onPress={onPress} accessibilityLabel="Ouvrir la publication" style={styles.post}>
+    <Card onPress={() => onPress(post.id)} accessibilityLabel="Ouvrir la publication" style={styles.post}>
         <View style={styles.postHead}>
           <View style={styles.avatar}>
             <Ionicons
@@ -307,7 +324,7 @@ function PostRow({
             <Text style={styles.time}>{formatRelativeTime(post.created_at)}{edited ? " · modifié" : ""}</Text>
           </View>
           <CategoryTag category={post.category} />
-          <Pressable onPress={onMenu} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de la publication">
+          <Pressable onPress={() => onMenu(post)} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de la publication">
             <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
           </Pressable>
         </View>
@@ -317,17 +334,17 @@ function PostRow({
         <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
         <View style={styles.postFoot}>
-          <Pressable onPress={onLike} hitSlop={8} style={styles.likeBtn}>
+          <Pressable onPress={() => onLike(post.id)} hitSlop={8} style={styles.likeBtn}>
             <HeartButton active={liked} size={20} />
             <Text style={[styles.likeCount, liked && styles.likeCountActive]}>
               {post.likes_count}
             </Text>
           </Pressable>
-          <Pressable onPress={onOpenComments} hitSlop={8} style={styles.likeBtn} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
+          <Pressable onPress={() => onOpenComments(post.id)} hitSlop={8} style={styles.likeBtn} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
             <Ionicons name="chatbubble-outline" size={20} color={colors.textMuted} />
             <Text style={styles.likeCount}>{post.comments_count}</Text>
           </Pressable>
-          <Pressable onPress={onToggleSave} hitSlop={8} style={styles.bookmarkBtn} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
+          <Pressable onPress={() => onToggleSave(post.id)} hitSlop={8} style={styles.bookmarkBtn} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
             <Ionicons
               name={saved ? "bookmark" : "bookmark-outline"}
               size={20}
@@ -337,7 +354,7 @@ function PostRow({
         </View>
     </Card>
   );
-}
+});
 
 const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
@@ -351,6 +368,7 @@ const styles = StyleSheet.create({
   },
   newBtnText: { color: colors.white, fontSize: 14, fontWeight: "600" },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  listContent: { paddingBottom: spacing.xxl, gap: spacing.md },
   empty: { gap: spacing.sm, alignItems: "center" },
   emptyEmoji: { fontSize: 34 },
   muted: { color: colors.textMuted },

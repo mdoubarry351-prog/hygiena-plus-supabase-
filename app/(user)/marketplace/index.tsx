@@ -1,5 +1,5 @@
-import { useRef, useState, useCallback } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type ListRenderItemInfo } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -48,16 +48,36 @@ export default function MarketplaceHome() {
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
-  async function onRefresh() {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await reload();
     setRefreshing(false);
-  }
+  }, [reload]);
 
-  function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
-    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 220) loadMore();
-  }
+  const onEndReached = useCallback(() => {
+    if (hasMore && !loadingMore) loadMore();
+  }, [hasMore, loadingMore, loadMore]);
+
+  // Handlers stables (id/produit) pour mémoïser les cartes.
+  const onPressProduct = useCallback((id: string) => router.push(`/(user)/marketplace/${id}`), [router]);
+  const onToggleFavProduct = useCallback((id: string) => toggle(id), [toggle]);
+  const onAddProduct = useCallback((product: MarketplaceProduct) => addItem(product, 1), [addItem]);
+
+  const extra = useMemo(() => ({ favIds }), [favIds]);
+  const keyExtractor = useCallback((item: MarketplaceProduct) => item.id, []);
+
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<MarketplaceProduct>) => (
+      <ProductRow
+        product={item}
+        isFav={favIds.has(item.id)}
+        onToggleFav={onToggleFavProduct}
+        onAdd={onAddProduct}
+        onPress={onPressProduct}
+      />
+    ),
+    [favIds, onToggleFavProduct, onAddProduct, onPressProduct]
+  );
 
   if (loading && products.length === 0) return <SkeletonList variant="product" />;
 
@@ -73,8 +93,9 @@ export default function MarketplaceHome() {
     );
   }
 
-  return (
-    <Screen>
+  // En-tête de la boutique (barre + recherche + catégories + tri + compteur).
+  const listHeader = (
+    <View>
       <View style={styles.topBar}>
         <Text style={typography.h2}>Hygiena+ Store</Text>
         <View style={styles.actions}>
@@ -95,7 +116,6 @@ export default function MarketplaceHome() {
         </View>
       </View>
 
-      {/* Recherche */}
       <View style={styles.searchRow}>
         <Input
           value={search}
@@ -106,7 +126,6 @@ export default function MarketplaceHome() {
         />
       </View>
 
-      {/* Catégories */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipBar} contentContainerStyle={styles.chips}>
         {["all", ...PRODUCT_CATEGORIES].map((c) => {
           const active = activeCat === c;
@@ -118,7 +137,6 @@ export default function MarketplaceHome() {
         })}
       </ScrollView>
 
-      {/* Tri */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipBar} contentContainerStyle={styles.chips}>
         {SORTS.map((s) => {
           const active = sort === s.key;
@@ -130,51 +148,57 @@ export default function MarketplaceHome() {
         })}
       </ScrollView>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-        onScroll={handleScroll}
-        scrollEventThrottle={400}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-      >
-        {products.length === 0 ? (
+      {products.length > 0 ? (
+        <Text style={styles.count}>{products.length} produit{products.length > 1 ? "s" : ""}</Text>
+      ) : null}
+    </View>
+  );
+
+  const listFooter = hasMore ? (
+    <View style={styles.footer}>
+      {loadingMore ? (
+        <ActivityIndicator color={colors.primary} />
+      ) : (
+        <Pressable onPress={loadMore} style={styles.loadMore}>
+          <Text style={styles.loadMoreText}>Charger plus</Text>
+        </Pressable>
+      )}
+    </View>
+  ) : null;
+
+  return (
+    <Screen>
+      <FlatList
+        data={products}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        extraData={extra}
+        ListHeaderComponent={listHeader}
+        ListFooterComponent={listFooter}
+        ListEmptyComponent={
           <EmptyState
             icon="bag-handle-outline"
             title={isFiltering ? "Aucun produit trouvé" : "Aucun produit disponible"}
             message={isFiltering ? "Essayez un autre mot-clé ou une autre catégorie." : "Revenez plus tard, de nouveaux produits arrivent bientôt."}
           />
-        ) : (
-          <>
-            <Text style={styles.count}>{products.length} produit{products.length > 1 ? "s" : ""}</Text>
-            {products.map((p) => (
-              <ProductRow
-                key={p.id}
-                product={p}
-                isFav={favIds.has(p.id)}
-                onToggleFav={() => toggle(p.id)}
-                onAdd={() => addItem(p, 1)}
-                onPress={() => router.push(`/(user)/marketplace/${p.id}`)}
-              />
-            ))}
-            {hasMore ? (
-              <View style={styles.footer}>
-                {loadingMore ? (
-                  <ActivityIndicator color={colors.primary} />
-                ) : (
-                  <Pressable onPress={loadMore} style={styles.loadMore}>
-                    <Text style={styles.loadMoreText}>Charger plus</Text>
-                  </Pressable>
-                )}
-              </View>
-            ) : null}
-          </>
-        )}
-      </ScrollView>
+        }
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.4}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        removeClippedSubviews
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={11}
+        keyboardShouldPersistTaps="handled"
+      />
     </Screen>
   );
 }
 
-function ProductRow({ product, isFav, onToggleFav, onAdd, onPress }: { product: MarketplaceProduct; isFav: boolean; onToggleFav: () => void; onAdd: () => void; onPress: () => void }) {
+// Carte produit mémoïsée : ne se re-render que si ses props changent (perf liste).
+const ProductRow = memo(function ProductRow({ product, isFav, onToggleFav, onAdd, onPress }: { product: MarketplaceProduct; isFav: boolean; onToggleFav: (id: string) => void; onAdd: (product: MarketplaceProduct) => void; onPress: (id: string) => void }) {
   const outOfStock = product.stock <= 0;
   const thumbUrl = product.image_urls?.[0] ?? product.image_url;
   const [justAdded, setJustAdded] = useState(false);
@@ -182,7 +206,7 @@ function ProductRow({ product, isFav, onToggleFav, onAdd, onPress }: { product: 
 
   function quickAdd() {
     if (outOfStock) return;
-    onAdd();
+    onAdd(product);
     hapticLight();
     setJustAdded(true);
     if (timer.current) clearTimeout(timer.current);
@@ -190,7 +214,7 @@ function ProductRow({ product, isFav, onToggleFav, onAdd, onPress }: { product: 
   }
 
   return (
-    <Card onPress={onPress} accessibilityLabel={product.name} style={styles.row}>
+    <Card onPress={() => onPress(product.id)} accessibilityLabel={product.name} style={styles.row}>
         {thumbUrl ? (
           <AppImage source={thumbUrl} style={styles.thumb} />
         ) : (
@@ -212,7 +236,7 @@ function ProductRow({ product, isFav, onToggleFav, onAdd, onPress }: { product: 
           </View>
         </View>
         <View style={styles.rowActions}>
-          <Pressable onPress={onToggleFav} hitSlop={10} style={styles.favBtn} accessibilityRole="button" accessibilityLabel={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}>
+          <Pressable onPress={() => onToggleFav(product.id)} hitSlop={10} style={styles.favBtn} accessibilityRole="button" accessibilityLabel={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}>
             <HeartButton active={isFav} size={22} activeColor={colors.danger} />
           </Pressable>
           <Pressable
@@ -228,7 +252,7 @@ function ProductRow({ product, isFav, onToggleFav, onAdd, onPress }: { product: 
         </View>
     </Card>
   );
-}
+});
 
 const THUMB = 96;
 const styles = StyleSheet.create({
@@ -266,6 +290,7 @@ const styles = StyleSheet.create({
   sortChipTextActive: { color: colors.white },
   count: { ...typography.caption, color: colors.textMuted },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  listContent: { paddingBottom: spacing.xxl, gap: spacing.md },
   footer: { alignItems: "center", paddingVertical: spacing.sm },
   loadMore: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.primary },
   loadMoreText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
