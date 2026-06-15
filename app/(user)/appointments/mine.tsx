@@ -8,6 +8,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { Loading } from "@/components/Loading";
 import { RescheduleModal } from "@/components/RescheduleModal";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -54,18 +55,21 @@ export default function MyAppointments() {
   const confirm = useConfirm();
   const [appointments, setAppointments] = useState<AppointmentWithDoctor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [rescheduling, setRescheduling] = useState<AppointmentWithDoctor | null>(null);
 
   const load = useCallback(async () => {
     if (!session?.user) return;
     setLoading(true);
+    setError(false);
     try {
       const data = await appointmentsService.getAppointments(session.user.id);
       setAppointments(data);
       syncAppointmentReminders(data); // replanifie les rappels locaux (silencieux)
     } catch {
-      setAppointments([]);
+      // On garde les données déjà affichées (le cas échéant) et on signale l'erreur.
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -103,6 +107,22 @@ export default function MyAppointments() {
 
   if (loading && appointments.length === 0) return <Loading />;
 
+  // Échec réseau SANS aucune donnée : vrai état d'erreur (≠ « aucun rendez-vous »).
+  if (error && appointments.length === 0) {
+    return (
+      <Screen>
+        <ScreenHeader title="Mes rendez-vous" />
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="Connexion impossible"
+          message="Vérifiez votre connexion, puis réessayez."
+          actionLabel="Réessayer"
+          onAction={load}
+        />
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <ScreenHeader title="Mes rendez-vous" />
@@ -111,6 +131,8 @@ export default function MyAppointments() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
+        {/* Données déjà chargées mais le rafraîchissement a échoué → hors-ligne. */}
+        {error ? <OfflineBanner cachedAt={null} /> : null}
 
         {appointments.length === 0 ? (
           <EmptyState

@@ -46,15 +46,17 @@ export default function Premium() {
   const [saving, setSaving] = useState(false);
   const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
+  const [paymentsError, setPaymentsError] = useState(false);
   const isPremium = !!profile?.is_premium;
 
   const loadPayments = useCallback(async () => {
     if (!session?.user) return;
     setLoadingPayments(true);
+    setPaymentsError(false);
     try {
       setPayments(await premiumService.getSubscriptionPayments(session.user.id));
     } catch {
-      setPayments([]);
+      setPaymentsError(true);
     } finally {
       setLoadingPayments(false);
     }
@@ -149,6 +151,14 @@ export default function Premium() {
         <Text style={[typography.h3, styles.historyTitle]}>Historique des paiements</Text>
         {loadingPayments ? (
           <SkeletonList variant="order" count={2} />
+        ) : paymentsError ? (
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Historique indisponible"
+            message="Impossible de charger vos paiements. Vérifiez votre connexion."
+            actionLabel="Réessayer"
+            onAction={loadPayments}
+          />
         ) : payments.length === 0 ? (
           <EmptyState icon="card-outline" title="Aucun paiement pour le moment." />
         ) : (

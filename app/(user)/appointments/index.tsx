@@ -8,6 +8,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { SkeletonList } from "@/components/Skeleton";
 import { AppImage } from "@/components/AppImage";
 import { SegmentedControl } from "@/components/SegmentedControl";
@@ -27,7 +28,7 @@ function norm(s: string): string {
 
 export default function AppointmentsHome() {
   const { role, profile } = useAuth();
-  const { doctors, loading, reload } = useDoctors();
+  const { doctors, loading, error, reload } = useDoctors();
   const { doctors_enabled, premium_enabled } = useAppSettings();
   const router = useRouter();
 
@@ -57,6 +58,22 @@ export default function AppointmentsHome() {
   if (role === "doctor") return <Redirect href="/(user)" />;
 
   if (loading && doctors.length === 0) return <SkeletonList variant="doctor" />;
+
+  // Échec réseau SANS aucune donnée : vrai état d'erreur (≠ « aucun médecin »).
+  if (error && doctors.length === 0) {
+    return (
+      <Screen>
+        <ScreenHeader title="Trouver une médecin" />
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="Connexion impossible"
+          message="Vérifiez votre connexion, puis réessayez."
+          actionLabel="Réessayer"
+          onAction={reload}
+        />
+      </Screen>
+    );
+  }
 
   // Module désactivé par l'admin : accès aux médecins/consultations bloqué.
   if (!doctors_enabled) {
@@ -101,6 +118,9 @@ export default function AppointmentsHome() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
+        {/* Données déjà chargées mais le rafraîchissement a échoué → hors-ligne. */}
+        {error ? <OfflineBanner cachedAt={null} /> : null}
+
         <Card style={styles.verified}>
           <Text style={styles.verifiedText}>✅ Toutes nos médecins sont vérifiées</Text>
         </Card>

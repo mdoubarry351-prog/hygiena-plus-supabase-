@@ -7,6 +7,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { SkeletonList } from "@/components/Skeleton";
 import { ActionSheet, type ActionSheetOption } from "@/components/ActionSheet";
 import { useCommunity } from "@/hooks/useCommunity";
@@ -41,7 +42,7 @@ export default function CommunityHome() {
   const [doctorResults, setDoctorResults] = useState<DoctorSearchResult[]>([]);
 
   // Filtres appliqués CÔTÉ SERVEUR (recherche + catégorie + tri + filtre médecins).
-  const { posts, likedIds, loading, loadingMore, hasMore, reload, loadMore, toggleLike } = useCommunity({
+  const { posts, likedIds, loading, loadingMore, hasMore, error, reload, loadMore, toggleLike } = useCommunity({
     search,
     category: activeCat === "all" ? null : activeCat,
     sort: sortMode === "trending" ? "trending" : "recents",
@@ -201,9 +202,30 @@ export default function CommunityHome() {
 
   if (loading && posts.length === 0) return <SkeletonList variant="post" />;
 
+  // Échec réseau SANS aucune donnée : vrai état d'erreur (≠ « aucune publication »).
+  if (error && posts.length === 0) {
+    return (
+      <Screen>
+        <View style={styles.topBar}>
+          <Text style={typography.h2}>Communauté</Text>
+        </View>
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="Connexion impossible"
+          message="Vérifiez votre connexion, puis réessayez."
+          actionLabel="Réessayer"
+          onAction={reload}
+        />
+      </Screen>
+    );
+  }
+
   // En-tête du fil (barre + recherche + tri + chips + compteur) — défile avec la liste.
   const listHeader = (
     <View>
+      {/* Données déjà chargées mais le rafraîchissement a échoué → hors-ligne. */}
+      {error ? <OfflineBanner cachedAt={null} /> : null}
+
       <View style={styles.topBar}>
         <Text style={typography.h2}>Communauté</Text>
         <View style={styles.topActions}>

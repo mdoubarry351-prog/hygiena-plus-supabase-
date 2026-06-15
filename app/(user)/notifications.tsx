@@ -10,6 +10,7 @@ import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { SkeletonList } from "@/components/Skeleton";
 import { FadeInView } from "@/components/FadeInView";
 import { SegmentedControl } from "@/components/SegmentedControl";
@@ -31,7 +32,7 @@ type NotifData = { kind?: string; postId?: string; appointmentId?: string; docto
 type CatFilter = NotifCategoryKey | "all";
 
 export default function Notifications() {
-  const { notifications, unreadCount, loading, reload, markAsRead, markAllAsRead, deleteNotification, deleteAll } = useNotifications();
+  const { notifications, unreadCount, loading, error, reload, markAsRead, markAllAsRead, deleteNotification, deleteAll } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
   const [prefs, setPrefs] = useState<NotifPrefs>(defaultPrefs());
   const [cat, setCat] = useState<CatFilter>("all");
@@ -108,6 +109,22 @@ export default function Notifications() {
 
   if (loading && notifications.length === 0) return <SkeletonList variant="notification" />;
 
+  // Échec réseau SANS aucune donnée : vrai état d'erreur (≠ « aucune notification »).
+  if (error && notifications.length === 0) {
+    return (
+      <Screen>
+        <ScreenHeader title="Notifications" />
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="Connexion impossible"
+          message="Vérifiez votre connexion, puis réessayez."
+          actionLabel="Réessayer"
+          onAction={reload}
+        />
+      </Screen>
+    );
+  }
+
   const emptyMessage =
     notifications.length === 0
       ? "Vous n'avez aucune notification pour le moment."
@@ -117,6 +134,9 @@ export default function Notifications() {
 
   const listHeader = (
     <View>
+      {/* Données déjà chargées mais le rafraîchissement a échoué → hors-ligne. */}
+      {error ? <OfflineBanner cachedAt={null} /> : null}
+
       {notifications.length > 0 ? (
         <View style={styles.actionsRow}>
           {unreadCount > 0 ? (

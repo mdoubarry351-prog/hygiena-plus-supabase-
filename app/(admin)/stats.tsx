@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Loading } from "@/components/Loading";
+import { EmptyState } from "@/components/EmptyState";
 import { AdminHeader } from "@/components/AdminHeader";
 import { BarChart } from "@/components/BarChart";
 import {
@@ -32,10 +33,12 @@ export default function AdminStats() {
   const [revenue, setRevenue] = useState<RevenueStats | null>(null);
   const [counts, setCounts] = useState<AdminCounts | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
       const [s, r, c] = await Promise.all([
         adminService.getMonthlySeries(),
@@ -45,6 +48,7 @@ export default function AdminStats() {
       setSeries(s); setRevenue(r); setCounts(c);
     } catch {
       setSeries(null); setRevenue(null); setCounts(null);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -59,6 +63,22 @@ export default function AdminStats() {
   }
 
   if (loading && !series) return <Loading />;
+
+  // Échec de chargement : message clair + Réessayer (≠ ScrollView à zéros).
+  if (error && !series) {
+    return (
+      <Screen>
+        <AdminHeader title="Statistiques" />
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="Statistiques indisponibles"
+          message="Impossible de charger les indicateurs. Vérifiez votre connexion."
+          actionLabel="Réessayer"
+          onAction={load}
+        />
+      </Screen>
+    );
+  }
 
   const sum = (a: number[] | undefined) => (a ?? []).reduce((x, y) => x + y, 0);
 

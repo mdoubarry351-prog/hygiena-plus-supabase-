@@ -7,6 +7,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { SkeletonList } from "@/components/Skeleton";
 import { StarRating } from "@/components/StarRating";
 import { SegmentedControl } from "@/components/SegmentedControl";
@@ -35,7 +36,7 @@ export default function MarketplaceHome() {
   const [sort, setSort] = useState<ProductSort>("recent");
 
   // Filtres appliqués CÔTÉ SERVEUR (recherche + catégorie + tri).
-  const { products, loading, loadingMore, hasMore, reload, loadMore } = useProducts({
+  const { products, loading, loadingMore, hasMore, error, reload, loadMore } = useProducts({
     search,
     category: activeCat === "all" ? null : activeCat,
     sort,
@@ -82,6 +83,24 @@ export default function MarketplaceHome() {
 
   if (loading && products.length === 0) return <SkeletonList variant="product" />;
 
+  // Échec réseau SANS aucune donnée : vrai état d'erreur (≠ « aucun produit »).
+  if (error && products.length === 0) {
+    return (
+      <Screen>
+        <View style={styles.topBar}>
+          <Text style={typography.h2}>Hygiena+ Store</Text>
+        </View>
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="Connexion impossible"
+          message="Vérifiez votre connexion, puis réessayez."
+          actionLabel="Réessayer"
+          onAction={reload}
+        />
+      </Screen>
+    );
+  }
+
   // Module désactivé par l'admin : on bloque l'accès à la boutique.
   if (!marketplace_enabled) {
     return (
@@ -97,6 +116,8 @@ export default function MarketplaceHome() {
   // En-tête de la boutique (barre + recherche + catégories + tri + compteur).
   const listHeader = (
     <View>
+      {/* Données déjà chargées mais le rafraîchissement a échoué → hors-ligne. */}
+      {error ? <OfflineBanner cachedAt={null} /> : null}
       <View style={styles.topBar}>
         <Text style={typography.h2}>Hygiena+ Store</Text>
         <View style={styles.actions}>
