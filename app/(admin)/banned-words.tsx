@@ -17,7 +17,7 @@ import { colors, radius, spacing, typography } from "@/theme";
 // Sévérités : libellé + couleur du badge (1=Modéré ambre, 2=Grave orange, 3=Critique rouge).
 const SEVERITIES: { value: number; label: string; color: string }[] = [
   { value: 1, label: "Modéré", color: colors.accent },
-  { value: 2, label: "Grave", color: "#F97316" },
+  { value: 2, label: "Grave", color: colors.warning },
   { value: 3, label: "Critique", color: colors.danger },
 ];
 const severityMeta = (s: number) => SEVERITIES.find((x) => x.value === s) ?? SEVERITIES[0];

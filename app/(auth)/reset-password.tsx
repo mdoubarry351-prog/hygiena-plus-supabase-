@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md, paddingHorizontal: spacing.lg },
   header: { alignItems: "center", marginTop: spacing.xxl, marginBottom: spacing.xl, gap: spacing.sm },
   badge: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
-  badgeWarn: { width: 64, height: 64, borderRadius: 32, backgroundColor: "#FFF3E0", alignItems: "center", justifyContent: "center" },
+  badgeWarn: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.warningSoft, alignItems: "center", justifyContent: "center" },
   title: { ...typography.h2, textAlign: "center" },
   message: { ...typography.body, color: colors.textMuted, textAlign: "center", paddingHorizontal: spacing.md },
   strengthRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: -spacing.xs, marginBottom: spacing.sm },

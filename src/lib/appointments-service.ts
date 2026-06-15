@@ -58,6 +58,14 @@ export function hasAnyAvailability(availability: Json | null): boolean {
   return DAY_KEYS.some((k) => dayAvailability(availability, k) !== null);
 }
 
+// Violation de l'index unique anti double-réservation (créneau pris entre-temps).
+// Partagé par l'écran de prise de RDV et la modale de report.
+export function isSlotConflict(e: unknown): boolean {
+  const code = (e as { code?: string } | null)?.code;
+  const msg = e instanceof Error ? e.message : "";
+  return code === "23505" || /duplicate key|unique constraint/i.test(msg);
+}
+
 // Génère les créneaux de `stepMin` minutes entre start et end (« HH:MM »).
 export function generateSlots(start: string, end: string, stepMin = 30): string[] {
   const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };

@@ -11,7 +11,16 @@ export const colors = {
   textMuted: "#6B6577",
   border: "#ECE9F2",
   success: "#2ECC8F",
+  successSoft: "#D6F5E8",
   danger: "#FF4D6D",
+  dangerSoft: "#FFE0E6",
+  // Avertissement (ambre, cohérent avec `accent`) + fond doux.
+  warning: "#F59E0B",
+  warningSoft: "#FFF3E0",
+  // Information (indigo, à partir de `secondary`) + fond doux.
+  info: "#6366F1",
+  infoSoft: "#E0E2FF",
+  neutralSoft: "#EEF0F4",
   white: "#FFFFFF",
 } as const;
 
@@ -76,13 +85,15 @@ export const fonts = {
 } as const;
 
 export const typography = {
-  h1: { fontSize: 28, fontWeight: "700" as const, fontFamily: fonts.titleBold, color: colors.text },
-  h2: { fontSize: 22, fontWeight: "700" as const, fontFamily: fonts.titleBold, color: colors.text },
-  h3: { fontSize: 18, fontWeight: "700" as const, fontFamily: fonts.titleBold, color: colors.text },
-  body: { fontSize: 15, fontWeight: "400" as const, fontFamily: fonts.body, color: colors.text },
-  caption: { fontSize: 13, fontWeight: "400" as const, fontFamily: fonts.body, color: colors.textMuted },
+  h1: { fontSize: 28, lineHeight: 34, letterSpacing: 0.2, fontWeight: "700" as const, fontFamily: fonts.titleBold, color: colors.text },
+  h2: { fontSize: 22, lineHeight: 28, letterSpacing: 0.2, fontWeight: "700" as const, fontFamily: fonts.titleBold, color: colors.text },
+  h3: { fontSize: 18, lineHeight: 24, letterSpacing: 0.1, fontWeight: "700" as const, fontFamily: fonts.titleBold, color: colors.text },
+  // Sous-titre : intermédiaire entre h3 et body (gris, pour introduire une section).
+  subtitle: { fontSize: 16, lineHeight: 22, fontWeight: "600" as const, fontFamily: fonts.bodySemiBold, color: colors.textMuted },
+  body: { fontSize: 15, lineHeight: 21, fontWeight: "400" as const, fontFamily: fonts.body, color: colors.text },
+  caption: { fontSize: 13, lineHeight: 18, fontWeight: "400" as const, fontFamily: fonts.body, color: colors.textMuted },
   // Nom / titre principal de carte ou de ligne de liste (gras, taille corps).
-  name: { fontSize: 15, fontWeight: "700" as const, fontFamily: fonts.bodyBold, color: colors.text },
+  name: { fontSize: 15, lineHeight: 20, fontWeight: "700" as const, fontFamily: fonts.bodyBold, color: colors.text },
 } as const;
 
 // Couleurs des phases du cycle — partagées par CycleRing (accueil) et le

@@ -11,6 +11,7 @@ import {
   hasAnyAvailability,
   generateSlots,
   formatAppointmentTime,
+  isSlotConflict,
   type DoctorWithProfile,
 } from "@/lib/appointments-service";
 import { hapticSuccess, hapticError } from "@/lib/haptics";
@@ -29,11 +30,6 @@ function buildDays(): DayOption[] {
     out.push({ date: toISO(d), weekday: d.toLocaleDateString("fr-FR", { weekday: "short" }), day: String(d.getDate()) });
   }
   return out;
-}
-function isSlotConflict(e: unknown): boolean {
-  const code = (e as { code?: string } | null)?.code;
-  const msg = e instanceof Error ? e.message : "";
-  return code === "23505" || /duplicate key|unique constraint/i.test(msg);
 }
 
 /**

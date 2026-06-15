@@ -141,7 +141,7 @@ export default function CycleSummary() {
         {canAssessRegularity ? (
           <Card style={styles.regCard}>
             <View style={styles.regHead}>
-              <View style={[styles.regIcon, { backgroundColor: isRegular ? colors.primaryLight : "#FFF3E0" }]}>
+              <View style={[styles.regIcon, { backgroundColor: isRegular ? colors.primaryLight : colors.warningSoft }]}>
                 <Ionicons name={isRegular ? "checkmark-circle" : "pulse"} size={22} color={isRegular ? colors.primaryDark : colors.accent} />
               </View>
               <View style={styles.regInfo}>

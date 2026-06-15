@@ -24,6 +24,7 @@ import {
   dayAvailability,
   hasAnyAvailability,
   generateSlots,
+  isSlotConflict,
   WEEK_DAYS,
   type DoctorWithProfile,
 } from "@/lib/appointments-service";
@@ -43,13 +44,6 @@ const MONTHS_AHEAD = 2; // nombre de mois navigables au-delà du mois courant
 
 function toISO(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-// Violation de l'index unique anti double-réservation (créneau pris entre-temps).
-function isSlotConflict(e: unknown): boolean {
-  const code = (e as { code?: string } | null)?.code;
-  const msg = e instanceof Error ? e.message : "";
-  return code === "23505" || /duplicate key|unique constraint/i.test(msg);
 }
 
 export default function BookAppointment() {

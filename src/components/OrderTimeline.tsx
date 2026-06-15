@@ -60,6 +60,6 @@ const styles = StyleSheet.create({
   nodeCurrent: { width: 26, height: 26, borderRadius: 13, borderWidth: 3, borderColor: colors.primaryLight },
   currentLabel: { ...typography.caption, color: colors.textMuted },
   currentLabelStrong: { color: colors.primaryDark, fontWeight: "700" },
-  cancelledRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: "#FFF1F4", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md },
+  cancelledRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.dangerSoft, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md },
   cancelledText: { ...typography.caption, color: colors.danger, fontWeight: "700" },
 });
