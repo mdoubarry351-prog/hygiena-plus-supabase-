@@ -1,38 +1,70 @@
 import { useEffect, useState, useCallback } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
-import { Loading } from "@/components/Loading";
+import { Skeleton } from "@/components/Skeleton";
+import { EmptyState } from "@/components/EmptyState";
 import { AdminHeader } from "@/components/AdminHeader";
-import { adminService, type DashboardStats } from "@/lib/admin-service";
+import { adminService, type DashboardRpc } from "@/lib/admin-service";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, radius, spacing, typography } from "@/theme";
 
-type StatCard = { key: keyof DashboardStats; label: string; icon: keyof typeof Ionicons.glyphMap; tint: string };
+type CardDef = { key: keyof DashboardRpc; label: string; icon: keyof typeof Ionicons.glyphMap; tint: string; href: Href };
 
-// Cartes secondaires (grille 2 colonnes).
-const CARDS: StatCard[] = [
-  { key: "ordersPending", label: "Commandes en attente", icon: "hourglass-outline", tint: colors.accent },
-  { key: "ordersThisMonth", label: "Commandes ce mois", icon: "receipt-outline", tint: colors.primary },
-  { key: "outOfStock", label: "En rupture", icon: "alert-circle-outline", tint: colors.danger },
-  { key: "users", label: "Utilisateurs", icon: "people-outline", tint: colors.primary },
-  { key: "doctors", label: "Médecins", icon: "medkit-outline", tint: colors.secondary },
-  { key: "appointments", label: "Rendez-vous", icon: "calendar-outline", tint: colors.primary },
-  { key: "posts", label: "Publications", icon: "chatbubbles-outline", tint: colors.secondary },
+const CARDS: CardDef[] = [
+  { key: "usersTotal", label: "Utilisateurs inscrits", icon: "people-outline", tint: colors.primary, href: "/(admin)/users" },
+  { key: "activeUsers", label: "Utilisateurs actifs", icon: "pulse-outline", tint: colors.secondary, href: "/(admin)/users" },
+  { key: "premiumCount", label: "Abonnés Premium", icon: "star-outline", tint: colors.accent, href: "/(admin)/subscriptions" },
+  { key: "doctorsActive", label: "Médecins actifs", icon: "medkit-outline", tint: colors.secondary, href: "/(admin)/doctors" },
+  { key: "appointmentsToday", label: "RDV du jour", icon: "calendar-outline", tint: colors.primary, href: "/(admin)/appointments" },
+  { key: "ordersTotal", label: "Commandes Marketplace", icon: "receipt-outline", tint: colors.primary, href: "/(admin)/orders" },
+  { key: "postsCount", label: "Publications", icon: "chatbubbles-outline", tint: colors.secondary, href: "/(admin)/community" },
+  { key: "reportsPending", label: "Signalements à traiter", icon: "flag-outline", tint: colors.danger, href: "/(admin)/reports" },
 ];
 
+// Repli si la RPC échoue : on dérive ce qu'on peut de l'ancien getDashboardStats.
+async function fallbackStats(): Promise<DashboardRpc> {
+  const s = await adminService.getDashboardStats();
+  return {
+    ok: true,
+    usersTotal: s.users,
+    activeUsers: 0,
+    premiumCount: 0,
+    doctorsActive: s.doctors,
+    appointmentsToday: 0,
+    ordersTotal: s.ordersThisMonth,
+    ordersPending: s.ordersPending,
+    postsCount: s.posts,
+    reportsPending: 0,
+    revenueMarketplace: s.revenueThisMonth,
+    revenueConsultation: 0,
+    revenuePremium: 0,
+    revenueTotal: s.revenueThisMonth,
+  };
+}
+
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const router = useRouter();
+  const [stats, setStats] = useState<DashboardRpc | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
-      setStats(await adminService.getDashboardStats());
+      setStats(await adminService.getDashboardStatsRpc());
     } catch {
-      setStats(null);
+      // RPC indisponible → repli best-effort, sinon erreur.
+      try {
+        setStats(await fallbackStats());
+      } catch {
+        setStats(null);
+        setError(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -46,7 +78,34 @@ export default function AdminDashboard() {
     setRefreshing(false);
   }
 
-  if (loading && !stats) return <Loading />;
+  if (loading && !stats) {
+    return (
+      <Screen>
+        <AdminHeader title="Tableau de bord" />
+        <View style={styles.content}>
+          <Skeleton height={92} radius={radius.lg} />
+          <View style={styles.grid}>
+            {Array.from({ length: 8 }, (_, i) => <Skeleton key={i} width="47.5%" height={96} radius={radius.lg} />)}
+          </View>
+        </View>
+      </Screen>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <Screen>
+        <AdminHeader title="Tableau de bord" />
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="Statistiques indisponibles"
+          message="Impossible de charger les indicateurs pour le moment."
+          actionLabel="Réessayer"
+          onAction={load}
+        />
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -56,25 +115,31 @@ export default function AdminDashboard() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        {/* Revenus ce mois — carte mise en avant */}
-        <Card style={styles.revenueCard}>
+        {/* Revenus estimés — carte mise en avant */}
+        <Card onPress={() => router.push("/(admin)/subscriptions")} style={styles.revenueCard}>
           <View style={styles.revenueTop}>
             <View style={[styles.icon, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name="cash-outline" size={22} color={colors.primaryDark} />
             </View>
-            <Text style={styles.revenueLabel}>Revenus ce mois</Text>
+            <Text style={styles.revenueLabel}>Revenus estimés</Text>
           </View>
-          <Text style={styles.revenueValue}>{formatPrice(stats?.revenueThisMonth ?? 0)}</Text>
+          <Text style={styles.revenueValue}>{formatPrice(stats.revenueTotal)}</Text>
+          <Text style={styles.revenueBreak}>
+            Marketplace {formatPrice(stats.revenueMarketplace)} · Consultations {formatPrice(stats.revenueConsultation)} · Premium {formatPrice(stats.revenuePremium)}
+          </Text>
         </Card>
 
         <View style={styles.grid}>
           {CARDS.map((c) => (
-            <Card key={c.key} style={styles.statCard}>
+            <Card key={c.key} onPress={() => router.push(c.href)} style={styles.statCard}>
               <View style={[styles.icon, { backgroundColor: c.tint + "22" }]}>
                 <Ionicons name={c.icon} size={20} color={c.tint} />
               </View>
-              <Text style={styles.value}>{stats ? stats[c.key] : 0}</Text>
+              <Text style={styles.value}>{stats[c.key]}</Text>
               <Text style={styles.label}>{c.label}</Text>
+              {c.key === "ordersTotal" && stats.ordersPending > 0 ? (
+                <Text style={styles.sub}>{stats.ordersPending} en attente</Text>
+              ) : null}
             </Card>
           ))}
         </View>
@@ -85,13 +150,15 @@ export default function AdminDashboard() {
 
 const styles = StyleSheet.create({
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
-  revenueCard: { gap: spacing.sm, backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  revenueCard: { gap: spacing.xs, backgroundColor: colors.primaryLight, borderColor: colors.primary },
   revenueTop: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   revenueLabel: { ...typography.name, color: colors.primaryDark },
   revenueValue: { fontSize: 30, fontFamily: typography.h1.fontFamily, fontWeight: "700", color: colors.primaryDark },
+  revenueBreak: { ...typography.caption, color: colors.primaryDark },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   statCard: { width: "47.5%", gap: spacing.xs, alignItems: "flex-start" },
   icon: { width: 40, height: 40, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
   value: { fontSize: 28, fontFamily: typography.h1.fontFamily, fontWeight: "700", color: colors.text, marginTop: spacing.xs },
   label: { ...typography.caption, color: colors.textMuted },
+  sub: { ...typography.caption, color: colors.accent, fontWeight: "700" },
 });

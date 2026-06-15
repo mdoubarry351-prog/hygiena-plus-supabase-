@@ -144,6 +144,24 @@ export type SuspensionRow = UserSuspension & {
   user: Pick<Profile, "full_name" | "email"> | null;
 };
 export type AuditLogRow = Tables<"admin_logs"> & { adminName: string | null };
+
+// Statistiques du tableau de bord renvoyées par la RPC `admin_dashboard_stats`.
+export type DashboardRpc = {
+  ok: boolean;
+  usersTotal: number;
+  activeUsers: number;
+  premiumCount: number;
+  doctorsActive: number;
+  appointmentsToday: number;
+  ordersTotal: number;
+  ordersPending: number;
+  postsCount: number;
+  reportsPending: number;
+  revenueMarketplace: number;
+  revenueConsultation: number;
+  revenuePremium: number;
+  revenueTotal: number;
+};
 // Avis enrichis pour la modération : nom de l'auteur + nom de la cible.
 export type ProductReviewRow = ProductReview & { authorName: string | null; targetName: string | null };
 export type DoctorReviewRow = DoctorReview & { authorName: string | null; targetName: string | null };
@@ -275,6 +293,13 @@ export const adminService = {
       ordersThisMonth,
       outOfStock: outOfStockRes.count ?? 0,
     };
+  },
+
+  // Stats consolidées via la RPC `admin_dashboard_stats` (9 cartes du dashboard).
+  async getDashboardStatsRpc(): Promise<DashboardRpc> {
+    const { data, error } = await supabase.rpc("admin_dashboard_stats");
+    if (error) throw error;
+    return data as unknown as DashboardRpc;
   },
 
   // ---------------- 2. Statistiques ----------------

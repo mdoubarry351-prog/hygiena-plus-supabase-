@@ -1421,6 +1421,11 @@ export type Database = {
         Args: { p_doctor: string; p_patient: string };
         Returns: undefined;
       };
+      // Statistiques agrégées du tableau de bord admin (jsonb).
+      admin_dashboard_stats: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
     };
     Enums: {
       user_role: UserRole;
