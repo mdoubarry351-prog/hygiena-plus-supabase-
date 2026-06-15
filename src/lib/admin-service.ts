@@ -159,6 +159,27 @@ export type AdminAppointmentRow = {
   doctor: { specialty: string | null; profile: { full_name: string | null } | null } | null;
 };
 
+// Paiement d'abonnement enrichi (nom de l'abonné) pour la vue admin.
+export type AdminSubscriptionPayment = {
+  id: string;
+  userName: string | null;
+  amount: number;
+  method: string | null;
+  plan: string | null;
+  paid_at: string;
+  period_start: string | null;
+  period_end: string | null;
+};
+
+// Synthèse abonnements & paiements (vue admin).
+export type SubscriptionsSummary = {
+  activeCount: number;
+  expiredCount: number;
+  revenuePremium: number;
+  revenueConsultation: number;
+  payments: AdminSubscriptionPayment[];
+};
+
 // Statistiques du tableau de bord renvoyées par la RPC `admin_dashboard_stats`.
 export type DashboardRpc = {
   ok: boolean;
@@ -334,6 +355,58 @@ export const adminService = {
     const { data, error } = await query.range(offset, offset + limit - 1);
     if (error) throw error;
     return (data ?? []) as unknown as AdminAppointmentRow[];
+  },
+
+  // Abonnements & paiements (vue admin). État dérivé de subscription_payments :
+  // « actif » = période la plus récente d'un abonné dont period_end >= aujourd'hui.
+  // Paiement simulé = toujours réussi (pas de notion d'échec).
+  async getSubscriptionsAdmin(limit = 50): Promise<SubscriptionsSummary> {
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const [payRes, apptRes] = await Promise.all([
+      supabase
+        .from("subscription_payments")
+        .select("id, user_id, amount, method, plan, period_start, period_end, paid_at, profile:profiles!subscription_payments_user_id_fkey(full_name)")
+        .order("paid_at", { ascending: false }),
+      supabase.from("appointments").select("amount_paid").eq("is_paid", true),
+    ]);
+    if (payRes.error) throw payRes.error;
+    if (apptRes.error) throw apptRes.error;
+
+    const rows = (payRes.data ?? []) as unknown as {
+      id: string; user_id: string; amount: number; method: string | null; plan: string | null;
+      period_start: string | null; period_end: string | null; paid_at: string;
+      profile: { full_name: string | null } | null;
+    }[];
+
+    const revenuePremium = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
+    const revenueConsultation = (apptRes.data ?? []).reduce((s, a) => s + (a.amount_paid ?? 0), 0);
+
+    // Période la plus récente par abonné → actif/expiré.
+    const latestByUser = new Map<string, string | null>();
+    for (const r of rows) {
+      const cur = latestByUser.get(r.user_id);
+      if (cur === undefined || (r.period_end ?? "") > (cur ?? "")) latestByUser.set(r.user_id, r.period_end ?? null);
+    }
+    let activeCount = 0;
+    let expiredCount = 0;
+    for (const end of latestByUser.values()) {
+      if (end && end >= today) activeCount += 1;
+      else expiredCount += 1;
+    }
+
+    const payments: AdminSubscriptionPayment[] = rows.slice(0, limit).map((r) => ({
+      id: r.id,
+      userName: r.profile?.full_name ?? null,
+      amount: r.amount,
+      method: r.method,
+      plan: r.plan,
+      paid_at: r.paid_at,
+      period_start: r.period_start,
+      period_end: r.period_end,
+    }));
+
+    return { activeCount, expiredCount, revenuePremium, revenueConsultation, payments };
   },
 
   // ---------------- 2. Statistiques ----------------
