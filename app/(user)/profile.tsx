@@ -187,6 +187,19 @@ export default function Profile() {
           </Card>
         </Pressable>
 
+        <Pressable onPress={() => router.push("/(user)/health")}>
+          <Card style={styles.proCard}>
+            <View style={styles.proIcon}>
+              <Ionicons name="heart-circle-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.proText}>
+              <Text style={styles.proTitle}>Informations de santé</Text>
+              <Text style={styles.proSub}>Âge, mesures, groupe sanguin, allergies — privé</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
         <Pressable onPress={() => router.push("/(user)/lock")}>
           <Card style={styles.proCard}>
             <View style={styles.proIcon}>

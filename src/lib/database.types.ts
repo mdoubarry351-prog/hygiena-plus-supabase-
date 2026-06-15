@@ -1275,6 +1275,100 @@ export type Database = {
           }
         ];
       };
+
+      // =================================================
+      // health_profiles (infos santé privées — propriétaire uniquement)
+      // =================================================
+      health_profiles: {
+        Row: {
+          user_id: string;
+          height_cm: number | null;
+          weight_kg: number | null;
+          blood_group: string | null;
+          allergies: string | null;
+          treatments: string | null;
+          health_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          height_cm?: number | null;
+          weight_kg?: number | null;
+          blood_group?: string | null;
+          allergies?: string | null;
+          treatments?: string | null;
+          health_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          height_cm?: number | null;
+          weight_kg?: number | null;
+          blood_group?: string | null;
+          allergies?: string | null;
+          treatments?: string | null;
+          health_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "health_profiles_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      // =================================================
+      // subscription_payments (historique paiements Premium)
+      // =================================================
+      subscription_payments: {
+        Row: {
+          id: string;
+          user_id: string;
+          amount: number;
+          method: string | null;
+          plan: string | null;
+          period_start: string | null;
+          period_end: string | null;
+          paid_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          amount: number;
+          method?: string | null;
+          plan?: string | null;
+          period_start?: string | null;
+          period_end?: string | null;
+          paid_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          amount?: number;
+          method?: string | null;
+          plan?: string | null;
+          period_start?: string | null;
+          period_end?: string | null;
+          paid_at?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "subscription_payments_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: {
       // Vue sécurisée des publications : user_id renvoyé NULL pour un post
@@ -1368,3 +1462,5 @@ export type Pregnancy = Tables<"pregnancies">;
 export type UserReport = Tables<"user_reports">;
 export type UserSuspension = Tables<"user_suspensions">;
 export type Notification = Tables<"notifications">;
+export type HealthProfile = Tables<"health_profiles">;
+export type SubscriptionPayment = Tables<"subscription_payments">;
