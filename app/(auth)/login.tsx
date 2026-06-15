@@ -1,14 +1,23 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Image, StyleSheet, Text, TextInput, View } from "react-native";
 import { Link, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
 import { isValidEmail } from "@/lib/validation";
-import { colors, spacing, typography } from "@/theme";
+import { colors, radius, spacing, typography } from "@/theme";
 
 const logo = require("../../assets/logo/hygiena-icon-1024.png");
+
+// Garde-fou anti-spam CÔTÉ UI (le vrai rate-limit reste serveur, côté Supabase) :
+// après MAX_ATTEMPTS échecs, on verrouille le bouton pendant COOLDOWN_MS.
+const MAX_ATTEMPTS = 5;
+const COOLDOWN_MS = 30_000;
+const KEY_FAILS = "login_fail_count";
+const KEY_LOCK = "login_locked_until";
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -16,17 +25,51 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [failCount, setFailCount] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState(0);
+  const [nowTs, setNowTs] = useState(() => Date.now());
   const passwordRef = useRef<TextInput>(null);
 
-  const canSubmit = isValidEmail(email) && password.length > 0;
+  // Restaure le compteur/verrou persistés (survit à un redémarrage de l'app).
+  useEffect(() => {
+    (async () => {
+      const [f, l] = await Promise.all([AsyncStorage.getItem(KEY_FAILS), AsyncStorage.getItem(KEY_LOCK)]);
+      if (f) setFailCount(Number(f) || 0);
+      if (l) setLockedUntil(Number(l) || 0);
+    })();
+  }, []);
+
+  const locked = lockedUntil > nowTs;
+  const remaining = locked ? Math.ceil((lockedUntil - nowTs) / 1000) : 0;
+
+  // Décompte tant que le verrou est actif (re-active le bouton à expiration).
+  useEffect(() => {
+    if (!locked) return;
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [locked]);
+
+  const canSubmit = isValidEmail(email) && password.length > 0 && !locked;
 
   async function handleLogin() {
     if (!canSubmit) return;
     setLoading(true);
     try {
       await signIn(email.trim(), password);
-      // Redirection gérée par l'aiguilleur racine via onAuthStateChange.
+      // Succès : on remet le compteur à zéro.
+      setFailCount(0);
+      setLockedUntil(0);
+      AsyncStorage.multiRemove([KEY_FAILS, KEY_LOCK]).catch(() => {});
     } catch (e) {
+      const next = failCount + 1;
+      setFailCount(next);
+      AsyncStorage.setItem(KEY_FAILS, String(next)).catch(() => {});
+      if (next >= MAX_ATTEMPTS) {
+        const until = Date.now() + COOLDOWN_MS;
+        setLockedUntil(until);
+        setNowTs(Date.now());
+        AsyncStorage.setItem(KEY_LOCK, String(until)).catch(() => {});
+      }
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       Alert.alert("Connexion échouée", msg);
     } finally {
@@ -81,6 +124,13 @@ export default function Login() {
           onSubmitEditing={handleLogin}
         />
 
+        {locked ? (
+          <View style={styles.lockNote}>
+            <Ionicons name="time-outline" size={15} color={colors.danger} />
+            <Text style={styles.lockText}>Trop de tentatives. Réessayez dans {remaining}s.</Text>
+          </View>
+        ) : null}
+
         <Button title="Se connecter" onPress={handleLogin} loading={loading} disabled={!canSubmit} />
         <Button title="Se connecter par téléphone" variant="outline" onPress={() => router.push("/(auth)/phone")} />
       </View>
@@ -114,6 +164,8 @@ const styles = StyleSheet.create({
   plus: { color: colors.accent, fontWeight: "700" },
   tagline: { ...typography.body, color: colors.textMuted, textAlign: "center" },
   form: { gap: spacing.xs },
+  lockNote: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.primaryLight, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginBottom: spacing.xs },
+  lockText: { ...typography.caption, color: colors.danger, fontWeight: "600", flex: 1 },
   footer: { marginTop: spacing.xl, gap: spacing.md, alignItems: "center" },
   link: { ...typography.body, color: colors.textMuted },
   linkStrong: { color: colors.primary, fontWeight: "700" },
