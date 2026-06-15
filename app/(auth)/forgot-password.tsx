@@ -50,8 +50,9 @@ export default function ForgotPassword() {
   }
 
   return (
-    <Screen>
+    <Screen keyboardAware>
       <View style={styles.header}>
+        <Text style={styles.wordmark}>Hygiena<Text style={styles.plus}>+</Text></Text>
         <Text style={typography.h2}>Mot de passe oublié</Text>
         <Text style={typography.caption}>Nous vous enverrons un lien de réinitialisation.</Text>
       </View>
@@ -84,7 +85,9 @@ export default function ForgotPassword() {
 }
 
 const styles = StyleSheet.create({
-  header: { marginTop: spacing.xxl, marginBottom: spacing.xl, gap: spacing.xs },
+  header: { marginTop: spacing.xl, marginBottom: spacing.xl, gap: spacing.xs },
+  wordmark: { fontSize: 26, fontWeight: "700", color: colors.primaryDark, letterSpacing: 0.3, marginBottom: spacing.xs },
+  plus: { color: colors.accent, fontWeight: "700" },
   footer: { marginTop: spacing.lg, alignItems: "center" },
   link: { color: colors.primary, fontWeight: "600" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md, paddingHorizontal: spacing.lg },

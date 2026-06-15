@@ -122,7 +122,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <Screen>
+    <Screen keyboardAware>
       <FadeInView>
         <View style={styles.header}>
           <View style={styles.badge}>

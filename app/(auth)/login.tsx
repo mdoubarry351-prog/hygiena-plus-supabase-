@@ -35,7 +35,7 @@ export default function Login() {
   }
 
   return (
-    <Screen>
+    <Screen keyboardAware>
       {/* Halo mint doux derrière l'en-tête (décoratif, non interactif) */}
       <View style={styles.glow} pointerEvents="none" />
 

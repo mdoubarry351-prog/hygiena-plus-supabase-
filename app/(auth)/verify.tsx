@@ -56,7 +56,7 @@ export default function VerifyOtp() {
   const mmss = `${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, "0")}`;
 
   return (
-    <Screen>
+    <Screen keyboardAware>
       <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back}>
         <Ionicons name="chevron-back" size={24} color={colors.text} />
         <Text style={styles.backText}>Retour</Text>

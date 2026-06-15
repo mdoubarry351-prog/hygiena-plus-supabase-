@@ -39,7 +39,7 @@ export default function PhoneLogin() {
   }
 
   return (
-    <Screen>
+    <Screen keyboardAware>
       <View style={styles.glow} pointerEvents="none" />
 
       <View style={styles.header}>

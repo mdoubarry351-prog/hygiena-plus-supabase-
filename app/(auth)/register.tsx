@@ -65,10 +65,11 @@ export default function Register() {
   }
 
   return (
-    <Screen>
+    <Screen keyboardAware>
       <View style={styles.header}>
+        <Text style={styles.wordmark}>Hygiena<Text style={styles.plus}>+</Text></Text>
         <Text style={styles.logo}>Créer un compte</Text>
-        <Text style={typography.caption}>Rejoignez Hygiena+</Text>
+        <Text style={typography.caption}>Rejoignez la communauté</Text>
       </View>
 
       <Input
@@ -188,8 +189,10 @@ export default function Register() {
 }
 
 const styles = StyleSheet.create({
-  header: { alignItems: "center", marginTop: spacing.xl, marginBottom: spacing.lg },
-  logo: { ...typography.h1, color: colors.primary },
+  header: { alignItems: "center", marginTop: spacing.lg, marginBottom: spacing.lg, gap: spacing.xs },
+  wordmark: { fontSize: 26, fontWeight: "700", color: colors.primaryDark, letterSpacing: 0.3 },
+  plus: { color: colors.accent, fontWeight: "700" },
+  logo: { ...typography.h2, color: colors.text },
   strengthRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: -spacing.xs, marginBottom: spacing.sm },
   strengthBars: { flexDirection: "row", gap: spacing.xs, flex: 1 },
   strengthBar: { flex: 1, height: 5, borderRadius: 3, backgroundColor: colors.border },
