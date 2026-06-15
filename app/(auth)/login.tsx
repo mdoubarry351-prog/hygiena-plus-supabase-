@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Alert, Image, StyleSheet, Text, View } from "react-native";
+import { useRef, useState } from "react";
+import { Alert, Image, StyleSheet, Text, TextInput, View } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
+import { isValidEmail } from "@/lib/validation";
 import { colors, spacing, typography } from "@/theme";
 
 const logo = require("../../assets/logo/hygiena-icon-1024.png");
@@ -15,12 +16,12 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const passwordRef = useRef<TextInput>(null);
+
+  const canSubmit = isValidEmail(email) && password.length > 0;
 
   async function handleLogin() {
-    if (!email.trim() || !password) {
-      Alert.alert("Champs requis", "Renseignez votre email et votre mot de passe.");
-      return;
-    }
+    if (!canSubmit) return;
     setLoading(true);
     try {
       await signIn(email.trim(), password);
@@ -56,20 +57,31 @@ export default function Login() {
           onChangeText={setEmail}
           autoCapitalize="none"
           autoComplete="email"
+          textContentType="emailAddress"
           keyboardType="email-address"
           placeholder="vous@exemple.com"
+          autoFocus
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          blurOnSubmit={false}
+          validate={(v) => (v.length > 0 && !isValidEmail(v) ? "Adresse email invalide." : null)}
         />
         <Input
+          ref={passwordRef}
           label="Mot de passe"
           icon="lock-closed-outline"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
           secureToggle
+          autoComplete="password"
+          textContentType="password"
           placeholder="••••••••"
+          returnKeyType="done"
+          onSubmitEditing={handleLogin}
         />
 
-        <Button title="Se connecter" onPress={handleLogin} loading={loading} />
+        <Button title="Se connecter" onPress={handleLogin} loading={loading} disabled={!canSubmit} />
         <Button title="Se connecter par téléphone" variant="outline" onPress={() => router.push("/(auth)/phone")} />
       </View>
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, TextInput, type TextInputProps, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, durations, fonts, radius, shadows, spacing, typography } from "@/theme";
@@ -14,7 +14,8 @@ type Props = TextInputProps & {
   validate?: (value: string) => string | null;
 };
 
-export function Input({
+// forwardRef → le ref pointe sur le TextInput interne (navigation clavier entre champs).
+export const Input = forwardRef<TextInput, Props>(function Input({
   label,
   error,
   icon,
@@ -27,7 +28,7 @@ export function Input({
   onFocus,
   onBlur,
   ...rest
-}: Props) {
+}, ref) {
   const [focused, setFocused] = useState(false);
   const [touched, setTouched] = useState(false);
   const showEye = !!secureToggle || !!secureTextEntry;
@@ -56,6 +57,7 @@ export function Input({
           <Ionicons name={icon} size={18} color={focused ? colors.primary : colors.textMuted} />
         ) : null}
         <TextInput
+          ref={ref}
           placeholderTextColor={colors.textMuted}
           value={value}
           onChangeText={onChangeText}
@@ -79,7 +81,7 @@ export function Input({
       {shownError ? <ErrorRow message={shownError} /> : null}
     </View>
   );
-}
+});
 
 // Message d'erreur : icône d'alerte + texte rouge, apparition douce.
 function ErrorRow({ message }: { message: string }) {

@@ -12,7 +12,7 @@ export default function Index() {
     if (initializing) return;
 
     if (!session) {
-      router.replace("/(auth)/login");
+      router.replace("/(auth)/welcome");
       return;
     }
     // Session présente mais profil pas encore chargé : on attend.
