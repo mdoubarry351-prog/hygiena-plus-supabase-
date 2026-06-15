@@ -42,4 +42,16 @@ export const notificationsService = {
       .eq("is_read", false);
     if (error) throw error;
   },
+
+  // Supprime une notification (RLS : uniquement les siennes).
+  async deleteNotification(id: string): Promise<void> {
+    const { error } = await supabase.from("notifications").delete().eq("id", id);
+    if (error) throw error;
+  },
+
+  // Supprime toutes les notifications de l'utilisateur.
+  async deleteAll(userId: string): Promise<void> {
+    const { error } = await supabase.from("notifications").delete().eq("user_id", userId);
+    if (error) throw error;
+  },
 };

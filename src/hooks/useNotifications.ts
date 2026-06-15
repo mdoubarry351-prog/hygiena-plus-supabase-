@@ -52,7 +52,30 @@ export function useNotifications() {
     }
   }, [session?.user, load]);
 
+  // Supprime une notification (mise à jour optimiste).
+  const deleteNotification = useCallback(async (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await notificationsService.deleteNotification(id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Suppression impossible");
+      await load();
+    }
+  }, [load]);
+
+  // Supprime toutes les notifications de l'utilisateur.
+  const deleteAll = useCallback(async () => {
+    if (!session?.user) return;
+    setNotifications([]);
+    try {
+      await notificationsService.deleteAll(session.user.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Suppression impossible");
+      await load();
+    }
+  }, [session?.user, load]);
+
   const unreadCount = notifications.reduce((n, item) => n + (item.is_read ? 0 : 1), 0);
 
-  return { notifications, unreadCount, loading, error, reload: load, markAsRead, markAllAsRead };
+  return { notifications, unreadCount, loading, error, reload: load, markAsRead, markAllAsRead, deleteNotification, deleteAll };
 }
