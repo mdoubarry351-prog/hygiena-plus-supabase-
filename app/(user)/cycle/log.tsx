@@ -12,6 +12,7 @@ import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { cycleService, SYMPTOMS, FLOW_OPTIONS, MOOD_OPTIONS } from "@/lib/cycle-service";
+import { resyncCycleReminders } from "@/lib/reminders";
 import { colors, radius, spacing, typography } from "@/theme";
 
 // Parse une date SQL « AAAA-MM-JJ » en Date locale (midi → évite les décalages DST/fuseau).
@@ -133,6 +134,8 @@ export default function LogCycle() {
         await cycleService.addCycle({ user_id: session.user.id, ...payload });
         toast.success("Vos règles ont été enregistrées.");
       }
+      // Replanifie les rappels locaux d'après les nouvelles prédictions (silencieux).
+      resyncCycleReminders(session.user.id);
       router.back();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";

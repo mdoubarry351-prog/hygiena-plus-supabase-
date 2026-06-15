@@ -13,6 +13,7 @@ import { RescheduleModal } from "@/components/RescheduleModal";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/providers/AuthProvider";
 import { hapticWarning } from "@/lib/haptics";
+import { syncAppointmentReminders } from "@/lib/reminders";
 import {
   appointmentsService,
   doctorDisplayName,
@@ -62,6 +63,7 @@ export default function MyAppointments() {
     try {
       const data = await appointmentsService.getAppointments(session.user.id);
       setAppointments(data);
+      syncAppointmentReminders(data); // replanifie les rappels locaux (silencieux)
     } catch {
       setAppointments([]);
     } finally {

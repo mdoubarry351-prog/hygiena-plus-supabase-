@@ -31,6 +31,7 @@ import {
 import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
 import { formatPrice } from "@/lib/marketplace-service";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
+import { resyncAppointmentReminders } from "@/lib/reminders";
 import { colors, durations, fonts, radius, spacing, typography } from "@/theme";
 
 // Calendrier mensuel (cohérent avec cycle/calendar.tsx : semaine Lun→Dim).
@@ -237,6 +238,7 @@ export default function BookAppointment() {
         payment: { amountPaid: doctor.consultation_fee ?? 0, receiptNumber: generateReceiptNumber() },
       });
       hapticSuccess();
+      resyncAppointmentReminders(session.user.id); // planifie le rappel local (silencieux)
       router.replace({ pathname: "/(user)/appointments/receipt", params: { id: created.id } });
     } catch (e) {
       if (isSlotConflict(e)) {

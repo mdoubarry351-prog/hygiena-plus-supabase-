@@ -11,6 +11,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useCycles } from "@/hooks/useCycles";
 import { cycleService } from "@/lib/cycle-service";
+import { resyncCycleReminders } from "@/lib/reminders";
+import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { useConfirm } from "@/components/ConfirmDialog";
 import type { MenstrualCycle } from "@/lib/database.types";
@@ -43,6 +45,7 @@ function painDescriptor(p: number): string {
 
 export default function CycleHistory() {
   const { cycles, loading, offline, cachedAt, reload } = useCycles();
+  const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();
   const confirm = useConfirm();
@@ -85,6 +88,7 @@ export default function CycleHistory() {
     try {
       await cycleService.deleteCycle(c.id);
       await reload();
+      if (session?.user) resyncCycleReminders(session.user.id); // replanifie (silencieux)
       toast.success("Saisie supprimée.");
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");

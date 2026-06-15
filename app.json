@@ -40,6 +40,12 @@
           "faceIDPermission": "Hygiena+ utilise Face ID pour protéger l'accès à vos données."
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "color": "#10B981"
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {
