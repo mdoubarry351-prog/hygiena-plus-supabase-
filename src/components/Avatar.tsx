@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AppImage } from "@/components/AppImage";
-import { colors, typography } from "@/theme";
+import { colors, fonts } from "@/theme";
 
 type Size = "sm" | "md" | "lg";
 const SIZES: Record<Size, number> = { sm: 38, md: 48, lg: 64 };
@@ -23,14 +23,19 @@ export function Avatar({
 }) {
   const dim = typeof size === "number" ? size : SIZES[size];
   const round = { width: dim, height: dim, borderRadius: dim / 2 };
+  // Une SEULE lettre, en capitale. lineHeight calé sur la taille de police (et non
+  // hérité d'un token) pour ne jamais rogner le glyphe ; letterSpacing forcé à 0.
   const initial = name?.trim()?.charAt(0)?.toUpperCase() || "";
+  const fontSize = Math.round(dim * 0.42);
 
   return (
     <View style={[round, styles.base, style]}>
       {uri ? (
         <AppImage source={uri} style={styles.fill} />
       ) : initial ? (
-        <Text style={[styles.initial, { fontSize: Math.round(dim * 0.42) }]}>{initial}</Text>
+        <Text style={[styles.initial, { fontSize, lineHeight: Math.round(fontSize * 1.18) }]} numberOfLines={1} allowFontScaling={false}>
+          {initial}
+        </Text>
       ) : (
         <Ionicons name={icon} size={Math.round(dim * 0.5)} color={colors.primary} />
       )}
@@ -41,5 +46,12 @@ export function Avatar({
 const styles = StyleSheet.create({
   base: { backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   fill: { width: "100%", height: "100%" },
-  initial: { ...typography.name, color: colors.primaryDark },
+  initial: {
+    color: colors.primaryDark,
+    fontFamily: fonts.bodyBold,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 0,
+    includeFontPadding: false,
+  },
 });
