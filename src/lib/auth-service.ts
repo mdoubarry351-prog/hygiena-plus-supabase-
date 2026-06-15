@@ -32,7 +32,7 @@ export const authService = {
    * On complète ensuite prénom/nom + full_name (« Prénom Nom ») si la session
    * est active. full_name reste la source d'affichage partout dans l'app.
    */
-  async signUp(email: string, password: string, names: { firstName: string; lastName: string }) {
+  async signUp(email: string, password: string, names: { firstName: string; lastName: string; phone?: string }) {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
 
@@ -47,6 +47,7 @@ export const authService = {
           last_name: names.lastName,
           full_name: fullName,
           email,
+          phone: names.phone?.trim() ? names.phone.trim() : null,
         })
         .eq("id", data.user.id);
       if (profileError) {

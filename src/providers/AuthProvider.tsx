@@ -11,7 +11,7 @@ type AuthState = {
   role: UserRole | null;
   initializing: boolean; // true tant que la session initiale n'est pas résolue
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, names: { firstName: string; lastName: string }) => Promise<{ needsEmailConfirmation: boolean }>;
+  signUp: (email: string, password: string, names: { firstName: string; lastName: string; phone?: string }) => Promise<{ needsEmailConfirmation: boolean }>;
   signInWithPhone: (phone: string) => Promise<void>;
   verifyPhoneOtp: (phone: string, token: string) => Promise<void>;
   signOut: () => Promise<void>;

@@ -1,35 +1,52 @@
-import { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { useRef, useState } from "react";
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Link, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
+import { isValidEmail, passwordStrength } from "@/lib/validation";
 import { colors, spacing, typography } from "@/theme";
+
+const STRENGTH_COLORS = [colors.border, colors.danger, colors.accent, colors.success];
 
 export default function Register() {
   const { signUp } = useAuth();
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const lastRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+
+  const strength = passwordStrength(password);
+  const passwordsMatch = confirm.length === 0 || confirm === password;
+  const formValid =
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    isValidEmail(email) &&
+    password.length >= 6 &&
+    confirm === password &&
+    accepted;
+
   async function handleRegister() {
-    if (!firstName.trim() || !lastName.trim()) {
-      Alert.alert("Nom requis", "Indiquez votre prénom et votre nom.");
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert("Mot de passe trop court", "Minimum 6 caractères.");
-      return;
-    }
+    if (!formValid) return;
     setLoading(true);
     try {
       const { needsEmailConfirmation } = await signUp(email.trim(), password, {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        phone: phone.trim() || undefined,
       });
       if (needsEmailConfirmation) {
         Alert.alert(
@@ -54,30 +71,112 @@ export default function Register() {
         <Text style={typography.caption}>Rejoignez Hygiena+</Text>
       </View>
 
-      <Input label="Prénom" value={firstName} onChangeText={setFirstName} placeholder="Awa" autoCapitalize="words" />
-      <Input label="Nom" value={lastName} onChangeText={setLastName} placeholder="Diop" autoCapitalize="words" />
       <Input
+        label="Prénom"
+        value={firstName}
+        onChangeText={setFirstName}
+        placeholder="Awa"
+        autoCapitalize="words"
+        textContentType="givenName"
+        autoFocus
+        returnKeyType="next"
+        onSubmitEditing={() => lastRef.current?.focus()}
+        blurOnSubmit={false}
+      />
+      <Input
+        ref={lastRef}
+        label="Nom"
+        value={lastName}
+        onChangeText={setLastName}
+        placeholder="Diop"
+        autoCapitalize="words"
+        textContentType="familyName"
+        returnKeyType="next"
+        onSubmitEditing={() => phoneRef.current?.focus()}
+        blurOnSubmit={false}
+      />
+      <Input
+        ref={phoneRef}
+        label="Téléphone"
+        icon="call-outline"
+        value={phone}
+        onChangeText={setPhone}
+        placeholder="Ex. +224 620 00 00 00"
+        keyboardType="phone-pad"
+        textContentType="telephoneNumber"
+        autoComplete="tel"
+        returnKeyType="next"
+        onSubmitEditing={() => emailRef.current?.focus()}
+        blurOnSubmit={false}
+      />
+      <Input
+        ref={emailRef}
         label="Email"
         icon="mail-outline"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
         autoComplete="email"
+        textContentType="emailAddress"
         keyboardType="email-address"
         placeholder="vous@exemple.com"
+        returnKeyType="next"
+        onSubmitEditing={() => passwordRef.current?.focus()}
+        blurOnSubmit={false}
+        validate={(v) => (v.length > 0 && !isValidEmail(v) ? "Adresse email invalide." : null)}
       />
       <Input
+        ref={passwordRef}
         label="Mot de passe"
         icon="lock-closed-outline"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
         secureToggle
-        validate={(v) => (v.length > 0 && v.length < 6 ? "Au moins 6 caractères." : null)}
+        textContentType="newPassword"
         placeholder="Au moins 6 caractères"
+        returnKeyType="next"
+        onSubmitEditing={() => confirmRef.current?.focus()}
+        blurOnSubmit={false}
+        validate={(v) => (v.length > 0 && v.length < 6 ? "Au moins 6 caractères." : null)}
       />
 
-      <Button title="S'inscrire" onPress={handleRegister} loading={loading} />
+      {/* Jauge de force du mot de passe */}
+      {password.length > 0 ? (
+        <View style={styles.strengthRow}>
+          <View style={styles.strengthBars}>
+            {[1, 2, 3].map((n) => (
+              <View key={n} style={[styles.strengthBar, strength.score >= n ? { backgroundColor: STRENGTH_COLORS[strength.score] } : null]} />
+            ))}
+          </View>
+          <Text style={[styles.strengthLabel, { color: STRENGTH_COLORS[strength.score] }]}>{strength.label}</Text>
+        </View>
+      ) : null}
+
+      <Input
+        ref={confirmRef}
+        label="Confirmer le mot de passe"
+        icon="lock-closed-outline"
+        value={confirm}
+        onChangeText={setConfirm}
+        secureTextEntry
+        secureToggle
+        textContentType="newPassword"
+        placeholder="Retapez le mot de passe"
+        returnKeyType="done"
+        onSubmitEditing={handleRegister}
+        validate={() => (!passwordsMatch ? "Les mots de passe ne correspondent pas." : null)}
+      />
+
+      {/* Acceptation des conditions */}
+      <Pressable onPress={() => setAccepted((a) => !a)} style={styles.terms} accessibilityRole="checkbox" accessibilityState={{ checked: accepted }}>
+        <Ionicons name={accepted ? "checkbox" : "square-outline"} size={22} color={accepted ? colors.primary : colors.textMuted} />
+        <Text style={styles.termsText}>
+          J'accepte les <Link href="/(user)/terms" style={styles.termsLink}>conditions d'utilisation</Link> et la <Link href="/(user)/privacy" style={styles.termsLink}>politique de confidentialité</Link>.
+        </Text>
+      </Pressable>
+
+      <Button title="S'inscrire" onPress={handleRegister} loading={loading} disabled={!formValid} />
 
       <View style={styles.footer}>
         <Link href="/(auth)/login" style={styles.link}>
@@ -89,8 +188,15 @@ export default function Register() {
 }
 
 const styles = StyleSheet.create({
-  header: { alignItems: "center", marginTop: spacing.xxl, marginBottom: spacing.xl },
+  header: { alignItems: "center", marginTop: spacing.xl, marginBottom: spacing.lg },
   logo: { ...typography.h1, color: colors.primary },
+  strengthRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: -spacing.xs, marginBottom: spacing.sm },
+  strengthBars: { flexDirection: "row", gap: spacing.xs, flex: 1 },
+  strengthBar: { flex: 1, height: 5, borderRadius: 3, backgroundColor: colors.border },
+  strengthLabel: { ...typography.caption, fontWeight: "700", width: 52, textAlign: "right" },
+  terms: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, marginBottom: spacing.md },
+  termsText: { ...typography.caption, color: colors.textMuted, flex: 1, lineHeight: 18 },
+  termsLink: { color: colors.primary, fontWeight: "700" },
   footer: { marginTop: spacing.lg, alignItems: "center" },
   link: { color: colors.primary, fontWeight: "600" },
 });
