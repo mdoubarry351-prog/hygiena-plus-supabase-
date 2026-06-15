@@ -131,16 +131,18 @@ export default function AdminDashboard() {
 
         <View style={styles.grid}>
           {CARDS.map((c) => (
-            <Card key={c.key} onPress={() => router.push(c.href)} style={styles.statCard}>
-              <View style={[styles.icon, { backgroundColor: c.tint + "22" }]}>
-                <Ionicons name={c.icon} size={20} color={c.tint} />
-              </View>
-              <Text style={styles.value}>{stats[c.key]}</Text>
-              <Text style={styles.label}>{c.label}</Text>
-              {c.key === "ordersTotal" && stats.ordersPending > 0 ? (
-                <Text style={styles.sub}>{stats.ordersPending} en attente</Text>
-              ) : null}
-            </Card>
+            <View key={c.key} style={styles.cell}>
+              <Card onPress={() => router.push(c.href)} style={styles.statCard}>
+                <View style={[styles.icon, { backgroundColor: c.tint + "22" }]}>
+                  <Ionicons name={c.icon} size={20} color={c.tint} />
+                </View>
+                <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit>{stats[c.key]}</Text>
+                <Text style={styles.label} numberOfLines={2}>{c.label}</Text>
+                {c.key === "ordersTotal" && stats.ordersPending > 0 ? (
+                  <Text style={styles.sub} numberOfLines={1}>{stats.ordersPending} en attente</Text>
+                ) : null}
+              </Card>
+            </View>
           ))}
         </View>
       </ScrollView>
@@ -156,9 +158,12 @@ const styles = StyleSheet.create({
   revenueValue: { fontSize: 30, fontFamily: typography.h1.fontFamily, fontWeight: "700", color: colors.primaryDark },
   revenueBreak: { ...typography.caption, color: colors.primaryDark },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  statCard: { width: "47.5%", gap: spacing.xs, alignItems: "flex-start" },
+  // La largeur est portée par la cellule (et non par la Card cliquable, dont le
+  // wrapper PressableScale ne résout pas les % de largeur — d'où l'ancien bug).
+  cell: { width: "48%", flexGrow: 1, minWidth: 150 },
+  statCard: { width: "100%", gap: spacing.xs, alignItems: "flex-start" },
   icon: { width: 40, height: 40, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
-  value: { fontSize: 28, fontFamily: typography.h1.fontFamily, fontWeight: "700", color: colors.text, marginTop: spacing.xs },
-  label: { ...typography.caption, color: colors.textMuted },
+  value: { fontSize: 28, fontFamily: typography.h1.fontFamily, fontWeight: "700", color: colors.text, marginTop: spacing.xs, letterSpacing: 0 },
+  label: { ...typography.caption, color: colors.textMuted, letterSpacing: 0 },
   sub: { ...typography.caption, color: colors.accent, fontWeight: "700" },
 });
