@@ -3,6 +3,8 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
@@ -16,6 +18,8 @@ import { colors, radius, spacing, typography } from "@/theme";
 
 export default function AdminSuspensions() {
   const { session } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [suspensions, setSuspensions] = useState<SuspensionRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,22 +67,17 @@ export default function AdminSuspensions() {
     }
   }
 
-  function lift(s: SuspensionRow) {
+  async function lift(s: SuspensionRow) {
     if (!session?.user) return;
-    Alert.alert("Réactiver l'utilisateur ?", "La suspension sera levée.", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Réactiver",
-        onPress: async () => {
-          try {
-            await adminService.liftSuspension(session.user.id, s.id, s.user_id);
-            setSuspensions((prev) => prev.map((x) => (x.id === s.id ? { ...x, is_active: false } : x)));
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
-          }
-        },
-      },
-    ]);
+    const ok = await confirm({ title: "Réactiver l'utilisateur ?", message: "La suspension sera levée.", confirmLabel: "Réactiver" });
+    if (!ok) return;
+    try {
+      await adminService.liftSuspension(session.user.id, s.id, s.user_id);
+      setSuspensions((prev) => prev.map((x) => (x.id === s.id ? { ...x, is_active: false } : x)));
+      toast.success("Suspension levée.");
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+    }
   }
 
   if (loading && suspensions.length === 0) return <Loading />;

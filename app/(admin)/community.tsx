@@ -3,6 +3,8 @@ import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } 
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -13,6 +15,8 @@ import { colors, radius, spacing, typography } from "@/theme";
 
 export default function AdminCommunity() {
   const { session } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [posts, setPosts] = useState<CommunityPostWithAuthor[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -36,22 +40,22 @@ export default function AdminCommunity() {
     setRefreshing(false);
   }
 
-  function confirmDelete(post: CommunityPostWithAuthor) {
+  async function confirmDelete(post: CommunityPostWithAuthor) {
     if (!session?.user) return;
-    Alert.alert("Supprimer la publication ?", "Cette action est définitive (commentaires et likes inclus).", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Supprimer", style: "destructive",
-        onPress: async () => {
-          try {
-            await adminService.deletePost(session.user.id, post.id);
-            setPosts((prev) => prev.filter((p) => p.id !== post.id));
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-          }
-        },
-      },
-    ]);
+    const ok = await confirm({
+      title: "Supprimer la publication ?",
+      message: "Cette action est définitive (commentaires et likes inclus).",
+      confirmLabel: "Supprimer",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await adminService.deletePost(session.user.id, post.id);
+      setPosts((prev) => prev.filter((p) => p.id !== post.id));
+      toast.success("Publication supprimée.");
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+    }
   }
 
   if (loading && posts.length === 0) return <Loading />;

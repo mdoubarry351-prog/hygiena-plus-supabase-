@@ -6,6 +6,8 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Chip } from "@/components/Chip";
 import { Badge } from "@/components/Badge";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
@@ -24,6 +26,8 @@ type Editing = Article | "new" | null;
 
 export default function AdminArticles() {
   const { session } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Editing>(null);
@@ -53,27 +57,22 @@ export default function AdminArticles() {
     }
   }
 
-  function confirmDelete(article: Article) {
+  async function confirmDelete(article: Article) {
     if (!session?.user) return;
-    Alert.alert(
-      "Supprimer cet article ?",
-      `« ${article.title} » sera définitivement supprimé.`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await adminService.deleteArticle(session.user.id, article.id);
-              setArticles((prev) => prev.filter((a) => a.id !== article.id));
-            } catch (e) {
-              Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-            }
-          },
-        },
-      ]
-    );
+    const ok = await confirm({
+      title: "Supprimer cet article ?",
+      message: `« ${article.title} » sera définitivement supprimé.`,
+      confirmLabel: "Supprimer",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await adminService.deleteArticle(session.user.id, article.id);
+      setArticles((prev) => prev.filter((a) => a.id !== article.id));
+      toast.success("Article supprimé.");
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+    }
   }
 
   if (loading && articles.length === 0) return <Loading />;

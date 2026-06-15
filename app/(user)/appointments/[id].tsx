@@ -50,7 +50,7 @@ export default function BookAppointment() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session, profile, role } = useAuth();
-  const { appointments_enabled, premium_enabled } = useAppSettings();
+  const { appointments_enabled, premium_enabled, messaging_enabled } = useAppSettings();
 
   const [doctor, setDoctor] = useState<DoctorWithProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -212,7 +212,8 @@ export default function BookAppointment() {
 
   // Messagerie premium : conseils en ligne (≠ consultation, qui passe par un RDV).
   function handleMessage() {
-    if (!premium_enabled) return showServiceUnavailable();
+    // Messagerie/téléconsultation désactivée par l'admin (ou Premium désactivé).
+    if (!messaging_enabled || !premium_enabled) return showServiceUnavailable();
     if (!doctor) return;
     if (profile?.is_premium) {
       router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: doctor.id, doctorName: name } });

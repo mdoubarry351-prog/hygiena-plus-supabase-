@@ -870,6 +870,7 @@ export type Database = {
           doctors_enabled: boolean;
           premium_enabled: boolean;
           appointments_enabled: boolean;
+          messaging_enabled: boolean;
           premium_price: number;
           premium_duration_days: number;
           updated_by: string | null;
@@ -882,6 +883,7 @@ export type Database = {
           doctors_enabled?: boolean;
           premium_enabled?: boolean;
           appointments_enabled?: boolean;
+          messaging_enabled?: boolean;
           premium_price?: number;
           premium_duration_days?: number;
           updated_by?: string | null;
@@ -894,6 +896,7 @@ export type Database = {
           doctors_enabled?: boolean;
           premium_enabled?: boolean;
           appointments_enabled?: boolean;
+          messaging_enabled?: boolean;
           premium_price?: number;
           premium_duration_days?: number;
           updated_by?: string | null;

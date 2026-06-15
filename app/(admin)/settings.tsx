@@ -13,13 +13,14 @@ import { adminService } from "@/lib/admin-service";
 import type { AppSettings } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
-type ToggleKey = "marketplace_enabled" | "doctors_enabled" | "premium_enabled" | "appointments_enabled";
+type ToggleKey = "marketplace_enabled" | "doctors_enabled" | "premium_enabled" | "appointments_enabled" | "messaging_enabled";
 
 const TOGGLES: { key: ToggleKey; label: string; sub: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: "marketplace_enabled", label: "Marketplace", sub: "Boutique et commandes pour les utilisatrices.", icon: "bag-handle-outline" },
-  { key: "doctors_enabled", label: "Médecins", sub: "Annuaire des médecins et téléconsultation.", icon: "medkit-outline" },
+  { key: "doctors_enabled", label: "Accès médecin", sub: "Annuaire des médecins et fiches publiques.", icon: "medkit-outline" },
   { key: "appointments_enabled", label: "Rendez-vous", sub: "Prise de rendez-vous payante avec les médecins.", icon: "calendar-outline" },
-  { key: "premium_enabled", label: "Premium", sub: "Abonnement premium et messagerie médecin.", icon: "star-outline" },
+  { key: "messaging_enabled", label: "Téléconsultation / Messagerie", sub: "Messagerie en ligne patiente ↔ médecin (Premium).", icon: "chatbubbles-outline" },
+  { key: "premium_enabled", label: "Premium", sub: "Abonnement premium et avantages associés.", icon: "star-outline" },
 ];
 
 export default function AdminSettings() {

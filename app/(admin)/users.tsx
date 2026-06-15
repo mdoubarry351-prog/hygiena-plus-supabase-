@@ -8,6 +8,9 @@ import { Badge } from "@/components/Badge";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
+import { SegmentedControl } from "@/components/SegmentedControl";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { EmptyState } from "@/components/EmptyState";
 import { ExportButton } from "@/components/ExportButton";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
@@ -23,7 +26,10 @@ const ROLES: UserRole[] = ["user", "doctor", "admin"];
 
 export default function AdminUsers() {
   const { session } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<"all" | "active" | "suspended">("all");
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -100,8 +106,12 @@ export default function AdminUsers() {
     return () => { cancelled = true; };
   }, [selected?.id]);
 
-  // Le serveur filtre déjà : on affiche directement `users`.
-  const filtered = users;
+  // La recherche est filtrée côté serveur ; le statut est filtré sur la page chargée.
+  const filtered = users.filter((u) => {
+    if (status === "active") return !suspendedMap[u.id];
+    if (status === "suspended") return !!suspendedMap[u.id];
+    return true;
+  });
 
   async function handleExport() {
     setExporting(true);
@@ -133,72 +143,59 @@ export default function AdminUsers() {
 
   const targetLabel = (u: Profile) => u.full_name ?? u.email ?? "cet utilisateur";
 
-  function suspend(u: Profile) {
+  async function suspend(u: Profile) {
     if (!session?.user) return;
-    Alert.alert(
-      "Suspendre le compte ?",
-      `${targetLabel(u)} ne pourra plus se connecter tant que la suspension est active.`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Suspendre",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await adminService.suspendUser(session.user.id, u.id, null, null);
-              await load();
-              Alert.alert("Suspendu", "Le compte a été suspendu.");
-            } catch (e) {
-              Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
-            }
-          },
-        },
-      ]
-    );
+    const ok = await confirm({
+      title: "Suspendre le compte ?",
+      message: `${targetLabel(u)} ne pourra plus se connecter tant que la suspension est active.`,
+      confirmLabel: "Suspendre",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await adminService.suspendUser(session.user.id, u.id, null, null);
+      await load();
+      toast.success("Compte suspendu.");
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+    }
   }
 
-  function reactivate(u: Profile) {
+  async function reactivate(u: Profile) {
     const sid = suspendedMap[u.id];
     if (!session?.user || !sid) return;
-    Alert.alert("Réactiver le compte ?", "La suspension sera levée et l'utilisateur pourra à nouveau se connecter.", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Réactiver",
-        onPress: async () => {
-          try {
-            await adminService.liftSuspension(session.user.id, sid, u.id);
-            await load();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
-          }
-        },
-      },
-    ]);
+    const ok = await confirm({
+      title: "Réactiver le compte ?",
+      message: "La suspension sera levée et l'utilisateur pourra à nouveau se connecter.",
+      confirmLabel: "Réactiver",
+    });
+    if (!ok) return;
+    try {
+      await adminService.liftSuspension(session.user.id, sid, u.id);
+      await load();
+      toast.success("Compte réactivé.");
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+    }
   }
 
-  function deleteAccount(u: Profile) {
+  async function deleteAccount(u: Profile) {
     if (!session?.user) return;
-    Alert.alert(
-      "Supprimer définitivement ?",
-      `Le compte de ${targetLabel(u)} et toutes ses données seront supprimés. Cette action est IRRÉVERSIBLE.`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await adminService.deleteUserAccount(session.user.id, u.id);
-              setSelected(null);
-              setUsers((prev) => prev.filter((x) => x.id !== u.id));
-              Alert.alert("Supprimé", "Le compte a été supprimé définitivement.");
-            } catch (e) {
-              Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-            }
-          },
-        },
-      ]
-    );
+    const ok = await confirm({
+      title: "Supprimer définitivement ?",
+      message: `Le compte de ${targetLabel(u)} et toutes ses données seront supprimés. Cette action est IRRÉVERSIBLE.`,
+      confirmLabel: "Supprimer",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await adminService.deleteUserAccount(session.user.id, u.id);
+      setSelected(null);
+      setUsers((prev) => prev.filter((x) => x.id !== u.id));
+      toast.success("Compte supprimé définitivement.");
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+    }
   }
 
   function changeRole(user: Profile, role: UserRole) {
@@ -231,6 +228,11 @@ export default function AdminUsers() {
           autoCapitalize="none"
           style={styles.searchInput}
           returnKeyType="search"
+        />
+        <SegmentedControl
+          items={[{ key: "all", label: "Tous" }, { key: "active", label: "Actifs" }, { key: "suspended", label: "Suspendus" }]}
+          value={status}
+          onChange={(k) => setStatus(k as "all" | "active" | "suspended")}
         />
       </View>
 

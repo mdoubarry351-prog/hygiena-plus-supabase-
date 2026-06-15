@@ -3,6 +3,8 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View, type NativeScroll
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -19,6 +21,8 @@ const PAGE = 20;
 
 export default function AdminReviews() {
   const { session } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>("product");
   const [items, setItems] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,24 +72,18 @@ export default function AdminReviews() {
     }
   }, [loadingMore, hasMore, fetchPage, tab]);
 
-  function confirmDelete(review: ReviewRow) {
+  async function confirmDelete(review: ReviewRow) {
     if (!session?.user) return;
-    Alert.alert("Supprimer cet avis ?", "Cette action est définitive.", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Supprimer",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            if (tab === "product") await adminService.deleteProductReview(session.user.id, review.id);
-            else await adminService.deleteDoctorReview(session.user.id, review.id);
-            setItems((prev) => prev.filter((r) => r.id !== review.id));
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-          }
-        },
-      },
-    ]);
+    const ok = await confirm({ title: "Supprimer cet avis ?", message: "Cette action est définitive.", confirmLabel: "Supprimer", danger: true });
+    if (!ok) return;
+    try {
+      if (tab === "product") await adminService.deleteProductReview(session.user.id, review.id);
+      else await adminService.deleteDoctorReview(session.user.id, review.id);
+      setItems((prev) => prev.filter((r) => r.id !== review.id));
+      toast.success("Avis supprimé.");
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+    }
   }
 
   function switchTab(t: Tab) {
