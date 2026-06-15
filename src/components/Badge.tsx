@@ -2,10 +2,13 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-na
 import { colors, radius, spacing, typography } from "@/theme";
 
 export type BadgeTone = "primary" | "success" | "danger" | "warning" | "info" | "neutral";
+export type BadgeVariant = "solid" | "soft";
 
-// Pilule de statut tokenisée (radius.pill). Variante pleine (texte blanc) par
-// défaut, ou `soft` (fond doux + texte coloré). `color` force une couleur ad hoc
-// (rétro-compat avec les badges qui calculent déjà leur couleur de statut).
+// Pilule de statut tokenisée (radius.pill).
+// - variant 'solid' (défaut) : fond plein + texte blanc.
+// - variant 'soft' : fond doux + texte teinté (badges publié/brouillon…).
+// - `color` force une couleur ad hoc (rétro-compat avec les statuts déjà calculés).
+// - `dense` : paddingVertical réduit (1) pour coller à certains badges existants.
 const SOLID: Record<BadgeTone, string> = {
   primary: colors.primary,
   success: colors.success,
@@ -20,32 +23,40 @@ const SOFT: Record<BadgeTone, { bg: string; fg: string }> = {
   danger: { bg: colors.dangerSoft, fg: colors.danger },
   warning: { bg: colors.warningSoft, fg: colors.warning },
   info: { bg: colors.infoSoft, fg: colors.info },
-  neutral: { bg: colors.neutralSoft, fg: colors.textMuted },
+  // « neutral » doux = fond surface (cohérent avec les badges « off » existants).
+  neutral: { bg: colors.surface, fg: colors.textMuted },
 };
 
 export function Badge({
   label,
   tone = "neutral",
   color,
+  variant = "solid",
   soft = false,
+  dense = false,
   style,
 }: {
   label: string;
   tone?: BadgeTone;
   color?: string;
-  soft?: boolean;
+  variant?: BadgeVariant;
+  soft?: boolean; // alias rétro-compatible de variant="soft"
+  dense?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  if (soft) {
+  const isSoft = variant === "soft" || soft;
+  const pill = [styles.pill, dense && styles.dense, style];
+
+  if (isSoft) {
     const s = SOFT[tone];
     return (
-      <View style={[styles.pill, { backgroundColor: s.bg }, style]}>
+      <View style={[...pill, { backgroundColor: s.bg }]}>
         <Text style={[styles.text, { color: color ?? s.fg }]}>{label}</Text>
       </View>
     );
   }
   return (
-    <View style={[styles.pill, { backgroundColor: color ?? SOLID[tone] }, style]}>
+    <View style={[...pill, { backgroundColor: color ?? SOLID[tone] }]}>
       <Text style={[styles.text, styles.textSolid]}>{label}</Text>
     </View>
   );
@@ -53,6 +64,7 @@ export function Badge({
 
 const styles = StyleSheet.create({
   pill: { alignSelf: "flex-start", paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, overflow: "hidden" },
+  dense: { paddingVertical: 1 },
   text: { ...typography.caption, fontWeight: "700" },
   textSolid: { color: colors.white },
 });

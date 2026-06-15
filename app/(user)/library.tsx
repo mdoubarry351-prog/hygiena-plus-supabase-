@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "r
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
+import { Chip } from "@/components/Chip";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
@@ -69,14 +70,9 @@ export default function Library() {
       {/* Chips de filtre par catégorie */}
       <View style={styles.chipsWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-          {FILTERS.map((c) => {
-            const active = filter === c;
-            return (
-              <Pressable key={c} onPress={() => setFilter(c)} style={[styles.chip, active && styles.chipActive]}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{c}</Text>
-              </Pressable>
-            );
-          })}
+          {FILTERS.map((c) => (
+            <Chip key={c} label={c} active={filter === c} onPress={() => setFilter(c)} size="md" inactiveBackground="transparent" />
+          ))}
         </ScrollView>
       </View>
 

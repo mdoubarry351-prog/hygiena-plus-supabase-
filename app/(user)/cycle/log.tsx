@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/Button";
+import { Chip } from "@/components/Chip";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
@@ -200,27 +201,17 @@ export default function LogCycle() {
         {/* Flux */}
         <Text style={[typography.h3, styles.sectionTitle]}>Flux</Text>
         <View style={styles.chips}>
-          {FLOW_OPTIONS.map((f) => {
-            const active = flow === f;
-            return (
-              <Pressable key={f} onPress={() => setFlow((c) => pickSingle(c, f))} style={[styles.chip, active && styles.chipActive]}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{f}</Text>
-              </Pressable>
-            );
-          })}
+          {FLOW_OPTIONS.map((f) => (
+            <Chip key={f} label={f} active={flow === f} onPress={() => setFlow((c) => pickSingle(c, f))} variant="soft" size="lg" />
+          ))}
         </View>
 
         {/* Humeur */}
         <Text style={[typography.h3, styles.sectionTitle]}>Humeur</Text>
         <View style={styles.chips}>
-          {MOOD_OPTIONS.map((m) => {
-            const active = mood === m;
-            return (
-              <Pressable key={m} onPress={() => setMood((c) => pickSingle(c, m))} style={[styles.chip, active && styles.chipActive]}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{m}</Text>
-              </Pressable>
-            );
-          })}
+          {MOOD_OPTIONS.map((m) => (
+            <Chip key={m} label={m} active={mood === m} onPress={() => setMood((c) => pickSingle(c, m))} variant="soft" size="lg" />
+          ))}
         </View>
 
         {/* Douleur (échelle 0-10, sans dépendance) */}
@@ -255,18 +246,9 @@ export default function LogCycle() {
         {/* Symptômes */}
         <Text style={[typography.h3, styles.sectionTitle]}>Symptômes</Text>
         <View style={styles.chips}>
-          {SYMPTOMS.map((s) => {
-            const active = selectedSymptoms.includes(s);
-            return (
-              <Pressable
-                key={s}
-                onPress={() => toggleSymptom(s)}
-                style={[styles.chip, active && styles.chipActive]}
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{s}</Text>
-              </Pressable>
-            );
-          })}
+          {SYMPTOMS.map((s) => (
+            <Chip key={s} label={s} active={selectedSymptoms.includes(s)} onPress={() => toggleSymptom(s)} variant="soft" size="lg" />
+          ))}
         </View>
 
         <Input

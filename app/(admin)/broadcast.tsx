@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Chip } from "@/components/Chip";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { AdminHeader } from "@/components/AdminHeader";
@@ -99,20 +100,9 @@ export default function AdminBroadcast() {
 
           <Text style={styles.fieldLabel}>Public</Text>
           <View style={styles.chips}>
-            {AUDIENCES.map((a) => {
-              const active = audience === a.value;
-              return (
-                <Pressable
-                  key={a.value}
-                  onPress={() => pickAudience(a.value)}
-                  style={[styles.chip, active && styles.chipActive]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                >
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{a.label}</Text>
-                </Pressable>
-              );
-            })}
+            {AUDIENCES.map((a) => (
+              <Chip key={a.value} label={a.label} active={audience === a.value} onPress={() => pickAudience(a.value)} size="md" inactiveBackground="transparent" />
+            ))}
           </View>
         </Card>
 

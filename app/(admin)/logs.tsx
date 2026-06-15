@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Chip } from "@/components/Chip";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -107,14 +108,9 @@ export default function AdminLogs() {
 
         {/* Filtres par type */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-          {FILTERS.map((f) => {
-            const active = filter === f.key;
-            return (
-              <Pressable key={f.key} onPress={() => setFilter(f.key)} style={[styles.chip, active && styles.chipActive]}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{f.label}</Text>
-              </Pressable>
-            );
-          })}
+          {FILTERS.map((f) => (
+            <Chip key={f.key} label={f.label} active={filter === f.key} onPress={() => setFilter(f.key)} size="md" inactiveBackground="transparent" />
+          ))}
         </ScrollView>
 
         {filtered.length === 0 ? (

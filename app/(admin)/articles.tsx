@@ -4,6 +4,8 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Chip } from "@/components/Chip";
+import { Badge } from "@/components/Badge";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
@@ -113,9 +115,7 @@ export default function AdminArticles() {
                 <View style={styles.rowInfo}>
                   <Text style={styles.title} numberOfLines={1}>{a.title}</Text>
                   <Text style={styles.category}>{a.category}</Text>
-                  <Text style={[styles.badge, a.is_published ? styles.badgeOn : styles.badgeOff]}>
-                    {a.is_published ? "Publié" : "Brouillon"}
-                  </Text>
+                  <Badge label={a.is_published ? "Publié" : "Brouillon"} variant="soft" tone={a.is_published ? "primary" : "neutral"} dense style={{ marginTop: 2 }} />
                 </View>
               </Pressable>
               <View style={styles.rowActions}>
@@ -222,14 +222,9 @@ function ArticleForm({ article, onDone, onCancel }: { article: Article | null; o
 
         <Text style={styles.fieldLabel}>Catégorie</Text>
         <View style={styles.chips}>
-          {ARTICLE_CATEGORIES.map((c) => {
-            const active = category === c;
-            return (
-              <Pressable key={c} onPress={() => setCategory(c)} style={[styles.chip, active && styles.chipActive]}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{c}</Text>
-              </Pressable>
-            );
-          })}
+          {ARTICLE_CATEGORIES.map((c) => (
+            <Chip key={c} label={c} active={category === c} onPress={() => setCategory(c)} size="md" inactiveBackground="transparent" />
+          ))}
         </View>
 
         <Input label="Extrait (facultatif)" value={excerpt} onChangeText={setExcerpt} placeholder="Court résumé affiché dans la liste" multiline numberOfLines={2} style={styles.textAreaSm} />

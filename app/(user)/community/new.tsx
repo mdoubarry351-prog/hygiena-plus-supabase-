@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
+import { Chip } from "@/components/Chip";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
@@ -208,14 +209,9 @@ export default function NewPost() {
 
         <Text style={styles.catLabel}>Catégorie</Text>
         <View style={styles.chips}>
-          {COMMUNITY_CATEGORIES.map((c) => {
-            const active = category === c;
-            return (
-              <Pressable key={c} onPress={() => setCategory(c)} style={[styles.chip, active && styles.chipActive]}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{categoryLabel(c)}</Text>
-              </Pressable>
-            );
-          })}
+          {COMMUNITY_CATEGORIES.map((c) => (
+            <Chip key={c} label={categoryLabel(c)} active={category === c} onPress={() => setCategory(c)} size="md" inactiveBackground="transparent" />
+          ))}
         </View>
 
         {/* Photos optionnelles (jusqu'à 4) */}

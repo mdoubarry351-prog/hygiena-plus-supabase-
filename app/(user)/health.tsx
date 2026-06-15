@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
+import { Chip } from "@/components/Chip";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
@@ -156,14 +157,9 @@ export default function HealthInfo() {
         <Card style={styles.card}>
           <Text style={typography.h3}>Groupe sanguin</Text>
           <View style={styles.chips}>
-            {BLOOD_GROUPS.map((g) => {
-              const active = bloodGroup === g;
-              return (
-                <Pressable key={g} onPress={() => setBloodGroup((c) => (c === g ? null : g))} style={[styles.chip, active && styles.chipActive]}>
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{g}</Text>
-                </Pressable>
-              );
-            })}
+            {BLOOD_GROUPS.map((g) => (
+              <Chip key={g} label={g} active={bloodGroup === g} onPress={() => setBloodGroup((c) => (c === g ? null : g))} size="lg" />
+            ))}
           </View>
         </Card>
 
