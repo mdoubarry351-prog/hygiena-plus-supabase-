@@ -61,7 +61,9 @@ export default function CycleHome() {
     }
   }, [session?.user]);
 
-  useFocusEffect(useCallback(() => { reload(); loadUnread(); }, [reload, loadUnread]));
+  // Les cycles se rechargent déjà au focus via useCycles ; ici on ne (re)charge
+  // que le compteur de notifications non lues.
+  useFocusEffect(useCallback(() => { loadUnread(); }, [loadUnread]));
 
   async function onRefresh() {
     setRefreshing(true);

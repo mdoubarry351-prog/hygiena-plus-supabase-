@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/providers/AuthProvider";
 import { cycleService, type CyclePrediction } from "@/lib/cycle-service";
@@ -55,7 +56,10 @@ export function useCycles() {
     }
   }, [session?.user]);
 
-  useEffect(() => { load(); }, [load]);
+  // Recharge à CHAQUE focus de l'écran (et au montage). Indispensable pour
+  // refléter une saisie ajoutée/modifiée/supprimée dans un écran poussé (ex.
+  // édition de la date de fin) au retour sur l'historique/calendrier/accueil.
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   return { cycles, prediction, loading, error, offline, cachedAt, reload: load };
 }
