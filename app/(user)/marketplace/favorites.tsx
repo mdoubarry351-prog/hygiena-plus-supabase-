@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
 import { AppImage } from "@/components/AppImage";
+import { useToast } from "@/providers/ToastProvider";
 import { favoritesService } from "@/lib/favorites-service";
 import { formatPrice } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
@@ -17,6 +18,7 @@ import { colors, radius, spacing, typography } from "@/theme";
 
 export default function Favorites() {
   const router = useRouter();
+  const toast = useToast();
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,8 +46,10 @@ export default function Favorites() {
     setProducts((prev) => prev.filter((p) => p.id !== id));
     try {
       await favoritesService.removeFavorite(id);
+      toast.success("Retiré de tes favoris.");
     } catch {
       await load();
+      toast.error("Retrait impossible. Réessaie.");
     }
   }
 
@@ -88,7 +92,7 @@ export default function Favorites() {
                       {outOfStock && <Text style={styles.outOfStock}>Rupture</Text>}
                     </View>
                   </View>
-                  <Pressable onPress={() => removeFav(p.id)} hitSlop={10} style={styles.favBtn}>
+                  <Pressable onPress={() => removeFav(p.id)} hitSlop={10} style={styles.favBtn} accessibilityRole="button" accessibilityLabel={`Retirer ${p.name} des favoris`}>
                     <Ionicons name="heart" size={22} color={colors.danger} />
                   </Pressable>
                 </Card>

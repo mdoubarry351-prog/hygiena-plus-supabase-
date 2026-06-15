@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Image, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View, type ListRenderItemInfo } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View, type ListRenderItemInfo } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +8,7 @@ import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { AppImage } from "@/components/AppImage";
 import { SkeletonList } from "@/components/Skeleton";
 import { ActionSheet, type ActionSheetOption } from "@/components/ActionSheet";
 import { useCommunity } from "@/hooks/useCommunity";
@@ -91,7 +92,7 @@ export default function CommunityHome() {
 
   // Bloque l'auteur d'une publication → ses contenus disparaissent du fil.
   const blockAuthor = useCallback((userId: string) => {
-    Alert.alert("Bloquer cet utilisateur ?", "Vous ne verrez plus les publications de cette personne.", [
+    Alert.alert("Bloquer cet utilisateur ?", "Tu ne verras plus les publications de cette personne.", [
       { text: "Annuler", style: "cancel" },
       {
         text: "Bloquer",
@@ -212,7 +213,7 @@ export default function CommunityHome() {
         <EmptyState
           icon="cloud-offline-outline"
           title="Connexion impossible"
-          message="Vérifiez votre connexion, puis réessayez."
+          message="Vérifie ta connexion, puis réessaie."
           actionLabel="Réessayer"
           onAction={reload}
         />
@@ -321,7 +322,7 @@ export default function CommunityHome() {
             <EmptyState
               emoji="🔍"
               title="Aucun résultat"
-              message="Aucune publication ni médecin ne correspond à votre recherche."
+              message="Aucune publication ni médecin ne correspond à ta recherche."
             />
           ) : isSearching && doctorResults.length > 0 ? (
             <EmptyState
@@ -410,7 +411,7 @@ const PostRow = memo(function PostRow({
         <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
         <View style={styles.postFoot}>
-          <Pressable onPress={() => onLike(post.id)} hitSlop={8} style={styles.likeBtn}>
+          <Pressable onPress={() => onLike(post.id)} hitSlop={8} style={styles.likeBtn} accessibilityRole="button" accessibilityLabel={liked ? "Je n'aime plus cette publication" : "J'aime cette publication"}>
             <HeartButton active={liked} size={20} />
             <Text style={[styles.likeCount, liked && styles.likeCountActive]}>
               {post.likes_count}
@@ -446,7 +447,7 @@ const DoctorResultRow = memo(function DoctorResultRow({
     <Pressable onPress={() => onPress(doctor.id)} style={styles.docRow} accessibilityRole="button" accessibilityLabel={`Voir le médecin ${name}`}>
       <View style={styles.docAvatar}>
         {doctor.avatar_url ? (
-          <Image source={{ uri: doctor.avatar_url }} style={styles.docAvatarImg} />
+          <AppImage source={doctor.avatar_url} style={styles.docAvatarImg} />
         ) : (
           <Ionicons name="medkit" size={18} color={colors.primary} />
         )}

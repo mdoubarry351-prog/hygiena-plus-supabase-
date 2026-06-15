@@ -92,7 +92,7 @@ export default function ResetPassword() {
       hapticSuccess();
       // Session de récupération fermée → connexion avec le nouveau mot de passe.
       await authService.signOut();
-      Alert.alert("Mot de passe mis à jour", "Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.", [
+      Alert.alert("Mot de passe mis à jour", "Tu peux maintenant te connecter avec ton nouveau mot de passe.", [
         { text: "OK", onPress: () => router.replace("/(auth)/login") },
       ]);
     } catch (e) {
@@ -129,7 +129,7 @@ export default function ResetPassword() {
             <Ionicons name="lock-closed-outline" size={30} color={colors.primaryDark} />
           </View>
           <Text style={styles.title}>Nouveau mot de passe</Text>
-          <Text style={styles.message}>Choisissez un nouveau mot de passe pour votre compte.</Text>
+          <Text style={styles.message}>Choisis un nouveau mot de passe pour ton compte.</Text>
         </View>
 
         <Input

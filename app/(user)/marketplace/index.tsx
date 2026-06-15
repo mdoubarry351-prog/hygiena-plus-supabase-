@@ -93,7 +93,7 @@ export default function MarketplaceHome() {
         <EmptyState
           icon="cloud-offline-outline"
           title="Connexion impossible"
-          message="Vérifiez votre connexion, puis réessayez."
+          message="Vérifie ta connexion, puis réessaie."
           actionLabel="Réessayer"
           onAction={reload}
         />

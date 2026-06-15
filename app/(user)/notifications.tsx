@@ -84,7 +84,7 @@ export default function Notifications() {
   async function confirmDeleteAll() {
     const ok = await confirm({
       title: "Tout supprimer ?",
-      message: "Toutes vos notifications seront définitivement supprimées.",
+      message: "Toutes tes notifications seront définitivement supprimées.",
       confirmLabel: "Tout supprimer",
       danger: true,
     });
@@ -117,7 +117,7 @@ export default function Notifications() {
         <EmptyState
           icon="cloud-offline-outline"
           title="Connexion impossible"
-          message="Vérifiez votre connexion, puis réessayez."
+          message="Vérifie ta connexion, puis réessaie."
           actionLabel="Réessayer"
           onAction={reload}
         />
@@ -127,10 +127,10 @@ export default function Notifications() {
 
   const emptyMessage =
     notifications.length === 0
-      ? "Vous n'avez aucune notification pour le moment."
+      ? "Tu n'as aucune notification pour le moment."
       : cat !== "all"
       ? "Aucune notification dans cette catégorie."
-      : "Aucune notification ne correspond à vos préférences.";
+      : "Aucune notification ne correspond à tes préférences.";
 
   const listHeader = (
     <View>

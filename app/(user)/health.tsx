@@ -102,7 +102,7 @@ export default function HealthInfo() {
         health_notes: notes.trim() ? notes.trim() : null,
       });
       await refreshProfile();
-      toast.success("Vos informations de santé ont été enregistrées.");
+      toast.success("Tes informations de santé ont été enregistrées.");
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Enregistrement échoué");
     } finally {
@@ -119,7 +119,7 @@ export default function HealthInfo() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.privacyRow}>
           <Ionicons name="lock-closed-outline" size={15} color={colors.primaryDark} />
-          <Text style={styles.privacyText}>Ces informations sont privées et visibles uniquement par vous.</Text>
+          <Text style={styles.privacyText}>Ces informations sont privées et visibles uniquement par toi.</Text>
         </View>
 
         {/* Date de naissance + âge */}
@@ -168,7 +168,7 @@ export default function HealthInfo() {
           <Text style={typography.h3}>Antécédents</Text>
           <Input label="Allergies" value={allergies} onChangeText={setAllergies} placeholder="Ex. pénicilline, arachides…" multiline numberOfLines={2} style={styles.area} />
           <Input label="Traitements en cours" value={treatments} onChangeText={setTreatments} placeholder="Ex. contraception, supplément de fer…" multiline numberOfLines={2} style={styles.area} />
-          <Input label="Notes santé" value={notes} onChangeText={setNotes} placeholder="Tout ce qui vous semble utile" multiline numberOfLines={3} style={styles.area} />
+          <Input label="Notes santé" value={notes} onChangeText={setNotes} placeholder="Tout ce qui te semble utile" multiline numberOfLines={3} style={styles.area} />
         </Card>
 
         <Button title="Enregistrer" onPress={handleSave} loading={saving} />

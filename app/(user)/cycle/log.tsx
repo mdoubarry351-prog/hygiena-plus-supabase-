@@ -132,7 +132,7 @@ export default function LogCycle() {
         toast.success("Saisie modifiée.");
       } else {
         await cycleService.addCycle({ user_id: session.user.id, ...payload });
-        toast.success("Vos règles ont été enregistrées.");
+        toast.success("Tes règles ont été enregistrées.");
       }
       // Replanifie les rappels locaux d'après les nouvelles prédictions (silencieux).
       resyncCycleReminders(session.user.id);

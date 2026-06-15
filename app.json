@@ -15,10 +15,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.hygiena.plus"
+      "bundleIdentifier": "com.hygiena.plus",
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.hygiena.plus",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo/hygiena-icon-1024.png",
         "backgroundColor": "#D1FAE5"

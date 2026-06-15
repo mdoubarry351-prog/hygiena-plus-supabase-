@@ -155,7 +155,7 @@ export default function Premium() {
           <EmptyState
             icon="cloud-offline-outline"
             title="Historique indisponible"
-            message="Impossible de charger vos paiements. Vérifiez votre connexion."
+            message="Impossible de charger tes paiements. Vérifie ta connexion."
             actionLabel="Réessayer"
             onAction={loadPayments}
           />

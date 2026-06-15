@@ -60,7 +60,7 @@ export default function Orders() {
           <EmptyState
             icon="receipt-outline"
             title="Aucune commande"
-            message="Vos commandes apparaîtront ici après votre premier achat."
+            message="Tes commandes apparaîtront ici après ton premier achat."
           />
         ) : (
           orders.map((o) => {

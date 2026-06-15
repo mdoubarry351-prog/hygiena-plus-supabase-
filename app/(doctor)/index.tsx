@@ -52,7 +52,7 @@ export default function DoctorDashboard() {
   if (!doctor) {
     return (
       <Screen>
-        <Pressable onPress={() => router.replace("/(user)")} style={styles.switchBar} hitSlop={6}>
+        <Pressable onPress={() => router.replace("/(user)")} style={styles.switchBar} hitSlop={6} accessibilityRole="button" accessibilityLabel="Revenir à mon espace perso">
           <Ionicons name="arrow-back" size={16} color={colors.primary} />
           <Text style={styles.switchText}>Mon espace perso</Text>
         </Pressable>

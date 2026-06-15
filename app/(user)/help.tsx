@@ -44,7 +44,14 @@ const FAQ: { q: string; a: string }[] = [
 function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
   return (
     <View style={styles.faqItem}>
-      <Pressable onPress={onToggle} style={styles.faqQuestion}>
+      <Pressable
+        onPress={onToggle}
+        style={styles.faqQuestion}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={q}
+        accessibilityHint={open ? "Réduire la réponse" : "Afficher la réponse"}
+      >
         <Text style={styles.faqQ}>{q}</Text>
         <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={colors.textMuted} />
       </Pressable>
@@ -87,7 +94,7 @@ export default function Help() {
 
         <Text style={[typography.h3, styles.sectionTitle]}>Nous contacter</Text>
         <Card style={styles.contactCard}>
-          <Pressable onPress={emailSupport} style={styles.contactRow}>
+          <Pressable onPress={emailSupport} style={styles.contactRow} accessibilityRole="button" accessibilityLabel="Contacter le support par email">
             <View style={styles.contactIcon}><Ionicons name="mail-outline" size={20} color={colors.primary} /></View>
             <View style={styles.contactText}>
               <Text style={styles.contactTitle}>Email</Text>
@@ -95,7 +102,7 @@ export default function Help() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Pressable>
-          <Pressable onPress={whatsappSupport} style={styles.contactRow}>
+          <Pressable onPress={whatsappSupport} style={styles.contactRow} accessibilityRole="button" accessibilityLabel="Contacter le support sur WhatsApp">
             <View style={styles.contactIcon}><Ionicons name="logo-whatsapp" size={20} color={colors.primary} /></View>
             <View style={styles.contactText}>
               <Text style={styles.contactTitle}>WhatsApp</Text>

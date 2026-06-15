@@ -19,7 +19,7 @@ export default function Profile() {
   if (!profile) return <Loading />;
 
   function handleSignOut() {
-    Alert.alert("Se déconnecter", "Voulez-vous vraiment vous déconnecter ?", [
+    Alert.alert("Se déconnecter", "Veux-tu vraiment te déconnecter ?", [
       { text: "Annuler", style: "cancel" },
       {
         text: "Se déconnecter",
@@ -285,7 +285,7 @@ export default function Profile() {
             </View>
             <View style={styles.proText}>
               <Text style={styles.proTitle}>Politique de confidentialité</Text>
-              <Text style={styles.proSub}>Vos données et vos droits</Text>
+              <Text style={styles.proSub}>Tes données et tes droits</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </Card>

@@ -92,7 +92,7 @@ export default function AdminSuspensions() {
             <>
               <View style={styles.targetRow}>
                 <Text style={styles.targetName}>{target.full_name ?? target.email ?? "Utilisateur"}</Text>
-                <Pressable onPress={() => setTarget(null)} hitSlop={8}><Ionicons name="close" size={18} color={colors.textMuted} /></Pressable>
+                <Pressable onPress={() => setTarget(null)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retirer l'utilisateur sélectionné"><Ionicons name="close" size={18} color={colors.textMuted} /></Pressable>
               </View>
               <Input label="Motif" value={reason} onChangeText={setReason} placeholder="Motif de la suspension" />
               <Button title="Suspendre" onPress={suspend} loading={saving} />

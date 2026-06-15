@@ -23,8 +23,8 @@ export default function Cart() {
         {items.length === 0 ? (
           <EmptyState
             icon="cart-outline"
-            title="Votre panier est vide"
-            message="Parcourez la boutique pour ajouter des produits."
+            title="Ton panier est vide"
+            message="Parcours la boutique pour ajouter des produits."
             actionLabel="Voir la boutique"
             onAction={() => router.replace("/(user)/marketplace")}
           />

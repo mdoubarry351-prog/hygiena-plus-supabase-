@@ -6,6 +6,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
+import { useToast } from "@/providers/ToastProvider";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import {
   doctorService,
@@ -18,6 +19,7 @@ import { colors, radius, spacing, typography } from "@/theme";
 
 export default function DoctorAvailability() {
   const { doctor, loading } = useMyDoctor();
+  const toast = useToast();
   const [week, setWeek] = useState<WeeklyAvailability | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -37,7 +39,7 @@ export default function DoctorAvailability() {
     setSaving(true);
     try {
       await doctorService.updateAvailability(doctor.id, week);
-      Alert.alert("Enregistré", "Votre disponibilité a été mise à jour.");
+      toast.success("Disponibilités enregistrées.");
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Enregistrement échoué");
     } finally {

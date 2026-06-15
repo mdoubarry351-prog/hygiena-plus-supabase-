@@ -115,7 +115,7 @@ export default function MyAppointments() {
         <EmptyState
           icon="cloud-offline-outline"
           title="Connexion impossible"
-          message="Vérifiez votre connexion, puis réessayez."
+          message="Vérifie ta connexion, puis réessaie."
           actionLabel="Réessayer"
           onAction={load}
         />

@@ -132,7 +132,7 @@ export default function CycleHome() {
             <Image source={logo} style={styles.avatarImg} resizeMode="contain" />
           </View>
           <View style={styles.headerText}>
-            <Text style={styles.hello} numberOfLines={1}>{greet.word}, {firstName || "vous"} {greet.emoji}</Text>
+            <Text style={styles.hello} numberOfLines={1}>{greet.word}, {firstName || "toi"} {greet.emoji}</Text>
             <Text style={styles.headerDate} numberOfLines={1}>{todayLabel}</Text>
           </View>
           <Pressable onPress={() => router.push("/(user)/notifications")} hitSlop={8} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel={unread > 0 ? `Notifications, ${unread} non lues` : "Notifications"}>
