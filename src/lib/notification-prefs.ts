@@ -8,9 +8,9 @@ export const NOTIF_PREF_DEFS: { key: string; label: string; sub: string; icon: s
   { key: "period_soon", label: "Règles à venir", sub: "Approche de vos prochaines règles", icon: "water-outline", types: ["cycle_period_soon"] },
   { key: "fertile", label: "Fenêtre fertile", sub: "Début de votre fenêtre fertile", icon: "leaf-outline", types: ["cycle_fertile"] },
   { key: "ovulation", label: "Ovulation", sub: "Jour d'ovulation estimé", icon: "ellipse-outline", types: ["cycle_ovulation"] },
-  { key: "period_late", label: "Retard de règles", sub: "Règles attendues non enregistrées", icon: "alert-circle-outline", types: ["cycle_late", "cycle_period_late"] },
-  { key: "log_reminder", label: "Rappel de saisie", sub: "Penser à enregistrer votre suivi", icon: "create-outline", types: ["cycle_log_reminder"] },
-  { key: "appointments", label: "Rendez-vous", sub: "Confirmations, modifications, rappels", icon: "calendar-outline", types: ["appointment_new", "appointment_status", "appointment_reminder"] },
+  { key: "period_late", label: "Retard de règles", sub: "Règles attendues non enregistrées", icon: "alert-circle-outline", types: ["cycle_period_late"] },
+  { key: "log_reminder", label: "Rappel de saisie", sub: "Penser à enregistrer votre suivi", icon: "create-outline", types: ["cycle_log_daily"] },
+  { key: "appointments", label: "Rendez-vous", sub: "Rappels de rendez-vous", icon: "calendar-outline", types: ["appointment_reminder"] },
   { key: "doctor_messages", label: "Messages du médecin", sub: "Nouvelles réponses des médecins", icon: "chatbubbles-outline", types: ["doctor_message"] },
 ];
 
