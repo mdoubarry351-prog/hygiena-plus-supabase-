@@ -5,6 +5,8 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
+import { AppImage } from "@/components/AppImage";
+import { FadeInView } from "@/components/FadeInView";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { useAuth } from "@/providers/AuthProvider";
 import { APP_DOWNLOAD_URL } from "@/lib/app-config";
@@ -43,18 +45,38 @@ export default function Profile() {
     }
   }
 
-  const initial = (profile.full_name ?? profile.email ?? "?").trim().charAt(0).toUpperCase();
+  const fullName =
+    profile.full_name?.trim() ||
+    [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim();
+  const initial = (fullName || profile.email || "?").trim().charAt(0).toUpperCase();
 
   return (
     <Screen>
+      <FadeInView>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <Text style={typography.h2}>Mon profil</Text>
 
         <View style={styles.avatarBlock}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
-          </View>
-          {profile.email ? <Text style={styles.email}>{profile.email}</Text> : null}
+          {profile.avatar_url ? (
+            <AppImage source={profile.avatar_url} style={styles.avatarImg} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initial}</Text>
+            </View>
+          )}
+          {fullName ? <Text style={styles.fullName}>{fullName}</Text> : null}
+          {profile.email ? (
+            <View style={styles.contactLine}>
+              <Ionicons name="mail-outline" size={14} color={colors.textMuted} />
+              <Text style={styles.contactText}>{profile.email}</Text>
+            </View>
+          ) : null}
+          {profile.phone ? (
+            <View style={styles.contactLine}>
+              <Ionicons name="call-outline" size={14} color={colors.textMuted} />
+              <Text style={styles.contactText}>{profile.phone}</Text>
+            </View>
+          ) : null}
         </View>
 
         <Pressable onPress={() => router.push("/(user)/premium")}>
@@ -83,6 +105,62 @@ export default function Profile() {
             )}
           </Card>
         </Pressable>
+
+        <Text style={[typography.h3, styles.sectionTitle]}>Mes activités</Text>
+
+        <Pressable onPress={() => router.push("/(user)/cycle/history")}>
+          <Card style={styles.proCard}>
+            <View style={styles.proIcon}>
+              <Ionicons name="calendar-number-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.proText}>
+              <Text style={styles.proTitle}>Mon cycle · Historique</Text>
+              <Text style={styles.proSub}>Tous mes cycles enregistrés</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
+        <Pressable onPress={() => router.push("/(user)/cycle/stats")}>
+          <Card style={styles.proCard}>
+            <View style={styles.proIcon}>
+              <Ionicons name="bar-chart-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.proText}>
+              <Text style={styles.proTitle}>Statistiques du cycle</Text>
+              <Text style={styles.proSub}>Durées, symptômes, humeur, douleur</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
+        <Pressable onPress={() => router.push("/(user)/appointments/mine")}>
+          <Card style={styles.proCard}>
+            <View style={styles.proIcon}>
+              <Ionicons name="medkit-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.proText}>
+              <Text style={styles.proTitle}>Mes rendez-vous</Text>
+              <Text style={styles.proSub}>Consultations passées et à venir</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
+        <Pressable onPress={() => router.push("/(user)/marketplace/orders")}>
+          <Card style={styles.proCard}>
+            <View style={styles.proIcon}>
+              <Ionicons name="receipt-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.proText}>
+              <Text style={styles.proTitle}>Mes commandes</Text>
+              <Text style={styles.proSub}>Suivi de mes achats boutique</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
+        <Text style={[typography.h3, styles.sectionTitle]}>Mon compte</Text>
 
         {role === "doctor" && (
           <Pressable onPress={() => router.push("/(doctor)")}>
@@ -198,6 +276,7 @@ export default function Profile() {
 
         <DeleteAccountButton />
       </ScrollView>
+      </FadeInView>
     </Screen>
   );
 }
@@ -205,7 +284,7 @@ export default function Profile() {
 const AVATAR = 84;
 const styles = StyleSheet.create({
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
-  avatarBlock: { alignItems: "center", gap: spacing.sm, marginVertical: spacing.sm },
+  avatarBlock: { alignItems: "center", gap: spacing.xs, marginVertical: spacing.sm },
   avatar: {
     width: AVATAR,
     height: AVATAR,
@@ -214,7 +293,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  avatarImg: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, backgroundColor: colors.primaryLight },
   avatarText: { fontSize: 36, fontWeight: "700", fontFamily: fonts.titleBold, color: colors.primaryDark },
+  fullName: { ...typography.h3, marginTop: spacing.xs },
+  contactLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  contactText: { ...typography.caption, color: colors.textMuted },
   email: { ...typography.caption },
   statusCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   statusLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 },

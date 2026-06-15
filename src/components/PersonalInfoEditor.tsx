@@ -1,13 +1,19 @@
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
+import { AppImage } from "@/components/AppImage";
+import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { authService } from "@/lib/auth-service";
+import { uploadAvatar } from "@/lib/storage";
 import type { Profile } from "@/lib/database.types";
 import { colors, spacing, typography } from "@/theme";
 
@@ -26,6 +32,7 @@ function initialNames(profile: Profile | null): { first: string; last: string } 
 // Présentation + appels auth-service uniquement ; full_name reste synchronisé.
 export function PersonalInfoEditor({ title = "Mes informations" }: { title?: string }) {
   const { profile, session, refreshProfile } = useAuth();
+  const toast = useToast();
 
   const init = initialNames(profile);
   const [firstName, setFirstName] = useState(init.first);
@@ -35,9 +42,42 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState<Busy>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   if (!profile || !session?.user) return <Loading />;
   const userId = session.user.id;
+
+  // Choisit, recadre (carré), uploade la photo de profil, puis rafraîchit l'aperçu.
+  async function pickAvatar() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour changer votre photo de profil.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.9,
+      base64: true,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (!asset?.base64) { Alert.alert("Erreur", "Impossible de lire la photo sélectionnée."); return; }
+    setUploadingAvatar(true);
+    try {
+      const url = await uploadAvatar(asset.base64);
+      await authService.updateProfile(userId, { avatar_url: url });
+      await refreshProfile();
+      toast.success("Photo de profil mise à jour.");
+    } catch (e) {
+      Alert.alert("Échec de l'envoi", e instanceof Error ? e.message : "Mise à jour de la photo échouée.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
+  const avatarInitial = (profile.full_name ?? profile.email ?? "?").trim().charAt(0).toUpperCase();
 
   async function saveNames() {
     if (!firstName.trim() || !lastName.trim()) {
@@ -114,8 +154,30 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
 
   return (
     <Screen>
+      <FadeInView>
       <ScreenHeader title={title} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+
+        {/* Photo de profil */}
+        <View style={styles.avatarBlock}>
+          <Pressable onPress={pickAvatar} disabled={uploadingAvatar} style={styles.avatarWrap} accessibilityRole="button" accessibilityLabel="Changer la photo de profil">
+            {profile.avatar_url ? (
+              <AppImage source={profile.avatar_url} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarInitial}>{avatarInitial}</Text>
+              </View>
+            )}
+            <View style={styles.cameraBadge}>
+              {uploadingAvatar ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Ionicons name="camera" size={16} color={colors.white} />
+              )}
+            </View>
+          </Pressable>
+          <Text style={styles.avatarHint}>{uploadingAvatar ? "Envoi en cours…" : "Modifier la photo"}</Text>
+        </View>
 
         {/* Identité */}
         <Card style={styles.card}>
@@ -182,14 +244,27 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
           <Button title="Changer le mot de passe" onPress={savePassword} loading={busy === "password"} />
         </Card>
       </ScrollView>
+      </FadeInView>
     </Screen>
   );
 }
 
+const AVATAR = 96;
 const styles = StyleSheet.create({
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   back: { flexDirection: "row", alignItems: "center", gap: 2, marginLeft: -spacing.xs },
   backText: { ...typography.body, color: colors.text },
   card: { gap: spacing.sm },
   hint: { ...typography.caption, color: colors.textMuted },
+  avatarBlock: { alignItems: "center", gap: spacing.xs, marginBottom: spacing.xs },
+  avatarWrap: { width: AVATAR, height: AVATAR },
+  avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, backgroundColor: colors.primaryLight },
+  avatarPlaceholder: { alignItems: "center", justifyContent: "center" },
+  avatarInitial: { fontSize: 36, fontWeight: "700", color: colors.primaryDark },
+  cameraBadge: {
+    position: "absolute", bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15,
+    backgroundColor: colors.primary, alignItems: "center", justifyContent: "center",
+    borderWidth: 2, borderColor: colors.background,
+  },
+  avatarHint: { ...typography.caption, color: colors.primary, fontWeight: "700" },
 });
