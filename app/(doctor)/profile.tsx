@@ -9,15 +9,17 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
+import { AppImage } from "@/components/AppImage";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { useAuth } from "@/providers/AuthProvider";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import { doctorService } from "@/lib/doctor-service";
-import { uploadKycDocument } from "@/lib/storage";
+import { authService } from "@/lib/auth-service";
+import { uploadKycDocument, uploadAvatar } from "@/lib/storage";
 import { colors, radius, spacing, typography } from "@/theme";
 
 export default function DoctorProfile() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, refreshProfile } = useAuth();
   const router = useRouter();
   const { doctor, loading, setDoctor } = useMyDoctor();
 
@@ -27,6 +29,39 @@ export default function DoctorProfile() {
   const [fee, setFee] = useState("");
   const [saving, setSaving] = useState(false);
   const [kycUploading, setKycUploading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // Photo de profil du médecin : c'est l'avatar (profiles.avatar_url) affiché aux
+  // patientes sur les cartes et fiches médecin.
+  async function pickAvatar() {
+    if (!profile) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour changer votre photo de profil.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.9,
+      base64: true,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (!asset?.base64) { Alert.alert("Erreur", "Impossible de lire la photo sélectionnée."); return; }
+    setAvatarUploading(true);
+    try {
+      const url = await uploadAvatar(asset.base64);
+      await authService.updateProfile(profile.id, { avatar_url: url });
+      await refreshProfile();
+      Alert.alert("Photo mise à jour", "Votre photo de profil a été enregistrée. Elle est visible par les patientes.");
+    } catch (e) {
+      Alert.alert("Échec de l'envoi", e instanceof Error ? e.message : "Mise à jour de la photo échouée.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
 
   // Pré-remplit le formulaire à partir de la fiche chargée.
   useEffect(() => {
@@ -137,11 +172,25 @@ export default function DoctorProfile() {
         <Text style={typography.h2}>Profil médecin</Text>
 
         <View style={styles.avatarBlock}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
-          </View>
+          <Pressable onPress={pickAvatar} disabled={avatarUploading} style={styles.avatarWrap} accessibilityRole="button" accessibilityLabel="Changer la photo de profil">
+            {profile?.avatar_url ? (
+              <AppImage source={profile.avatar_url} style={styles.avatarImg} />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{initial}</Text>
+              </View>
+            )}
+            <View style={styles.cameraBadge}>
+              {avatarUploading ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Ionicons name="camera" size={16} color={colors.white} />
+              )}
+            </View>
+          </Pressable>
           <Text style={styles.name}>{profile?.full_name ?? "Médecin"}</Text>
           {profile?.email ? <Text style={styles.email}>{profile.email}</Text> : null}
+          <Text style={styles.avatarHint}>{avatarUploading ? "Envoi en cours…" : "Modifier la photo"}</Text>
         </View>
 
         <Card style={styles.statusCard}>
@@ -268,10 +317,18 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   avatarBlock: { alignItems: "center", gap: spacing.xs, marginVertical: spacing.sm },
+  avatarWrap: { width: AVATAR, height: AVATAR },
   avatar: {
     width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, backgroundColor: colors.primaryLight,
     alignItems: "center", justifyContent: "center",
   },
+  avatarImg: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, backgroundColor: colors.primaryLight },
+  cameraBadge: {
+    position: "absolute", bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15,
+    backgroundColor: colors.primary, alignItems: "center", justifyContent: "center",
+    borderWidth: 2, borderColor: colors.background,
+  },
+  avatarHint: { ...typography.caption, color: colors.primary, fontWeight: "700" },
   avatarText: { fontSize: 36, fontWeight: "700", color: colors.primaryDark },
   name: { ...typography.h3 },
   email: { ...typography.caption },

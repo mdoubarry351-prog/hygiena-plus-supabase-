@@ -5,7 +5,6 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
-import { AppImage } from "@/components/AppImage";
 import { FadeInView } from "@/components/FadeInView";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { useAuth } from "@/providers/AuthProvider";
@@ -57,13 +56,9 @@ export default function Profile() {
         <Text style={typography.h2}>Mon profil</Text>
 
         <View style={styles.avatarBlock}>
-          {profile.avatar_url ? (
-            <AppImage source={profile.avatar_url} style={styles.avatarImg} />
-          ) : (
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initial}</Text>
-            </View>
-          )}
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initial}</Text>
+          </View>
           {fullName ? <Text style={styles.fullName}>{fullName}</Text> : null}
           {profile.email ? (
             <View style={styles.contactLine}>
@@ -293,7 +288,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarImg: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, backgroundColor: colors.primaryLight },
   avatarText: { fontSize: 36, fontWeight: "700", fontFamily: fonts.titleBold, color: colors.primaryDark },
   fullName: { ...typography.h3, marginTop: spacing.xs },
   contactLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
