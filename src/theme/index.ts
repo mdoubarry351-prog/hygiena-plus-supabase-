@@ -73,6 +73,14 @@ export const durations = {
   slow: 320,
 } as const;
 
+// Mise en page responsive. Au-delà du breakpoint (tablette / grand écran / web),
+// le contenu est contraint à `maxContentWidth` et centré (rendu téléphone inchangé
+// en dessous). Purement additif.
+export const layout = {
+  maxContentWidth: 640,
+  tabletBreakpoint: 700,
+} as const;
+
 // Familles de polices chargées dans app/_layout.tsx (useFonts).
 // TOUT en Inter (sans-serif) — la hiérarchie se fait uniquement par la graisse.
 export const fonts = {
@@ -108,4 +116,4 @@ export const phase = {
   neutral: "#E5E7EB", // Reste du cycle → gris clair
 } as const;
 
-export const theme = { colors, spacing, radius, shadows, durations, typography, fonts, phase };
+export const theme = { colors, spacing, radius, shadows, durations, layout, typography, fonts, phase };
