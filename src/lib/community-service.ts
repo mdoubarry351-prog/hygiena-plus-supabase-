@@ -63,6 +63,9 @@ export type DoctorSearchResult = {
   specialty: string | null;
 };
 
+// Mon commentaire enrichi d'un extrait de la publication parente (historique).
+export type MyComment = CommunityComment & { postExcerpt: string | null };
+
 // Normalise un texte pour comparaison insensible à la casse ET aux accents.
 function normalizeText(s: string): string {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -393,6 +396,57 @@ export const communityService = {
       .eq("user_id", userId);
     if (error) throw error;
     return (data ?? []).map((row) => row.post_id);
+  },
+
+  // Mes publications (table de base : inclut mes posts anonymes — RLS = propriétaire).
+  async getMyPosts(): Promise<CommunityPost[]> {
+    const me = await currentUserId();
+    if (!me) return [];
+    const { data, error } = await supabase
+      .from("community_posts")
+      .select("*")
+      .eq("user_id", me)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  // Mes commentaires, avec un extrait de la publication parente.
+  async getMyComments(): Promise<MyComment[]> {
+    const me = await currentUserId();
+    if (!me) return [];
+    const { data, error } = await supabase
+      .from("community_comments")
+      .select("*")
+      .eq("user_id", me)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    const rows = (data ?? []) as CommunityComment[];
+    const postIds = Array.from(new Set(rows.map((r) => r.post_id)));
+    const excerpts = new Map<string, string>();
+    if (postIds.length) {
+      const { data: posts } = await supabase.from("community_posts_safe").select("id, content").in("id", postIds);
+      for (const p of posts ?? []) excerpts.set(p.id, p.content);
+    }
+    return rows.map((r) => ({ ...r, postExcerpt: excerpts.get(r.post_id) ?? null }));
+  },
+
+  // Mes réactions : publications que j'ai aimées (via community_likes), plus récentes d'abord.
+  async getMyLikes(): Promise<CommunityPostSafe[]> {
+    const me = await currentUserId();
+    if (!me) return [];
+    const { data: likes, error } = await supabase
+      .from("community_likes")
+      .select("post_id, created_at")
+      .eq("user_id", me)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    const ids = (likes ?? []).map((l) => l.post_id);
+    if (ids.length === 0) return [];
+    const { data: posts, error: e2 } = await supabase.from("community_posts_safe").select("*").in("id", ids);
+    if (e2) throw e2;
+    const map = new Map((posts ?? []).map((p) => [p.id, p]));
+    return ids.map((id) => map.get(id)).filter((p): p is CommunityPostSafe => !!p);
   },
 
   // Ajoute / retire un like via community_likes puis recalcule likes_count

@@ -155,6 +155,19 @@ export default function Profile() {
           </Card>
         </Pressable>
 
+        <Pressable onPress={() => router.push("/(user)/community/activity")}>
+          <Card style={styles.proCard}>
+            <View style={styles.proIcon}>
+              <Ionicons name="chatbubbles-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.proText}>
+              <Text style={styles.proTitle}>Mon activité communautaire</Text>
+              <Text style={styles.proSub}>Mes publications, commentaires et réactions</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
         <Text style={[typography.h3, styles.sectionTitle]}>Mon compte</Text>
 
         {role === "doctor" && (
