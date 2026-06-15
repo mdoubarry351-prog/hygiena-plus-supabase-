@@ -9,6 +9,7 @@ import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
 import { StarRating } from "@/components/StarRating";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { AppImage } from "@/components/AppImage";
 import { HeartButton } from "@/components/HeartButton";
 import { useProducts } from "@/hooks/useProducts";
@@ -126,27 +127,17 @@ export default function MarketplaceHome() {
         />
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipBar} contentContainerStyle={styles.chips}>
-        {["all", ...PRODUCT_CATEGORIES].map((c) => {
-          const active = activeCat === c;
-          return (
-            <Pressable key={c} onPress={() => setActiveCat(c)} style={[styles.chip, active && styles.chipActive]}>
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>{c === "all" ? "Toutes" : c}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      <SegmentedControl
+        items={["all", ...PRODUCT_CATEGORIES].map((c) => ({ key: c, label: c === "all" ? "Toutes" : c }))}
+        value={activeCat}
+        onChange={setActiveCat}
+      />
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipBar} contentContainerStyle={styles.chips}>
-        {SORTS.map((s) => {
-          const active = sort === s.key;
-          return (
-            <Pressable key={s.key} onPress={() => setSort(s.key)} style={[styles.sortChip, active && styles.sortChipActive]}>
-              <Text style={[styles.sortChipText, active && styles.sortChipTextActive]}>{s.label}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      <SegmentedControl
+        items={SORTS.map((s) => ({ key: s.key, label: s.label }))}
+        value={sort}
+        onChange={(k) => setSort(k as ProductSort)}
+      />
 
       {products.length > 0 ? (
         <Text style={styles.count}>{products.length} produit{products.length > 1 ? "s" : ""}</Text>

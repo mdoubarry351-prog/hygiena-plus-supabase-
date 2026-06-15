@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import {
   Alert, FlatList, LayoutAnimation, Platform, Pressable, RefreshControl,
-  ScrollView, StyleSheet, Text, UIManager, View, type ListRenderItemInfo,
+  StyleSheet, Text, UIManager, View, type ListRenderItemInfo,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -12,6 +12,7 @@ import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
 import { FadeInView } from "@/components/FadeInView";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { useNotifications } from "@/hooks/useNotifications";
 import { formatRelativeTime } from "@/lib/community-service";
 import { defaultPrefs, loadNotifPrefs, isNotifEnabled, type NotifPrefs } from "@/lib/notification-prefs";
@@ -131,12 +132,11 @@ export default function Notifications() {
       ) : null}
 
       {visible.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipBar} contentContainerStyle={styles.chips}>
-          <CatChip label="Toutes" icon="notifications-outline" active={cat === "all"} onPress={() => setCat("all")} />
-          {presentCats.map((c) => (
-            <CatChip key={c.key} label={c.label} icon={c.icon} active={cat === c.key} onPress={() => setCat(c.key)} />
-          ))}
-        </ScrollView>
+        <SegmentedControl
+          items={[{ key: "all", label: "Toutes", icon: "notifications-outline" }, ...presentCats.map((c) => ({ key: c.key, label: c.label, icon: c.icon }))]}
+          value={cat}
+          onChange={(k) => setCat(k as CatFilter)}
+        />
       ) : null}
     </View>
   );
@@ -169,15 +169,6 @@ export default function Notifications() {
         />
       </FadeInView>
     </Screen>
-  );
-}
-
-function CatChip({ label, icon, active, onPress }: { label: string; icon: keyof typeof Ionicons.glyphMap; active: boolean; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
-      <Ionicons name={icon} size={13} color={active ? colors.white : colors.textMuted} />
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -221,16 +212,6 @@ const styles = StyleSheet.create({
   actionBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   actionText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
   actionDanger: { color: colors.danger },
-  chipBar: { flexGrow: 0, flexShrink: 0, marginBottom: spacing.xs },
-  chips: { gap: spacing.xs, alignItems: "center", paddingVertical: spacing.xs },
-  chip: {
-    flexDirection: "row", alignItems: "center", gap: spacing.xs,
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5,
-    borderColor: colors.border, backgroundColor: colors.surface,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 12, fontWeight: "700", color: colors.text },
-  chipTextActive: { color: colors.white },
   row: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
   rowUnread: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   rowMain: { flex: 1, flexDirection: "row", alignItems: "flex-start", gap: spacing.md },

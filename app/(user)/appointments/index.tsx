@@ -10,6 +10,7 @@ import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
 import { AppImage } from "@/components/AppImage";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
 import { useAuth } from "@/providers/AuthProvider";
 import { useDoctors } from "@/hooks/useDoctors";
@@ -120,21 +121,11 @@ export default function AppointmentsHome() {
               style={styles.searchInput}
             />
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.chipsBar}
-              contentContainerStyle={styles.chips}
-            >
-              {["all", ...specialties].map((s) => {
-                const active = activeSpec === s;
-                return (
-                  <Pressable key={s} onPress={() => setActiveSpec(s)} style={[styles.chip, active && styles.chipActive]}>
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{s === "all" ? "Toutes" : s}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            <SegmentedControl
+              items={["all", ...specialties].map((s) => ({ key: s, label: s === "all" ? "Toutes" : s }))}
+              value={activeSpec}
+              onChange={setActiveSpec}
+            />
 
             <View style={styles.toolbar}>
               <Text style={styles.count}>{list.length} médecin{list.length > 1 ? "s" : ""}</Text>
