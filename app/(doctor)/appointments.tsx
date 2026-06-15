@@ -4,6 +4,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
@@ -107,9 +108,7 @@ export default function DoctorAppointments() {
                     </View>
                   ) : null}
                 </View>
-                <Text style={[styles.badge, { backgroundColor: STATUS_COLORS[a.status] }]}>
-                  {STATUS_LABELS[a.status]}
-                </Text>
+                <Badge label={STATUS_LABELS[a.status]} color={STATUS_COLORS[a.status]} />
               </View>
 
               <View style={styles.dateRow}>

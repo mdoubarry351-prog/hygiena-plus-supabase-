@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
+import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { RescheduleModal } from "@/components/RescheduleModal";
@@ -126,9 +127,7 @@ export default function MyAppointments() {
                       <Text style={styles.specialty}>{a.doctor.specialty}</Text>
                     ) : null}
                   </View>
-                  <Text style={[styles.badge, { backgroundColor: STATUS_COLORS[a.status] }]}>
-                    {STATUS_LABELS[a.status]}
-                  </Text>
+                  <Badge label={STATUS_LABELS[a.status]} color={STATUS_COLORS[a.status]} />
                 </View>
                 <View style={styles.apptFoot}>
                   <View style={styles.metaRow}>

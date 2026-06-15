@@ -7,6 +7,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
+import { Divider } from "@/components/Divider";
 import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
 import {
@@ -65,14 +66,14 @@ export default function Receipt() {
           <Text style={styles.title}>Reçu de consultation</Text>
           <Text style={styles.receiptNo}>{appt.receipt_number ?? "—"}</Text>
 
-          <View style={styles.divider} />
+          <Divider spacing={spacing.xs} />
 
           <Row label="Gynécologue" value={doctorName} />
           <Row label="Clinique" value={clinic} />
           <Row label="Date" value={formatAppointmentDate(appt.appointment_date)} capitalize />
           <Row label="Heure" value={formatAppointmentTime(appt.appointment_time)} />
 
-          <View style={styles.divider} />
+          <Divider spacing={spacing.xs} />
 
           <View style={styles.amountRow}>
             <Text style={styles.amountLabel}>Montant payé</Text>

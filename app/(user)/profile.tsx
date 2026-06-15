@@ -5,6 +5,7 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
+import { Avatar } from "@/components/Avatar";
 import { FadeInView } from "@/components/FadeInView";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { useAuth } from "@/providers/AuthProvider";
@@ -47,7 +48,6 @@ export default function Profile() {
   const fullName =
     profile.full_name?.trim() ||
     [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim();
-  const initial = (fullName || profile.email || "?").trim().charAt(0).toUpperCase();
 
   return (
     <Screen>
@@ -56,9 +56,7 @@ export default function Profile() {
         <Text style={typography.h2}>Mon profil</Text>
 
         <View style={styles.avatarBlock}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
-          </View>
+          <Avatar name={fullName || profile.email} size={AVATAR} />
           {fullName ? <Text style={styles.fullName}>{fullName}</Text> : null}
           {profile.email ? (
             <View style={styles.contactLine}>
