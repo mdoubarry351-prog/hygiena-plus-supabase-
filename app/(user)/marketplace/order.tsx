@@ -6,6 +6,7 @@ import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Badge } from "@/components/Badge";
+import { Divider } from "@/components/Divider";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { EmptyState } from "@/components/EmptyState";
@@ -136,7 +137,7 @@ export default function OrderDetail() {
               <Text style={styles.itemPrice}>{formatPrice(it.price * it.quantity)}</Text>
             </View>
           ))}
-          <View style={styles.divider} />
+          <Divider spacing={spacing.xs} />
           <View style={styles.totRow}>
             <Text style={styles.totLabel}>Sous-total</Text>
             <Text style={styles.totVal}>{formatPrice(subtotal)}</Text>

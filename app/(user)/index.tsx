@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Divider } from "@/components/Divider";
 import { Loading } from "@/components/Loading";
 import { CycleRing } from "@/components/CycleRing";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -176,7 +177,7 @@ export default function CycleHome() {
               <View style={[styles.confDot, { backgroundColor: conf.color }]} />
               <Text style={styles.confText}>Confiance {conf.label} — Fiabilité des prévisions</Text>
             </View>
-            <View style={styles.predDivider} />
+            <Divider />
             <PredRow
               label="Prochaines règles"
               value={formatShort(prediction?.nextPeriodStart)}
