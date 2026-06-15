@@ -43,6 +43,8 @@ export const ADMIN_TABS: AdminTab[] = [
     label: "Paramètres", icon: "settings-outline", href: "/(admin)/settings", seg: "settings",
     subs: [
       { label: "Services", href: "/(admin)/settings", seg: "settings" },
+      { label: "Mon compte", href: "/(admin)/account", seg: "account" },
+      { label: "Administrateurs", href: "/(admin)/admins", seg: "admins" },
       { label: "Statistiques", href: "/(admin)/stats", seg: "stats" },
       { label: "Journal d'audit", href: "/(admin)/logs", seg: "logs" },
     ],

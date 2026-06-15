@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/providers/AuthProvider";
@@ -23,6 +24,7 @@ export function AdminHeader({ title, right }: { title: string; right?: ReactNode
   const isDesktop = width >= 900;
   const { openDrawer } = useAdminUI();
   const { profile } = useAuth();
+  const router = useRouter();
 
   return (
     <View>
@@ -40,7 +42,9 @@ export function AdminHeader({ title, right }: { title: string; right?: ReactNode
           <Pressable hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Notifications">
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
           </Pressable>
-          <Avatar name={profile?.full_name ?? "Admin"} size={36} />
+          <Pressable onPress={() => router.push("/(admin)/account")} hitSlop={6} accessibilityRole="button" accessibilityLabel="Mon compte">
+            <Avatar name={profile?.full_name ?? "Admin"} size={36} />
+          </Pressable>
         </View>
       )}
 

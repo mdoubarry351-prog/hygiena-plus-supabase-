@@ -482,6 +482,17 @@ export const adminService = {
     return data ?? [];
   },
 
+  // Liste des administrateurs (gestion des droits admin).
+  async getAdmins(): Promise<Profile[]> {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("role", "admin")
+      .order("full_name", { ascending: true });
+    if (error) throw error;
+    return data ?? [];
+  },
+
   // Profils paginés — recherche (nom/email/téléphone) + rôle appliqués CÔTÉ SERVEUR.
   async getUsersPage(limit: number, offset: number, filters?: UsersFilter): Promise<Profile[]> {
     const { data, error } = await buildUsersQuery(filters).range(offset, offset + limit - 1);
