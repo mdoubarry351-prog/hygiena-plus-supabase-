@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAdminUI } from "@/components/AdminDrawer";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
@@ -22,7 +23,6 @@ export function AdminHeader({ title, right }: { title: string; right?: ReactNode
   const isDesktop = width >= 900;
   const { openDrawer } = useAdminUI();
   const { profile } = useAuth();
-  const initial = (profile?.full_name ?? "Admin").trim().charAt(0).toUpperCase();
 
   return (
     <View>
@@ -40,9 +40,7 @@ export function AdminHeader({ title, right }: { title: string; right?: ReactNode
           <Pressable hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Notifications">
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
           </Pressable>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
-          </View>
+          <Avatar name={profile?.full_name ?? "Admin"} size={36} />
         </View>
       )}
 

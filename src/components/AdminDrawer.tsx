@@ -3,6 +3,7 @@ import { Alert, Animated, Dimensions, Pressable, ScrollView, StyleSheet, Text, V
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, usePathname, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAdminBadges, badgeForSeg } from "@/hooks/useAdminBadges";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
@@ -123,8 +124,6 @@ export function AdminDrawer() {
     ]);
   }
 
-  const initial = (profile?.full_name ?? "Admin").trim().charAt(0).toUpperCase();
-
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={drawerOpen ? "auto" : "none"}>
       {/* Voile sombre cliquable pour fermer */}
@@ -176,9 +175,7 @@ export function AdminDrawer() {
 
           {/* Pied : profil + déconnexion */}
           <View style={styles.footer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initial}</Text>
-            </View>
+            <Avatar name={profile?.full_name ?? "Admin"} size={40} />
             <View style={styles.footerInfo}>
               <Text style={styles.footerName} numberOfLines={1}>{profile?.full_name ?? "Admin"}</Text>
               <Text style={styles.footerRole}>Administrateur</Text>

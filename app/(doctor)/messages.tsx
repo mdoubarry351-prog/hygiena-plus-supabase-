@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Avatar } from "@/components/Avatar";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
@@ -64,7 +65,7 @@ export default function DoctorMessages() {
               onPress={() => router.push({ pathname: "/(doctor)/chat", params: { patientId: c.patientId, patientName: c.patientName } })}
             >
               <Card style={styles.row}>
-                <View style={styles.avatar}><Text style={styles.avatarText}>{c.patientName.charAt(0).toUpperCase()}</Text></View>
+                <Avatar name={c.patientName} size={44} />
                 <View style={styles.info}>
                   <View style={styles.head}>
                     <Text style={styles.name} numberOfLines={1}>{c.patientName}</Text>

@@ -11,7 +11,7 @@ import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
-import { AppImage } from "@/components/AppImage";
+import { Avatar } from "@/components/Avatar";
 import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
@@ -258,13 +258,7 @@ export default function BookAppointment() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* En-tête profil */}
         <Card style={styles.doctorCard}>
-          {doctor.profile?.avatar_url ? (
-            <AppImage source={doctor.profile.avatar_url} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarInitial}>{name.trim().charAt(0).toUpperCase()}</Text>
-            </View>
-          )}
+          <Avatar uri={doctor.profile?.avatar_url} name={name} size={AVATAR} />
           <View style={styles.doctorInfo}>
             <View style={styles.nameRow}>
               <Text style={typography.h3} numberOfLines={1}>{name}</Text>

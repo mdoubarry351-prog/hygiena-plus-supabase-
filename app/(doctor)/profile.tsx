@@ -9,7 +9,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
-import { AppImage } from "@/components/AppImage";
+import { Avatar } from "@/components/Avatar";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { useAuth } from "@/providers/AuthProvider";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
@@ -164,7 +164,6 @@ export default function DoctorProfile() {
     ? { icon: "time-outline" as const, color: colors.accent, label: "Document fourni — en attente de vérification", sub: "Un administrateur va vérifier votre document." }
     : { icon: "document-outline" as const, color: colors.textMuted, label: "Aucun document", sub: "Téléversez votre licence ou diplôme pour être vérifié." };
 
-  const initial = (profile?.full_name ?? profile?.email ?? "?").trim().charAt(0).toUpperCase();
 
   return (
     <Screen>
@@ -173,13 +172,7 @@ export default function DoctorProfile() {
 
         <View style={styles.avatarBlock}>
           <Pressable onPress={pickAvatar} disabled={avatarUploading} style={styles.avatarWrap} accessibilityRole="button" accessibilityLabel="Changer la photo de profil">
-            {profile?.avatar_url ? (
-              <AppImage source={profile.avatar_url} style={styles.avatarImg} />
-            ) : (
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initial}</Text>
-              </View>
-            )}
+            <Avatar uri={profile?.avatar_url} name={profile?.full_name ?? profile?.email} size={AVATAR} />
             <View style={styles.cameraBadge}>
               {avatarUploading ? (
                 <ActivityIndicator size="small" color={colors.white} />

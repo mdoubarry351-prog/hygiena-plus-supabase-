@@ -4,6 +4,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
+import { Avatar } from "@/components/Avatar";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { communityService } from "@/lib/community-service";
@@ -57,7 +58,7 @@ export default function BlockedUsers() {
         ) : (
           list.map((u) => (
             <Card key={u.id} style={styles.row}>
-              <View style={styles.avatar}><Text style={styles.avatarText}>{u.name.charAt(0).toUpperCase()}</Text></View>
+              <Avatar name={u.name} size={40} />
               <Text style={styles.name} numberOfLines={1}>{u.name}</Text>
               <Pressable onPress={() => unblock(u.id, u.name)} style={styles.unblockBtn}>
                 <Text style={styles.unblockText}>Débloquer</Text>

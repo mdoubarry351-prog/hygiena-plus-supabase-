@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Avatar } from "@/components/Avatar";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
@@ -251,7 +252,7 @@ export default function AdminUsers() {
               return (
                 <Pressable key={u.id} onPress={() => setSelected(open ? null : u)}>
                   <Card style={styles.row}>
-                    <View style={styles.avatar}><Text style={styles.avatarText}>{(u.full_name ?? u.email ?? "?").charAt(0).toUpperCase()}</Text></View>
+                    <Avatar name={u.full_name ?? u.email ?? "?"} size={40} />
                     <View style={styles.rowInfo}>
                       <Text style={styles.name} numberOfLines={1}>{u.full_name ?? "Sans nom"}</Text>
                       <Text style={styles.email} numberOfLines={1}>{u.email ?? "—"}</Text>

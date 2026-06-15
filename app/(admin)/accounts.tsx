@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View, type NativeScroll
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Avatar } from "@/components/Avatar";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
@@ -286,7 +287,7 @@ export default function AdminAccounts() {
             return (
               <Pressable key={p.id} onPress={() => setExpandedId(open ? null : p.id)}>
                 <Card style={styles.row}>
-                  <View style={styles.avatar}><Text style={styles.avatarText}>{label(p).charAt(0).toUpperCase()}</Text></View>
+                  <Avatar name={label(p)} size={40} />
                   <View style={styles.rowInfo}>
                     <Text style={styles.name} numberOfLines={1}>{p.full_name ?? "Sans nom"}</Text>
                     <Text style={styles.contact} numberOfLines={1}>{p.phone ?? p.email ?? "—"}</Text>
