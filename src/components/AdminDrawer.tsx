@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "@/components/Avatar";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAdminBadges, badgeForSeg } from "@/hooks/useAdminBadges";
+import { ADMIN_TABS, isActiveSeg, isTabActive, tabSegments } from "@/lib/admin-nav";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 // =====================================================
@@ -28,62 +29,6 @@ export function AdminUIProvider({ children }: { children: ReactNode }) {
 export function useAdminUI(): AdminUI {
   return useContext(AdminUIContext) ?? { drawerOpen: false, openDrawer: () => {}, closeDrawer: () => {} };
 }
-
-// =====================================================
-// Navigation groupée (mappée sur les écrans existants).
-// =====================================================
-type NavItem = { label: string; icon: keyof typeof Ionicons.glyphMap; href: Href; seg: string };
-type NavGroup = { title: string | null; items: NavItem[] };
-
-const GROUPS: NavGroup[] = [
-  {
-    title: null,
-    items: [{ label: "Dashboard", icon: "grid-outline", href: "/(admin)/dashboard", seg: "dashboard" }],
-  },
-  {
-    title: "Comptes",
-    items: [
-      { label: "Utilisateurs", icon: "people-outline", href: "/(admin)/users", seg: "users" },
-      { label: "Médecins", icon: "medkit-outline", href: "/(admin)/doctors", seg: "doctors" },
-      { label: "Gestion des comptes", icon: "id-card-outline", href: "/(admin)/accounts", seg: "accounts" },
-    ],
-  },
-  {
-    title: "Services",
-    items: [
-      { label: "Téléconsultation", icon: "videocam-outline", href: "/(admin)/doctors", seg: "doctors" },
-      { label: "Signalements", icon: "flag-outline", href: "/(admin)/reports", seg: "reports" },
-      { label: "Abonnements Premium", icon: "star-outline", href: "/(admin)/settings", seg: "settings" },
-    ],
-  },
-  {
-    title: "Marketplace",
-    items: [
-      { label: "Produits", icon: "bag-handle-outline", href: "/(admin)/products", seg: "products" },
-      { label: "Commandes", icon: "receipt-outline", href: "/(admin)/orders", seg: "orders" },
-      { label: "Avis", icon: "star-outline", href: "/(admin)/reviews", seg: "reviews" },
-      { label: "Boutique", icon: "storefront-outline", href: "/(admin)/store-settings", seg: "store-settings" },
-    ],
-  },
-  {
-    title: "Communauté",
-    items: [
-      { label: "Modération", icon: "chatbubbles-outline", href: "/(admin)/community", seg: "community" },
-      { label: "Mots interdits", icon: "ban-outline", href: "/(admin)/banned-words", seg: "banned-words" },
-      { label: "Articles", icon: "newspaper-outline", href: "/(admin)/articles", seg: "articles" },
-      { label: "Diffusion", icon: "megaphone-outline", href: "/(admin)/broadcast", seg: "broadcast" },
-    ],
-  },
-  {
-    title: "Système",
-    items: [
-      { label: "Statistiques", icon: "bar-chart-outline", href: "/(admin)/stats", seg: "stats" },
-      { label: "Gestion des services", icon: "settings-outline", href: "/(admin)/settings", seg: "settings" },
-      { label: "Suspensions", icon: "hand-left-outline", href: "/(admin)/suspensions", seg: "suspensions" },
-      { label: "Journal d'audit", icon: "document-text-outline", href: "/(admin)/logs", seg: "logs" },
-    ],
-  },
-];
 
 const PANEL_WIDTH = Math.min(300, Dimensions.get("window").width * 0.85);
 
@@ -143,34 +88,38 @@ export function AdminDrawer() {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.nav}>
-            {GROUPS.map((group, gi) => (
-              <View key={group.title ?? `g${gi}`} style={styles.group}>
-                {group.title ? <Text style={styles.groupTitle}>{group.title.toUpperCase()}</Text> : null}
-                {group.items.map((item, ii) => {
-                  const active = pathname === `/${item.seg}` || pathname.endsWith(`/${item.seg}`);
-                  const count = badgeForSeg(item.seg, badges);
-                  return (
-                    <Pressable
-                      key={`${item.seg}-${ii}`}
-                      onPress={() => go(item.href)}
-                      style={[styles.item, active && styles.itemActive]}
-                    >
-                      <Ionicons
-                        name={item.icon}
-                        size={20}
-                        color={active ? colors.primaryDark : colors.textMuted}
-                      />
-                      <Text style={[styles.itemText, active && styles.itemTextActive]}>{item.label}</Text>
-                      {count > 0 ? (
-                        <View style={styles.badge}>
-                          <Text style={styles.badgeText}>{count > 99 ? "99+" : count}</Text>
-                        </View>
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ))}
+            {ADMIN_TABS.map((tab) => {
+              const active = isTabActive(pathname, tab);
+              const count = tabSegments(tab).reduce((s, seg) => s + badgeForSeg(seg, badges), 0);
+              return (
+                <View key={tab.seg}>
+                  <Pressable onPress={() => go(tab.href)} style={[styles.item, active && styles.itemActive]}>
+                    <Ionicons name={tab.icon} size={20} color={active ? colors.primaryDark : colors.textMuted} />
+                    <Text style={[styles.itemText, active && styles.itemTextActive]} numberOfLines={1}>{tab.label}</Text>
+                    {count > 0 ? (
+                      <View style={styles.badge}><Text style={styles.badgeText}>{count > 99 ? "99+" : count}</Text></View>
+                    ) : null}
+                  </Pressable>
+
+                  {active && tab.subs ? (
+                    <View style={styles.subList}>
+                      {tab.subs.map((sub) => {
+                        const subActive = isActiveSeg(pathname, sub.seg);
+                        const subCount = badgeForSeg(sub.seg, badges);
+                        return (
+                          <Pressable key={sub.seg} onPress={() => go(sub.href)} style={[styles.subItem, subActive && styles.subItemActive]}>
+                            <Text style={[styles.subText, subActive && styles.subTextActive]} numberOfLines={1}>{sub.label}</Text>
+                            {subCount > 0 ? (
+                              <View style={styles.badge}><Text style={styles.badgeText}>{subCount > 99 ? "99+" : subCount}</Text></View>
+                            ) : null}
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
           </ScrollView>
 
           {/* Pied : profil + déconnexion */}
@@ -202,13 +151,16 @@ const styles = StyleSheet.create({
   brand: { fontSize: 24, fontFamily: fonts.titleBold, fontWeight: "700", color: colors.primaryDark },
   plus: { color: colors.accent },
   brandSub: { ...typography.caption, color: colors.textMuted, fontWeight: "700", letterSpacing: 0.5 },
-  nav: { gap: spacing.lg, paddingBottom: spacing.lg },
-  group: { gap: 2 },
-  groupTitle: { ...typography.caption, color: colors.textMuted, fontWeight: "700", letterSpacing: 0.5, paddingHorizontal: spacing.sm, marginBottom: spacing.xs },
+  nav: { gap: spacing.xs, paddingBottom: spacing.lg },
   item: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, borderRadius: radius.md },
   itemActive: { backgroundColor: colors.primaryLight },
   itemText: { ...typography.body, color: colors.text, fontWeight: "500", flex: 1 },
   itemTextActive: { color: colors.primaryDark, fontWeight: "700" },
+  subList: { gap: 2, paddingLeft: spacing.lg, marginTop: 2, marginBottom: spacing.xs },
+  subItem: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.sm },
+  subItemActive: { backgroundColor: colors.surface },
+  subText: { ...typography.caption, color: colors.textMuted, fontWeight: "600", flex: 1 },
+  subTextActive: { color: colors.primaryDark, fontWeight: "700" },
   badge: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
   badgeText: { color: colors.white, fontSize: 11, fontFamily: fonts.bodyBold, fontWeight: "700" },
   footer: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
