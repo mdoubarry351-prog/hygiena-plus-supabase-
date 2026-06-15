@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -6,13 +6,32 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { SkeletonList } from "@/components/Skeleton";
 import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { hapticSuccess } from "@/lib/haptics";
 import { authService } from "@/lib/auth-service";
+import { premiumService, PREMIUM_PRICE, PREMIUM_PERIOD_DAYS } from "@/lib/premium-service";
+import { formatPrice } from "@/lib/marketplace-service";
+import type { SubscriptionPayment } from "@/lib/database.types";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
+
+function toISODate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d); r.setDate(r.getDate() + n); return r;
+}
+function formatPaidAt(iso: string): string {
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+}
+function formatPeriod(start: string | null, end: string | null): string | null {
+  if (!start || !end) return null;
+  const fmt = (s: string) => new Date(`${s}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  return `${fmt(start)} → ${fmt(end)}`;
+}
 
 const BENEFITS: { icon: keyof typeof Ionicons.glyphMap; title: string; sub: string }[] = [
   { icon: "chatbubbles-outline", title: "Messagerie illimitée", sub: "Échangez des conseils avec les médecins vérifiées." },
@@ -25,7 +44,23 @@ export default function Premium() {
   const { premium_enabled } = useAppSettings();
   const toast = useToast();
   const [saving, setSaving] = useState(false);
+  const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(true);
   const isPremium = !!profile?.is_premium;
+
+  const loadPayments = useCallback(async () => {
+    if (!session?.user) return;
+    setLoadingPayments(true);
+    try {
+      setPayments(await premiumService.getSubscriptionPayments(session.user.id));
+    } catch {
+      setPayments([]);
+    } finally {
+      setLoadingPayments(false);
+    }
+  }, [session?.user]);
+
+  useEffect(() => { loadPayments(); }, [loadPayments]);
 
   async function setPremium(next: boolean) {
     if (!session?.user) return;
@@ -33,7 +68,24 @@ export default function Premium() {
     try {
       await authService.updateProfile(session.user.id, { is_premium: next });
       await refreshProfile();
-      if (next) hapticSuccess();
+      if (next) {
+        hapticSuccess();
+        // Paiement SIMULÉ : on consigne aussi un paiement d'abonnement.
+        const today = new Date();
+        try {
+          await premiumService.recordSubscriptionPayment({
+            userId: session.user.id,
+            amount: PREMIUM_PRICE,
+            method: "Mobile Money (simulé)",
+            plan: "Premium",
+            periodStart: toISODate(today),
+            periodEnd: toISODate(addDays(today, PREMIUM_PERIOD_DAYS)),
+          });
+          await loadPayments();
+        } catch {
+          // l'échec d'enregistrement du paiement ne bloque pas l'abonnement
+        }
+      }
       toast.success(next ? "Bienvenue en Premium 🌿" : "Premium désactivé.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Action échouée");
@@ -90,7 +142,32 @@ export default function Premium() {
         {isPremium ? (
           <Button title="Se désabonner" variant="outline" onPress={() => setPremium(false)} loading={saving} />
         ) : (
-          <Button title="S'abonner (simulé)" onPress={() => setPremium(true)} loading={saving} />
+          <Button title={`S'abonner (simulé) · ${formatPrice(PREMIUM_PRICE)}`} onPress={() => setPremium(true)} loading={saving} />
+        )}
+
+        {/* Historique des paiements */}
+        <Text style={[typography.h3, styles.historyTitle]}>Historique des paiements</Text>
+        {loadingPayments ? (
+          <SkeletonList variant="order" count={2} />
+        ) : payments.length === 0 ? (
+          <EmptyState icon="card-outline" title="Aucun paiement pour le moment." />
+        ) : (
+          payments.map((p) => {
+            const period = formatPeriod(p.period_start, p.period_end);
+            return (
+              <Card key={p.id} style={styles.payCard}>
+                <View style={styles.payTop}>
+                  <Text style={styles.payAmount}>{formatPrice(p.amount)}</Text>
+                  <Text style={styles.payDate}>{formatPaidAt(p.paid_at)}</Text>
+                </View>
+                <View style={styles.payMeta}>
+                  {p.plan ? <Text style={styles.payPlan}>{p.plan}</Text> : null}
+                  {p.method ? <Text style={styles.payMethod}>{p.method}</Text> : null}
+                </View>
+                {period ? <Text style={styles.payPeriod}>Période : {period}</Text> : null}
+              </Card>
+            );
+          })
         )}
       </ScrollView>
       </FadeInView>
@@ -118,4 +195,13 @@ const styles = StyleSheet.create({
   benefitTitle: { ...typography.name },
   benefitSub: { ...typography.caption, color: colors.textMuted },
   note: { ...typography.caption, color: colors.textMuted, textAlign: "center" },
+  historyTitle: { marginTop: spacing.md },
+  payCard: { gap: spacing.xs },
+  payTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  payAmount: { ...typography.name, color: colors.primaryDark },
+  payDate: { ...typography.caption, color: colors.textMuted },
+  payMeta: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
+  payPlan: { ...typography.caption, color: colors.white, backgroundColor: colors.primary, paddingHorizontal: spacing.sm, paddingVertical: 1, borderRadius: radius.pill, overflow: "hidden", fontWeight: "700" },
+  payMethod: { ...typography.caption, color: colors.textMuted },
+  payPeriod: { ...typography.caption, color: colors.textMuted },
 });
