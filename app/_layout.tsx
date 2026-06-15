@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { Slot } from "expo-router";
+import { Slot, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SplashScreen from "expo-splash-screen";
+import * as Notifications from "expo-notifications";
 import { useFonts } from "expo-font";
 import {
   Inter_400Regular,
@@ -17,7 +18,8 @@ import { ToastProvider } from "@/providers/ToastProvider";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { LockScreen } from "@/components/LockScreen";
 import { Onboarding } from "@/components/Onboarding";
-import { setupNotificationHandler, getPermissionStatus, requestPermission } from "@/lib/local-notifications";
+import { setupNotificationHandler, getPermissionStatus, requestPermission, registerPushToken } from "@/lib/local-notifications";
+import { notificationRouteFromTapData } from "@/lib/notification-routing";
 import { resyncAllReminders } from "@/lib/reminders";
 
 // Garde l'écran de démarrage visible tant que les polices ne sont pas chargées.
@@ -33,18 +35,52 @@ function AppLockGate() {
   return null;
 }
 
-// Notifications LOCALES : configure le handler au démarrage, puis (pour une
-// utilisatrice connectée ayant fini l'onboarding) demande la permission une
+// Notifications : configure le handler au démarrage, route les taps (push ET
+// locales) vers le bon écran, enregistre le jeton push de l'utilisateur connecté,
+// puis (pour une utilisatrice ayant fini l'onboarding) demande la permission une
 // seule fois — APRÈS login, jamais au tout premier écran — et planifie les
 // rappels cycle + RDV. Best-effort, silencieux, ne rend rien.
 const NOTIF_PROMPT_FLAG = "notif_perm_prompted";
 function NotificationsBootstrap() {
   const { session, role, profile } = useAuth();
+  const uid = session?.user?.id ?? null;
 
+  // Handler d'affichage au premier plan (une fois).
   useEffect(() => { setupNotificationHandler(); }, []);
 
+  // Réponse au tap (push ou locale) → navigation. + cas du démarrage à froid.
   useEffect(() => {
-    const uid = session?.user?.id;
+    let sub: ReturnType<typeof Notifications.addNotificationResponseReceivedListener> | undefined;
+    try {
+      sub = Notifications.addNotificationResponseReceivedListener((response) => {
+        try {
+          const route = notificationRouteFromTapData(response?.notification?.request?.content?.data);
+          if (route) router.push(route);
+        } catch { /* no-op */ }
+      });
+    } catch { /* expo-notifications indisponible */ }
+
+    (async () => {
+      try {
+        const last = await Notifications.getLastNotificationResponseAsync();
+        const route = last ? notificationRouteFromTapData(last.notification?.request?.content?.data) : null;
+        if (route) router.push(route);
+      } catch { /* no-op */ }
+    })();
+
+    return () => { try { sub?.remove(); } catch { /* no-op */ } };
+  }, []);
+
+  // Jeton push pour TOUT utilisateur connecté (self-guard permission + projectId
+  // EAS ; upsert idempotent). No-op si permission non accordée / EAS absent.
+  useEffect(() => {
+    if (!uid) return;
+    registerPushToken(uid);
+  }, [uid]);
+
+  // Utilisatrice : prompt doux (une fois) + rappels locaux ; re-tente le jeton
+  // push juste après l'octroi éventuel de la permission.
+  useEffect(() => {
     if (!uid || role !== "user" || !profile?.onboarding_completed) return;
     let alive = true;
     (async () => {
@@ -57,13 +93,16 @@ function NotificationsBootstrap() {
             await requestPermission(); // prompt doux, une seule fois
           }
         }
-        if (alive) await resyncAllReminders(uid);
+        if (alive) {
+          await resyncAllReminders(uid);
+          await registerPushToken(uid);
+        }
       } catch {
         // best-effort
       }
     })();
     return () => { alive = false; };
-  }, [session?.user?.id, role, profile?.onboarding_completed]);
+  }, [uid, role, profile?.onboarding_completed]);
 
   return null;
 }

@@ -2,6 +2,8 @@ import { Platform } from "react-native";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
+import { supabase } from "@/lib/supabase";
+import type { TablesInsert } from "@/lib/database.types";
 
 // =====================================================
 // Enveloppe SÛRE autour d'expo-notifications.
@@ -102,6 +104,63 @@ export async function scheduleAt(when: Date, content: ReminderContent, kind: str
         channelId: ANDROID_CHANNEL,
       },
     });
+  } catch {
+    // best-effort
+  }
+}
+
+// =====================================================
+// PUSH SERVEUR — jetons Expo enregistrés dans push_tokens (un trigger backend
+// envoie une push à chaque insertion dans `notifications`).
+// =====================================================
+
+// projectId EAS (requis par getExpoPushTokenAsync). null si non configuré.
+function easProjectId(): string | null {
+  const id = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+// Le push serveur est-il configurable (projectId EAS présent) ?
+export function pushConfigured(): boolean {
+  return easProjectId() !== null;
+}
+
+// Enregistre (upsert) le jeton push Expo de l'utilisateur courant.
+// No-op silencieux si : pas un appareil physique, permission non accordée,
+// projectId EAS absent, ou erreur (Expo Go : getExpoPushTokenAsync échoue).
+export async function registerPushToken(userId: string): Promise<void> {
+  if (!Device.isDevice) return;
+  try {
+    if ((await getPermissionStatus()) !== "granted") return;
+    const projectId = easProjectId();
+    if (!projectId) {
+      // Sans projet EAS, le push serveur ne peut pas s'activer.
+      console.warn("[push] projectId EAS absent — push serveur inactif (configurer EAS).");
+      return;
+    }
+    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    if (!token) return;
+    const payload: TablesInsert<"push_tokens"> = {
+      user_id: userId,
+      token,
+      platform: Platform.OS,
+      updated_at: new Date().toISOString(),
+    };
+    await supabase.from("push_tokens").upsert(payload, { onConflict: "user_id,token" });
+  } catch {
+    // Expo Go / indisponible : no-op propre.
+  }
+}
+
+// Supprime le jeton push courant (à la déconnexion).
+export async function unregisterPushToken(userId: string): Promise<void> {
+  if (!Device.isDevice) return;
+  try {
+    const projectId = easProjectId();
+    if (!projectId) return;
+    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    if (!token) return;
+    await supabase.from("push_tokens").delete().eq("user_id", userId).eq("token", token);
   } catch {
     // best-effort
   }

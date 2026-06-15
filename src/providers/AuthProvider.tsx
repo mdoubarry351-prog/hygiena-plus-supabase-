@@ -3,6 +3,7 @@ import { AppState } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { authService } from "@/lib/auth-service";
+import { unregisterPushToken } from "@/lib/local-notifications";
 import type { Profile, UserRole } from "@/lib/database.types";
 
 type AuthState = {
@@ -81,6 +82,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithPhone: authService.signInWithPhone,
     verifyPhoneOtp: authService.verifyPhoneOtp,
     async signOut() {
+      // Retire le jeton push AVANT de fermer la session (RLS : suppression
+      // possible seulement tant qu'on est authentifié). Best-effort.
+      const uid = session?.user?.id;
+      if (uid) { try { await unregisterPushToken(uid); } catch { /* no-op */ } }
       await authService.signOut();
       setProfile(null);
       currentUserId.current = null;

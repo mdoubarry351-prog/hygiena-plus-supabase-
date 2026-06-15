@@ -1378,6 +1378,35 @@ export type Database = {
           }
         ];
       };
+
+      // =================================================
+      // push_tokens — jetons Expo pour le push serveur.
+      // PK (user_id, token) ; RLS : l'utilisateur gère ses propres jetons.
+      // =================================================
+      push_tokens: {
+        Row: {
+          user_id: string;
+          token: string;
+          platform: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          token: string;
+          platform?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          token?: string;
+          platform?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       // Vue sécurisée des publications : user_id renvoyé NULL pour un post

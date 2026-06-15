@@ -19,15 +19,13 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { formatRelativeTime } from "@/lib/community-service";
 import { defaultPrefs, loadNotifPrefs, isNotifEnabled, type NotifPrefs } from "@/lib/notification-prefs";
 import { NOTIF_CATEGORIES, categoryOf, typeMeta, type NotifCategoryKey } from "@/lib/notification-meta";
+import { notificationRoute, type NotifData } from "@/lib/notification-routing";
 import type { Notification } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-// Contexte de navigation transporté par la notification (colonne data jsonb).
-type NotifData = { kind?: string; postId?: string; appointmentId?: string; doctorId?: string; patientId?: string } | null;
 
 type CatFilter = NotifCategoryKey | "all";
 
@@ -57,23 +55,12 @@ export default function Notifications() {
     [visible, cat]
   );
 
-  // Navigation intelligente selon data.kind, repli par type (cycle / premium).
+  // Navigation selon data.kind / type — via la source unique partagée avec le
+  // routage des notifications push/locales (notification-routing.ts).
   const openNotif = useCallback((n: Notification) => {
     if (!n.is_read) markAsRead(n.id);
-    const d = (n.data ?? null) as NotifData;
-    switch (d?.kind) {
-      case "post": if (d?.postId) router.push({ pathname: "/(user)/community/[id]", params: { id: d.postId } }); return;
-      case "orders": router.push("/(user)/marketplace/orders"); return;
-      case "my_appointments": router.push("/(user)/appointments/mine"); return;
-      case "doctor_appointments": router.push("/(doctor)/appointments"); return;
-      case "patient_chat": if (d?.doctorId) router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: d.doctorId } }); return;
-      case "doctor_chat": if (d?.patientId) router.push({ pathname: "/(doctor)/chat", params: { patientId: d.patientId } }); return;
-      case "premium": router.push("/(user)/premium"); return;
-    }
-    const t = n.type ?? "";
-    if (t.startsWith("cycle_")) { router.push("/(user)/cycle/calendar"); return; }
-    if (t.startsWith("premium_")) { router.push("/(user)/premium"); return; }
-    // Système / sans contexte → pas de navigation.
+    const route = notificationRoute((n.data ?? null) as NotifData, n.type);
+    if (route) router.push(route);
   }, [markAsRead, router]);
 
   const removeNotif = useCallback((id: string) => {
