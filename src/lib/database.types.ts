@@ -1458,6 +1458,23 @@ export type Database = {
         Args: Record<string, never>;
         Returns: Json;
       };
+      // RDV pour la vue admin SANS donnée médicale (ni motif/reason ni notes).
+      // Guardé is_admin. Filtre statut + pagination.
+      admin_appointments_list: {
+        Args: { p_status: string | null; p_limit: number; p_offset: number };
+        Returns: {
+          id: string;
+          patient_name: string | null;
+          doctor_name: string | null;
+          specialty: string | null;
+          appointment_date: string;
+          appointment_time: string;
+          status: AppointmentStatus;
+          is_paid: boolean;
+          amount_paid: number | null;
+          created_at: string;
+        }[];
+      };
     };
     Enums: {
       user_role: UserRole;

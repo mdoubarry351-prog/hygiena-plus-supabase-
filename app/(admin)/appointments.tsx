@@ -109,8 +109,8 @@ export default function AdminAppointments() {
           ) : (
             <>
               {rows.map((a) => {
-                const patient = a.patient?.full_name?.trim() || "Patiente";
-                const doctor = a.doctor?.profile?.full_name?.trim() || "Médecin";
+                const patient = a.patient_name?.trim() || "Patiente";
+                const doctor = a.doctor_name?.trim() || "Médecin";
                 return (
                   <Card key={a.id} style={styles.row}>
                     <View style={styles.head}>
@@ -118,7 +118,7 @@ export default function AdminAppointments() {
                         <Text style={styles.patient} numberOfLines={1}>{patient}</Text>
                         <View style={styles.metaLine}>
                           <Ionicons name="medkit-outline" size={13} color={colors.textMuted} />
-                          <Text style={styles.doctor} numberOfLines={1}>{doctor}{a.doctor?.specialty ? ` · ${a.doctor.specialty}` : ""}</Text>
+                          <Text style={styles.doctor} numberOfLines={1}>{doctor}{a.specialty ? ` · ${a.specialty}` : ""}</Text>
                         </View>
                       </View>
                       <Badge label={STATUS_LABELS[a.status]} color={STATUS_COLORS[a.status]} />
@@ -139,7 +139,6 @@ export default function AdminAppointments() {
                         </View>
                       ) : null}
                     </View>
-                    {a.reason ? <Text style={styles.reason} numberOfLines={2}>{a.reason}</Text> : null}
                   </Card>
                 );
               })}
@@ -163,5 +162,4 @@ const styles = StyleSheet.create({
   metaLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   foot: { flexDirection: "row", alignItems: "center", gap: spacing.lg, flexWrap: "wrap", borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },
   meta: { ...typography.caption, color: colors.textMuted, textTransform: "capitalize" },
-  reason: { ...typography.body, color: colors.text },
 });

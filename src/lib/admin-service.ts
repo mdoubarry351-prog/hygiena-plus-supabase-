@@ -146,17 +146,19 @@ export type SuspensionRow = UserSuspension & {
 };
 export type AuditLogRow = Tables<"admin_logs"> & { adminName: string | null };
 
-// Rendez-vous enrichi pour la vue admin (lecture seule) : patient + médecin joints.
+// Rendez-vous pour la vue admin (lecture seule) via le RPC admin_appointments_list :
+// AUCUNE donnée médicale (ni motif/reason ni notes). Champs plats renvoyés par le RPC.
 export type AdminAppointmentRow = {
   id: string;
+  patient_name: string | null;
+  doctor_name: string | null;
+  specialty: string | null;
   appointment_date: string;
   appointment_time: string;
   status: AppointmentStatus;
-  reason: string | null;
   is_paid: boolean;
   amount_paid: number | null;
-  patient: { full_name: string | null } | null;
-  doctor: { specialty: string | null; profile: { full_name: string | null } | null } | null;
+  created_at: string;
 };
 
 // Paiement d'abonnement enrichi (nom de l'abonné) pour la vue admin.
@@ -339,22 +341,16 @@ export const adminService = {
 
   // Rendez-vous (vue admin, lecture seule) : patient + médecin joints, paginés,
   // filtrables par statut. RLS admin autorise la lecture de tous les RDV.
+  // Source = RPC admin_appointments_list (guardé is_admin) : aucune donnée médicale
+  // (ni motif ni notes). Filtre statut + pagination passés au RPC.
   async getAppointmentsAdmin(opts: { status?: AppointmentStatus | null; limit?: number; offset?: number }): Promise<AdminAppointmentRow[]> {
-    const limit = opts.limit ?? 20;
-    const offset = opts.offset ?? 0;
-    let query = supabase
-      .from("appointments")
-      .select(
-        "id, appointment_date, appointment_time, status, reason, is_paid, amount_paid, " +
-        "patient:profiles!appointments_patient_id_fkey(full_name), " +
-        "doctor:doctors!appointments_doctor_id_fkey(specialty, profile:profiles!doctors_user_id_fkey(full_name))"
-      )
-      .order("appointment_date", { ascending: false })
-      .order("appointment_time", { ascending: false });
-    if (opts.status) query = query.eq("status", opts.status);
-    const { data, error } = await query.range(offset, offset + limit - 1);
+    const { data, error } = await supabase.rpc("admin_appointments_list", {
+      p_status: opts.status ?? null,
+      p_limit: opts.limit ?? 20,
+      p_offset: opts.offset ?? 0,
+    });
     if (error) throw error;
-    return (data ?? []) as unknown as AdminAppointmentRow[];
+    return (data ?? []) as AdminAppointmentRow[];
   },
 
   // Abonnements & paiements (vue admin). État dérivé de subscription_payments :
