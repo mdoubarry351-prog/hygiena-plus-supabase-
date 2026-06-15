@@ -20,6 +20,7 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Hygiena+ accède à vos photos pour définir votre photo de profil et ajouter des images à vos publications et produits.",
+        "NSPhotoLibraryAddUsageDescription": "Hygiena+ enregistre dans votre galerie les photos que vous téléchargez.",
         "NSFaceIDUsageDescription": "Hygiena+ utilise Face ID pour verrouiller et protéger l'accès à vos données de santé."
       }
     },
@@ -52,6 +53,14 @@
         "expo-notifications",
         {
           "color": "#10B981"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Hygiena+ accède à vos photos pour définir votre photo de profil et ajouter des images à vos publications et produits.",
+          "savePhotosPermission": "Hygiena+ enregistre dans votre galerie les photos que vous téléchargez.",
+          "isAccessMediaLocationEnabled": false
         }
       ],
       "@react-native-community/datetimepicker"
