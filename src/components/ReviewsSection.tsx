@@ -3,6 +3,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { Input } from "@/components/Input";
 import { StarRating, StarSelector } from "@/components/StarRating";
 import { reviewsService } from "@/lib/reviews-service";
@@ -35,6 +36,7 @@ export function ReviewsSection({
   onChanged?: () => void;
 }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [myRating, setMyRating] = useState(0);
   const [myComment, setMyComment] = useState("");
@@ -92,25 +94,23 @@ export function ReviewsSection({
     }
   }
 
-  function remove() {
-    Alert.alert("Supprimer votre avis ?", "Cette action est irréversible.", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Supprimer",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            if (kind === "product") await reviewsService.deleteMyProductReview(targetId);
-            else await reviewsService.deleteMyDoctorReview(targetId);
-            setHasMine(false); setMyRating(0); setMyComment("");
-            await load();
-            onChanged?.();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-          }
-        },
-      },
-    ]);
+  async function remove() {
+    const ok = await confirm({
+      title: "Supprimer votre avis ?",
+      message: "Cette action est irréversible.",
+      confirmLabel: "Supprimer",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      if (kind === "product") await reviewsService.deleteMyProductReview(targetId);
+      else await reviewsService.deleteMyDoctorReview(targetId);
+      setHasMine(false); setMyRating(0); setMyComment("");
+      await load();
+      onChanged?.();
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+    }
   }
 
   return (

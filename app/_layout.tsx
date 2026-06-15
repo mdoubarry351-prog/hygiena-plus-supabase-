@@ -13,6 +13,7 @@ import {
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
 import { AppLockProvider, useAppLock } from "@/providers/AppLockProvider";
 import { ToastProvider } from "@/providers/ToastProvider";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { LockScreen } from "@/components/LockScreen";
 import { Onboarding } from "@/components/Onboarding";
 
@@ -58,8 +59,10 @@ export default function RootLayout() {
       <AuthProvider>
         <AppLockProvider>
           <ToastProvider>
-            <StatusBar style="dark" />
-            <Slot />
+            <ConfirmProvider>
+              <StatusBar style="dark" />
+              <Slot />
+            </ConfirmProvider>
           </ToastProvider>
           {/* Onboarding par-dessus l'app ; le verrou reste au-dessus de tout. */}
           <OnboardingGate />

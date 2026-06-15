@@ -10,6 +10,7 @@ import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { RescheduleModal } from "@/components/RescheduleModal";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/providers/AuthProvider";
 import { hapticWarning } from "@/lib/haptics";
 import {
@@ -49,6 +50,7 @@ function isEligible(a: AppointmentWithDoctor): boolean {
 export default function MyAppointments() {
   const { session, role } = useAuth();
   const router = useRouter();
+  const confirm = useConfirm();
   const [appointments, setAppointments] = useState<AppointmentWithDoctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -76,23 +78,22 @@ export default function MyAppointments() {
     setRefreshing(false);
   }
 
-  function cancelAppt(a: AppointmentWithDoctor) {
-    Alert.alert("Annuler ce rendez-vous ?", "Cette action est définitive.", [
-      { text: "Non", style: "cancel" },
-      {
-        text: "Annuler le RDV",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await appointmentsService.cancelAppointment(a.id);
-            hapticWarning();
-            await load();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Annulation échouée");
-          }
-        },
-      },
-    ]);
+  async function cancelAppt(a: AppointmentWithDoctor) {
+    const ok = await confirm({
+      title: "Annuler ce rendez-vous ?",
+      message: "Cette action est définitive.",
+      confirmLabel: "Annuler le RDV",
+      cancelLabel: "Non",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await appointmentsService.cancelAppointment(a.id);
+      hapticWarning();
+      await load();
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Annulation échouée");
+    }
   }
 
   // Un médecin n'a pas de RDV patient ici (il les reçoit via l'espace pro).

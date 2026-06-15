@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { Button } from "@/components/Button";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { authService } from "@/lib/auth-service";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -11,8 +12,24 @@ import { colors, radius, spacing, typography } from "@/theme";
  */
 export function DeleteAccountButton() {
   const [deleting, setDeleting] = useState(false);
+  const confirm = useConfirm();
 
-  async function doDelete() {
+  // Double confirmation (sécurité) via dialogue design system.
+  async function handleDelete() {
+    const first = await confirm({
+      title: "Supprimer mon compte",
+      message: "Cette action est définitive : toutes vos données — cycle, commandes, messages, etc. — seront supprimées et ne pourront pas être récupérées.",
+      confirmLabel: "Supprimer",
+      danger: true,
+    });
+    if (!first) return;
+    const second = await confirm({
+      title: "Êtes-vous vraiment sûre ?",
+      message: "Dernière étape : la suppression est définitive et immédiate.",
+      confirmLabel: "Oui, supprimer définitivement",
+      danger: true,
+    });
+    if (!second) return;
     setDeleting(true);
     try {
       await authService.deleteOwnAccount();
@@ -23,34 +40,10 @@ export function DeleteAccountButton() {
     }
   }
 
-  // 2ᵉ confirmation (irréversible).
-  function confirmSecond() {
-    Alert.alert(
-      "Êtes-vous vraiment sûre ?",
-      "Dernière étape : la suppression est définitive et immédiate.",
-      [
-        { text: "Annuler", style: "cancel" },
-        { text: "Oui, supprimer définitivement", style: "destructive", onPress: doDelete },
-      ]
-    );
-  }
-
-  // 1ʳᵉ confirmation (explication).
-  function confirmFirst() {
-    Alert.alert(
-      "Supprimer mon compte",
-      "Cette action est définitive : toutes vos données — cycle, commandes, messages, etc. — seront supprimées et ne pourront pas être récupérées.",
-      [
-        { text: "Annuler", style: "cancel" },
-        { text: "Supprimer", style: "destructive", onPress: confirmSecond },
-      ]
-    );
-  }
-
   return (
     <View style={styles.zone}>
       <Text style={styles.zoneLabel}>Zone de danger</Text>
-      <Button title="Supprimer mon compte" variant="danger" onPress={confirmFirst} loading={deleting} disabled={deleting} />
+      <Button title="Supprimer mon compte" variant="danger" onPress={handleDelete} loading={deleting} disabled={deleting} />
       <Text style={styles.zoneHint}>Action définitive et irréversible. Vos données seront effacées.</Text>
     </View>
   );

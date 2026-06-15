@@ -12,6 +12,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { useCycles } from "@/hooks/useCycles";
 import { cycleService } from "@/lib/cycle-service";
 import { useToast } from "@/providers/ToastProvider";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { MenstrualCycle } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -44,6 +45,7 @@ export default function CycleHistory() {
   const { cycles, loading, offline, cachedAt, reload } = useCycles();
   const router = useRouter();
   const toast = useToast();
+  const confirm = useConfirm();
   const [visible, setVisible] = useState(PAGE);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -71,26 +73,24 @@ export default function CycleHistory() {
     [cycles]
   );
 
-  function confirmDelete(c: MenstrualCycle) {
-    Alert.alert("Supprimer cette saisie ?", `Règles du ${formatDay(c.period_start)}. Cette action est définitive.`, [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Supprimer",
-        style: "destructive",
-        onPress: async () => {
-          setDeleting(c.id);
-          try {
-            await cycleService.deleteCycle(c.id);
-            await reload();
-            toast.success("Saisie supprimée.");
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-          } finally {
-            setDeleting(null);
-          }
-        },
-      },
-    ]);
+  async function confirmDelete(c: MenstrualCycle) {
+    const ok = await confirm({
+      title: "Supprimer cette saisie ?",
+      message: `Règles du ${formatDay(c.period_start)}. Cette action est définitive.`,
+      confirmLabel: "Supprimer",
+      danger: true,
+    });
+    if (!ok) return;
+    setDeleting(c.id);
+    try {
+      await cycleService.deleteCycle(c.id);
+      await reload();
+      toast.success("Saisie supprimée.");
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+    } finally {
+      setDeleting(null);
+    }
   }
 
   if (loading && cycles.length === 0) return <Loading />;

@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import {
-  Alert, FlatList, LayoutAnimation, Platform, Pressable, RefreshControl,
+  FlatList, LayoutAnimation, Platform, Pressable, RefreshControl,
   StyleSheet, Text, UIManager, View, type ListRenderItemInfo,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
 import { FadeInView } from "@/components/FadeInView";
 import { SegmentedControl } from "@/components/SegmentedControl";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useNotifications } from "@/hooks/useNotifications";
 import { formatRelativeTime } from "@/lib/community-service";
 import { defaultPrefs, loadNotifPrefs, isNotifEnabled, type NotifPrefs } from "@/lib/notification-prefs";
@@ -35,6 +36,7 @@ export default function Notifications() {
   const [prefs, setPrefs] = useState<NotifPrefs>(defaultPrefs());
   const [cat, setCat] = useState<CatFilter>("all");
   const router = useRouter();
+  const confirm = useConfirm();
 
   // Recharge la liste ET les préférences au focus (point 15 : pas de refetch inutile).
   useFocusEffect(useCallback(() => {
@@ -78,15 +80,14 @@ export default function Notifications() {
     deleteNotification(id);
   }, [deleteNotification]);
 
-  function confirmDeleteAll() {
-    Alert.alert("Tout supprimer ?", "Toutes vos notifications seront définitivement supprimées.", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Tout supprimer",
-        style: "destructive",
-        onPress: () => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); deleteAll(); },
-      },
-    ]);
+  async function confirmDeleteAll() {
+    const ok = await confirm({
+      title: "Tout supprimer ?",
+      message: "Toutes vos notifications seront définitivement supprimées.",
+      confirmLabel: "Tout supprimer",
+      danger: true,
+    });
+    if (ok) { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); deleteAll(); }
   }
 
   const onRefresh = useCallback(async () => {
