@@ -2,24 +2,30 @@ import { useCallback, useState } from "react";
 import { Alert } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { supabase } from "@/lib/supabase";
+import { PREMIUM_PRICE, PREMIUM_PERIOD_DAYS } from "@/lib/premium-service";
 
 /**
  * Disponibilité des modules, pilotée par l'admin (table app_settings,
  * lisible par tout utilisateur authentifié via la policy settings_select_all).
+ * Inclut aussi le prix et la durée du Premium (modifiables par l'admin).
  */
 export type AppFlags = {
   marketplace_enabled: boolean;
   doctors_enabled: boolean;
   appointments_enabled: boolean;
   premium_enabled: boolean;
+  premium_price: number;
+  premium_duration_days: number;
 };
 
-// Défaut prudent : tout activé. Un module n'est bloqué QUE si la valeur lue est false.
+// Défaut prudent : tout activé + prix/durée de repli (50000 GNF / 30 j).
 const ALL_ON: AppFlags = {
   marketplace_enabled: true,
   doctors_enabled: true,
   appointments_enabled: true,
   premium_enabled: true,
+  premium_price: PREMIUM_PRICE,
+  premium_duration_days: PREMIUM_PERIOD_DAYS,
 };
 
 /**
@@ -34,7 +40,7 @@ export function useAppSettings(): AppFlags & { loading: boolean; reload: () => P
     try {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("marketplace_enabled, doctors_enabled, appointments_enabled, premium_enabled")
+        .select("marketplace_enabled, doctors_enabled, appointments_enabled, premium_enabled, premium_price, premium_duration_days")
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -45,6 +51,8 @@ export function useAppSettings(): AppFlags & { loading: boolean; reload: () => P
           doctors_enabled: data.doctors_enabled ?? true,
           appointments_enabled: data.appointments_enabled ?? true,
           premium_enabled: data.premium_enabled ?? true,
+          premium_price: data.premium_price ?? PREMIUM_PRICE,
+          premium_duration_days: data.premium_duration_days ?? PREMIUM_PERIOD_DAYS,
         });
       } else {
         // Ligne absente → on n'empêche rien par erreur.

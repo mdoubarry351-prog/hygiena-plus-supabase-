@@ -13,7 +13,7 @@ import { useToast } from "@/providers/ToastProvider";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { hapticSuccess } from "@/lib/haptics";
 import { authService } from "@/lib/auth-service";
-import { premiumService, PREMIUM_PRICE, PREMIUM_PERIOD_DAYS } from "@/lib/premium-service";
+import { premiumService } from "@/lib/premium-service";
 import { formatPrice } from "@/lib/marketplace-service";
 import type { SubscriptionPayment } from "@/lib/database.types";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
@@ -41,7 +41,7 @@ const BENEFITS: { icon: keyof typeof Ionicons.glyphMap; title: string; sub: stri
 
 export default function Premium() {
   const { profile, session, refreshProfile } = useAuth();
-  const { premium_enabled } = useAppSettings();
+  const { premium_enabled, premium_price, premium_duration_days } = useAppSettings();
   const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
@@ -75,11 +75,11 @@ export default function Premium() {
         try {
           await premiumService.recordSubscriptionPayment({
             userId: session.user.id,
-            amount: PREMIUM_PRICE,
+            amount: premium_price,
             method: "Mobile Money (simulé)",
             plan: "Premium",
             periodStart: toISODate(today),
-            periodEnd: toISODate(addDays(today, PREMIUM_PERIOD_DAYS)),
+            periodEnd: toISODate(addDays(today, premium_duration_days)),
           });
           await loadPayments();
         } catch {
@@ -142,7 +142,7 @@ export default function Premium() {
         {isPremium ? (
           <Button title="Se désabonner" variant="outline" onPress={() => setPremium(false)} loading={saving} />
         ) : (
-          <Button title={`S'abonner (simulé) · ${formatPrice(PREMIUM_PRICE)}`} onPress={() => setPremium(true)} loading={saving} />
+          <Button title={`S'abonner (simulé) · ${formatPrice(premium_price)}`} onPress={() => setPremium(true)} loading={saving} />
         )}
 
         {/* Historique des paiements */}

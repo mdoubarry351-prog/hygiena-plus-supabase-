@@ -3,6 +3,8 @@ import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Button } from "@/components/Button";
+import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -25,6 +27,9 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<ToggleKey | null>(null);
+  const [priceStr, setPriceStr] = useState("");
+  const [durationStr, setDurationStr] = useState("");
+  const [savingPrice, setSavingPrice] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -38,6 +43,37 @@ export default function AdminSettings() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Pré-remplit les champs de tarification dès que les réglages sont chargés.
+  useEffect(() => {
+    if (settings) {
+      setPriceStr(String(settings.premium_price ?? 50000));
+      setDurationStr(String(settings.premium_duration_days ?? 30));
+    }
+  }, [settings]);
+
+  // Enregistre le prix + la durée du Premium (même mécanisme que les toggles).
+  async function savePricing() {
+    if (!session?.user || !settings) return;
+    const price = Number(priceStr.replace(/\s/g, ""));
+    const days = Number(durationStr.replace(/\s/g, ""));
+    if (Number.isNaN(price) || price < 0) { Alert.alert("Prix invalide", "Le prix doit être un nombre positif ou nul."); return; }
+    if (Number.isNaN(days) || days < 1 || !Number.isInteger(days)) { Alert.alert("Durée invalide", "La durée doit être un entier supérieur ou égal à 1."); return; }
+    setSavingPrice(true);
+    try {
+      const updated = await adminService.updateSettings(session.user.id, settings.id, {
+        premium_price: price,
+        premium_duration_days: days,
+        updated_by: session.user.id,
+      });
+      setSettings(updated);
+      Alert.alert("Enregistré", "La tarification Premium a été mise à jour.");
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
+    } finally {
+      setSavingPrice(false);
+    }
+  }
 
   async function toggle(key: ToggleKey) {
     if (!session?.user || !settings) return;
@@ -78,32 +114,50 @@ export default function AdminSettings() {
             message="Aucune ligne de paramètres trouvée dans app_settings."
           />
         ) : (
-          TOGGLES.map((t) => {
-            const on = !!settings[t.key];
-            return (
-              <Card key={t.key} style={styles.moduleCard}>
-                <View style={[styles.moduleIcon, { backgroundColor: on ? colors.primaryLight : colors.surface }]}>
-                  <Ionicons name={t.icon} size={22} color={on ? colors.primaryDark : colors.textMuted} />
+          <>
+            {TOGGLES.map((t) => {
+              const on = !!settings[t.key];
+              return (
+                <Card key={t.key} style={styles.moduleCard}>
+                  <View style={[styles.moduleIcon, { backgroundColor: on ? colors.primaryLight : colors.surface }]}>
+                    <Ionicons name={t.icon} size={22} color={on ? colors.primaryDark : colors.textMuted} />
+                  </View>
+                  <View style={styles.moduleInfo}>
+                    <Text style={styles.moduleTitle}>{t.label}</Text>
+                    <Text style={styles.moduleSub}>{t.sub}</Text>
+                  </View>
+                  <View style={styles.moduleToggle}>
+                    <Text style={[styles.statusLabel, on ? styles.statusOn : styles.statusOff]}>
+                      {on ? "ACTIVÉ" : "DÉSACTIVÉ"}
+                    </Text>
+                    <Switch
+                      value={on}
+                      onValueChange={() => toggle(t.key)}
+                      disabled={busyKey === t.key}
+                      trackColor={{ false: colors.border, true: colors.primary }}
+                      thumbColor={colors.white}
+                    />
+                  </View>
+                </Card>
+              );
+            })}
+
+            {/* Tarification Premium (modifiable par l'admin) */}
+            <Card style={styles.priceCard}>
+              <View style={styles.priceHead}>
+                <View style={[styles.moduleIcon, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="cash-outline" size={22} color={colors.primaryDark} />
                 </View>
                 <View style={styles.moduleInfo}>
-                  <Text style={styles.moduleTitle}>{t.label}</Text>
-                  <Text style={styles.moduleSub}>{t.sub}</Text>
+                  <Text style={styles.moduleTitle}>Tarification Premium</Text>
+                  <Text style={styles.moduleSub}>Prix et durée de l'abonnement (paiement simulé).</Text>
                 </View>
-                <View style={styles.moduleToggle}>
-                  <Text style={[styles.statusLabel, on ? styles.statusOn : styles.statusOff]}>
-                    {on ? "ACTIVÉ" : "DÉSACTIVÉ"}
-                  </Text>
-                  <Switch
-                    value={on}
-                    onValueChange={() => toggle(t.key)}
-                    disabled={busyKey === t.key}
-                    trackColor={{ false: colors.border, true: colors.primary }}
-                    thumbColor={colors.white}
-                  />
-                </View>
-              </Card>
-            );
-          })
+              </View>
+              <Input label="Prix de l'abonnement Premium (GNF)" value={priceStr} onChangeText={setPriceStr} keyboardType="numeric" placeholder="Ex. 50000" />
+              <Input label="Durée (jours)" value={durationStr} onChangeText={setDurationStr} keyboardType="numeric" placeholder="Ex. 30" />
+              <Button title="Enregistrer la tarification" onPress={savePricing} loading={savingPrice} />
+            </Card>
+          </>
         )}
       </ScrollView>
     </Screen>
@@ -124,4 +178,6 @@ const styles = StyleSheet.create({
   statusLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.5 },
   statusOn: { color: colors.primaryDark },
   statusOff: { color: colors.textMuted },
+  priceCard: { gap: spacing.sm },
+  priceHead: { flexDirection: "row", alignItems: "center", gap: spacing.md },
 });
