@@ -16,7 +16,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.hygiena.plus",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "Hygiena+ accède à vos photos pour définir votre photo de profil et ajouter des images à vos publications et produits.",
+        "NSFaceIDUsageDescription": "Hygiena+ utilise Face ID pour verrouiller et protéger l'accès à vos données de santé."
+      }
     },
     "android": {
       "package": "com.hygiena.plus",
@@ -33,13 +38,14 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Hygiena+ a besoin d'accéder à vos photos pour ajouter une image de produit."
+          "photosPermission": "Hygiena+ accède à vos photos pour définir votre photo de profil et ajouter des images à vos publications et produits.",
+          "cameraPermission": false
         }
       ],
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Hygiena+ utilise Face ID pour protéger l'accès à vos données."
+          "faceIDPermission": "Hygiena+ utilise Face ID pour verrouiller et protéger l'accès à vos données de santé."
         }
       ],
       [
