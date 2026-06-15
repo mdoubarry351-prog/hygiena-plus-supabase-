@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
 import { useNotifications } from "@/hooks/useNotifications";
 import { formatRelativeTime } from "@/lib/community-service";
+import { defaultPrefs, loadNotifPrefs, isNotifEnabled, type NotifPrefs } from "@/lib/notification-prefs";
 import type { Notification } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -37,9 +38,17 @@ type NotifData = { kind?: string; postId?: string; appointmentId?: string } | nu
 export default function Notifications() {
   const { notifications, unreadCount, loading, reload, markAsRead, markAllAsRead } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
+  const [prefs, setPrefs] = useState<NotifPrefs>(defaultPrefs());
   const router = useRouter();
 
-  useFocusEffect(useCallback(() => { reload(); }, [reload]));
+  // Recharge la liste ET les préférences au focus (changement depuis les réglages).
+  useFocusEffect(useCallback(() => {
+    reload();
+    loadNotifPrefs().then(setPrefs);
+  }, [reload]));
+
+  // Notifications visibles selon les préférences locales.
+  const visible = notifications.filter((n) => isNotifEnabled(prefs, n.type));
 
   // Marque comme lue + navigue selon data.kind (si présent).
   function handlePress(n: Notification) {
@@ -71,12 +80,17 @@ export default function Notifications() {
       <ScreenHeader
         title="Notifications"
         right={
-          unreadCount > 0 ? (
-            <Pressable onPress={markAllAsRead} hitSlop={10} style={styles.markAllBtn}>
-              <Ionicons name="checkmark-done-outline" size={18} color={colors.primary} />
-              <Text style={styles.markAllText}>Tout marquer comme lu</Text>
+          <View style={styles.headerRight}>
+            {unreadCount > 0 ? (
+              <Pressable onPress={markAllAsRead} hitSlop={10} style={styles.markAllBtn}>
+                <Ionicons name="checkmark-done-outline" size={18} color={colors.primary} />
+                <Text style={styles.markAllText}>Tout lire</Text>
+              </Pressable>
+            ) : null}
+            <Pressable onPress={() => router.push("/(user)/notification-settings")} hitSlop={10} accessibilityRole="button" accessibilityLabel="Préférences de notifications">
+              <Ionicons name="options-outline" size={22} color={colors.text} />
             </Pressable>
-          ) : undefined
+          </View>
         }
       />
 
@@ -85,14 +99,18 @@ export default function Notifications() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        {notifications.length === 0 ? (
+        {visible.length === 0 ? (
           <EmptyState
             icon="notifications-off-outline"
             title="Aucune notification"
-            message="Vous serez notifiée ici de vos rendez-vous, commandes et nouveautés."
+            message={
+              notifications.length > 0
+                ? "Aucune notification ne correspond à vos préférences. Ajustez-les via l'icône en haut à droite."
+                : "Vous serez notifiée ici de vos rendez-vous, commandes et nouveautés."
+            }
           />
         ) : (
-          notifications.map((n) => (
+          visible.map((n) => (
             <NotificationRow key={n.id} notification={n} meta={metaFor(n.type)} onPress={() => handlePress(n)} />
           ))
         )}
@@ -128,6 +146,7 @@ function NotificationRow({ notification, meta, onPress }: { notification: Notifi
 
 const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg, gap: spacing.sm },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   markAllBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   markAllText: { ...typography.caption, color: colors.primary, fontWeight: "600" },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },

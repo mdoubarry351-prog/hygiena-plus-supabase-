@@ -213,6 +213,19 @@ export default function Profile() {
           </Card>
         </Pressable>
 
+        <Pressable onPress={() => router.push("/(user)/notification-settings")}>
+          <Card style={styles.proCard}>
+            <View style={styles.proIcon}>
+              <Ionicons name="notifications-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.proText}>
+              <Text style={styles.proTitle}>Préférences de notifications</Text>
+              <Text style={styles.proSub}>Choisir les notifications à recevoir</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+
         <Pressable onPress={() => router.push("/(user)/lock")}>
           <Card style={styles.proCard}>
             <View style={styles.proIcon}>
