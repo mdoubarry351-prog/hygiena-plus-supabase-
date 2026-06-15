@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Avatar } from "@/components/Avatar";
+import { Badge } from "@/components/Badge";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
@@ -293,7 +294,7 @@ export default function AdminAccounts() {
                     <Text style={styles.contact} numberOfLines={1}>{p.phone ?? p.email ?? "—"}</Text>
                     {isSuspended ? <Text style={styles.suspendedTag}>● Suspendu</Text> : null}
                   </View>
-                  <Text style={[styles.badge, { backgroundColor: ROLE_COLORS[p.role] }]}>{ROLE_LABELS[p.role]}</Text>
+                  <Badge label={ROLE_LABELS[p.role]} color={ROLE_COLORS[p.role]} />
                 </Card>
 
                 {open && (

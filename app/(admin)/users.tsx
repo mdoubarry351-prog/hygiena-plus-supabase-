@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Avatar } from "@/components/Avatar";
+import { Badge } from "@/components/Badge";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
@@ -258,7 +259,7 @@ export default function AdminUsers() {
                       <Text style={styles.email} numberOfLines={1}>{u.email ?? "—"}</Text>
                       {isSuspended ? <Text style={styles.suspendedTag}>● Suspendu</Text> : null}
                     </View>
-                    <Text style={[styles.badge, { backgroundColor: ROLE_COLORS[u.role] }]}>{ROLE_LABELS[u.role]}</Text>
+                    <Badge label={ROLE_LABELS[u.role]} color={ROLE_COLORS[u.role]} />
                   </Card>
                   {open && (
                     <Card style={styles.detail}>

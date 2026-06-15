@@ -3,6 +3,7 @@ import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, t
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Badge } from "@/components/Badge";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
@@ -194,7 +195,7 @@ export default function AdminOrders() {
                 <Card key={o.id} style={styles.card}>
                   <View style={styles.head}>
                     <Text style={styles.date}>{new Date(o.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</Text>
-                    <Text style={[styles.badge, { backgroundColor: STATUS_COLORS[o.status] }]}>{STATUS_LABELS[o.status]}</Text>
+                    <Badge label={STATUS_LABELS[o.status]} color={STATUS_COLORS[o.status]} />
                   </View>
                   <Text style={styles.meta}>{o.phone} · {o.delivery_mode === "delivery" ? "Livraison" : "Retrait"}{o.neighborhood ? ` · ${o.neighborhood}` : ""}</Text>
                   <View style={styles.foot}>

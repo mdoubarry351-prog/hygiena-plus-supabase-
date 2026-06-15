@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
@@ -132,9 +133,7 @@ export default function AdminSuspensions() {
                   {s.reason ? <Text style={styles.meta}>{s.reason}</Text> : null}
                   <Text style={styles.meta}>Depuis le {new Date(s.starts_at).toLocaleDateString("fr-FR")}</Text>
                 </View>
-                <Text style={[styles.badge, s.is_active ? styles.badgeActive : styles.badgeInactive]}>
-                  {s.is_active ? "Active" : "Levée"}
-                </Text>
+                <Badge label={s.is_active ? "Active" : "Levée"} tone={s.is_active ? "danger" : "neutral"} />
               </View>
               {s.is_active && (
                 <Pressable onPress={() => lift(s)} style={styles.liftBtn}>

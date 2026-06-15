@@ -4,6 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
@@ -193,7 +194,7 @@ export default function AdminProducts() {
                   </View>
                 </Pressable>
                 <View style={styles.rowActions}>
-                  <Text style={[styles.badge, p.is_active ? styles.badgeOn : styles.badgeOff]}>{p.is_active ? "Actif" : "Inactif"}</Text>
+                  <Badge label={p.is_active ? "Actif" : "Inactif"} tone={p.is_active ? "success" : "neutral"} />
                   <Switch
                     value={p.is_active}
                     onValueChange={() => toggleActive(p)}

@@ -4,6 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Badge } from "@/components/Badge";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
@@ -450,9 +451,7 @@ export default function AdminDoctors() {
                   <Text style={styles.specialty}>{d.specialty}</Text>
                   <Text style={styles.meta}>{d.profile?.email ?? "—"}</Text>
                 </View>
-                <Text style={[styles.badge, d.is_validated ? styles.badgeOk : styles.badgePending]}>
-                  {d.is_validated ? "Validé" : "En attente"}
-                </Text>
+                <Badge label={d.is_validated ? "Validé" : "En attente"} color={d.is_validated ? colors.success : colors.accent} />
                 <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={colors.textMuted} />
               </Pressable>
               <View style={styles.metaRow}>

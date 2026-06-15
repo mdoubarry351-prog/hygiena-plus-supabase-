@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
+import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
 import { OrderTimeline } from "@/components/OrderTimeline";
@@ -68,9 +69,7 @@ export default function Orders() {
               <Card key={o.id} onPress={() => router.push({ pathname: "/(user)/marketplace/order", params: { id: o.id } })} accessibilityLabel="Voir la commande" style={styles.orderCard}>
                   <View style={styles.orderHead}>
                     <Text style={styles.date}>{formatOrderDate(o.created_at)}</Text>
-                    <Text style={[styles.badge, { backgroundColor: ORDER_STATUS_COLORS[o.status] }]}>
-                      {ORDER_STATUS_LABELS[o.status]}
-                    </Text>
+                    <Badge label={ORDER_STATUS_LABELS[o.status]} color={ORDER_STATUS_COLORS[o.status]} />
                   </View>
                   <OrderTimeline status={o.status} />
                   {o.payment_method ? (

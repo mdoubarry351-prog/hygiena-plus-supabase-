@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
@@ -86,9 +87,7 @@ export default function AdminReports() {
                 <Pressable onPress={() => toggle(r)}>
                   <View style={styles.head}>
                     <Text style={styles.reason} numberOfLines={open ? undefined : 2}>{r.reason}</Text>
-                    <Text style={[styles.badge, { backgroundColor: STATUS_COLORS[r.status] ?? colors.textMuted }]}>
-                      {STATUS_LABELS[r.status as ReportStatus] ?? r.status}
-                    </Text>
+                    <Badge label={STATUS_LABELS[r.status as ReportStatus] ?? r.status} color={STATUS_COLORS[r.status] ?? colors.textMuted} />
                   </View>
                   <Text style={styles.meta}>
                     Par {r.reporter?.full_name ?? "—"}

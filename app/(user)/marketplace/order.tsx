@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
+import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { EmptyState } from "@/components/EmptyState";
@@ -121,9 +122,7 @@ export default function OrderDetail() {
               <Text style={styles.orderId}>Commande #{shortId}</Text>
               <Text style={styles.date}>{formatOrderDate(order.created_at)}</Text>
             </View>
-            <Text style={[styles.badge, { backgroundColor: ORDER_STATUS_COLORS[order.status] }]}>
-              {ORDER_STATUS_LABELS[order.status]}
-            </Text>
+            <Badge label={ORDER_STATUS_LABELS[order.status]} color={ORDER_STATUS_COLORS[order.status]} />
           </View>
           <OrderTimeline status={order.status} />
         </Card>
