@@ -15,6 +15,7 @@ import type {
   DoctorReview,
   UserRole,
   OrderStatus,
+  AppointmentStatus,
   DeliveryMode,
   Json,
   Tables,
@@ -144,6 +145,19 @@ export type SuspensionRow = UserSuspension & {
   user: Pick<Profile, "full_name" | "email"> | null;
 };
 export type AuditLogRow = Tables<"admin_logs"> & { adminName: string | null };
+
+// Rendez-vous enrichi pour la vue admin (lecture seule) : patient + médecin joints.
+export type AdminAppointmentRow = {
+  id: string;
+  appointment_date: string;
+  appointment_time: string;
+  status: AppointmentStatus;
+  reason: string | null;
+  is_paid: boolean;
+  amount_paid: number | null;
+  patient: { full_name: string | null } | null;
+  doctor: { specialty: string | null; profile: { full_name: string | null } | null } | null;
+};
 
 // Statistiques du tableau de bord renvoyées par la RPC `admin_dashboard_stats`.
 export type DashboardRpc = {
@@ -300,6 +314,26 @@ export const adminService = {
     const { data, error } = await supabase.rpc("admin_dashboard_stats");
     if (error) throw error;
     return data as unknown as DashboardRpc;
+  },
+
+  // Rendez-vous (vue admin, lecture seule) : patient + médecin joints, paginés,
+  // filtrables par statut. RLS admin autorise la lecture de tous les RDV.
+  async getAppointmentsAdmin(opts: { status?: AppointmentStatus | null; limit?: number; offset?: number }): Promise<AdminAppointmentRow[]> {
+    const limit = opts.limit ?? 20;
+    const offset = opts.offset ?? 0;
+    let query = supabase
+      .from("appointments")
+      .select(
+        "id, appointment_date, appointment_time, status, reason, is_paid, amount_paid, " +
+        "patient:profiles!appointments_patient_id_fkey(full_name), " +
+        "doctor:doctors!appointments_doctor_id_fkey(specialty, profile:profiles!doctors_user_id_fkey(full_name))"
+      )
+      .order("appointment_date", { ascending: false })
+      .order("appointment_time", { ascending: false });
+    if (opts.status) query = query.eq("status", opts.status);
+    const { data, error } = await query.range(offset, offset + limit - 1);
+    if (error) throw error;
+    return (data ?? []) as unknown as AdminAppointmentRow[];
   },
 
   // ---------------- 2. Statistiques ----------------
