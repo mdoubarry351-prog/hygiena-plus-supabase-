@@ -7,6 +7,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { FadeInView } from "@/components/FadeInView";
+import { TrustRow } from "@/components/TrustRow";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { marketplaceService } from "@/lib/marketplace-service";
 import { colors, durations, radius, spacing, typography } from "@/theme";
@@ -241,6 +242,9 @@ export default function Help() {
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Pressable>
           </Card>
+          <View style={styles.trust}>
+            <TrustRow signals={["privacy", "verified", "confidential"]} />
+          </View>
         </FadeInView>
       </ScrollView>
     </Screen>
@@ -281,4 +285,5 @@ const styles = StyleSheet.create({
   contactText: { flex: 1, gap: 2 },
   contactTitle: { ...typography.name },
   contactSub: { ...typography.caption, color: colors.textMuted },
+  trust: { marginTop: spacing.md },
 });

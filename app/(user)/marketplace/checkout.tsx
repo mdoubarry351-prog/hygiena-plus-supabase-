@@ -7,6 +7,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { TrustRow } from "@/components/TrustRow";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { useCart } from "@/providers/CartProvider";
@@ -278,6 +279,8 @@ export default function Checkout() {
         )}
 
         <Text style={styles.simNote}>Paiement simulé — aucune transaction réelle n'est effectuée.</Text>
+
+        <TrustRow signals={["payment", "privacy"]} />
 
         <Button
           title={submitting && isMobileMoney ? "Paiement en cours…" : payLabel}

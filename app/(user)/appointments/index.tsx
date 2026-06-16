@@ -13,6 +13,7 @@ import { SkeletonList } from "@/components/Skeleton";
 import { AppImage } from "@/components/AppImage";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
+import { TrustRow } from "@/components/TrustRow";
 import { FadeInView } from "@/components/FadeInView";
 import { PressableScale } from "@/components/PressableScale";
 import { useAuth } from "@/providers/AuthProvider";
@@ -126,9 +127,7 @@ export default function AppointmentsHome() {
         {/* Données déjà chargées mais le rafraîchissement a échoué → hors-ligne. */}
         {error ? <OfflineBanner cachedAt={null} /> : null}
 
-        <Card style={styles.verified}>
-          <Text style={styles.verifiedText}>✅ Toutes nos médecins sont vérifiées</Text>
-        </Card>
+        <TrustRow signals={["verified", "confidential"]} />
 
         {doctors.length === 0 ? (
           <EmptyState

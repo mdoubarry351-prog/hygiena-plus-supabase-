@@ -8,6 +8,7 @@ import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
 import { FadeInView } from "@/components/FadeInView";
+import { TrustRow } from "@/components/TrustRow";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -152,6 +153,8 @@ export default function Premium() {
         ))}
 
         <Text style={styles.note}>Paiement simulé — démonstration, aucun débit réel.</Text>
+
+        {!isPremium ? <TrustRow signals={["privacy", "confidential", "noCommitment"]} /> : null}
 
         {isPremium ? (
           <Button title="Se désabonner" variant="outline" onPress={() => setPremium(false)} loading={saving} />
