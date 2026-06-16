@@ -12,6 +12,7 @@ import { ReviewsSection } from "@/components/ReviewsSection";
 import { PostImages } from "@/components/PostImages";
 import { HeartButton } from "@/components/HeartButton";
 import { FadeInView } from "@/components/FadeInView";
+import { FadeZoomIn } from "@/components/FadeZoomIn";
 import { useFavorites } from "@/hooks/useFavorites";
 import { hapticLight } from "@/lib/haptics";
 import { useToast } from "@/providers/ToastProvider";
@@ -84,7 +85,7 @@ export default function ProductDetail() {
         }
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <FadeInView fill={false} delay={0}>
+        <FadeZoomIn>
           {(product.image_urls?.length || product.image_url) ? (
             <PostImages imageUrls={product.image_urls} imageUrl={product.image_url} />
           ) : (
@@ -92,7 +93,7 @@ export default function ProductDetail() {
               <Ionicons name="bag-outline" size={48} color={colors.textMuted} />
             </View>
           )}
-        </FadeInView>
+        </FadeZoomIn>
 
         <FadeInView fill={false} delay={STEP} style={styles.headBlock}>
           <Text style={typography.h2}>{product.name}</Text>

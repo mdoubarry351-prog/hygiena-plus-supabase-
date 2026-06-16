@@ -13,6 +13,7 @@ import { ReviewsSection } from "@/components/ReviewsSection";
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
 import { Avatar } from "@/components/Avatar";
 import { FadeInView } from "@/components/FadeInView";
+import { FadeZoomIn } from "@/components/FadeZoomIn";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import {
@@ -264,7 +265,9 @@ export default function BookAppointment() {
         {/* En-tête profil */}
         <FadeInView fill={false} delay={0}>
         <Card style={styles.doctorCard}>
-          <Avatar uri={doctor.profile?.avatar_url} name={name} size={AVATAR} />
+          <FadeZoomIn>
+            <Avatar uri={doctor.profile?.avatar_url} name={name} size={AVATAR} />
+          </FadeZoomIn>
           <View style={styles.doctorInfo}>
             <View style={styles.nameRow}>
               <Text style={typography.h3} numberOfLines={1}>{name}</Text>
