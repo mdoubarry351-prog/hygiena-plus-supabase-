@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@/components/Button";
@@ -7,30 +7,65 @@ import { Input } from "@/components/Input";
 import { useAuth } from "@/providers/AuthProvider";
 import { authService } from "@/lib/auth-service";
 import { cycleService } from "@/lib/cycle-service";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, durations, phase as PHASE_COLOR, radius, spacing, typography } from "@/theme";
 
 function toISODate(d: Date): string {
   return d.toISOString().split("T")[0];
 }
 
-type Slide = { icon: keyof typeof Ionicons.glyphMap; title: string; text: string };
+type Slide = { icon: keyof typeof Ionicons.glyphMap; tint: string; title: string; text: string };
+
+// Bénéfices clés présentés à la première ouverture (cycle, médecins, communauté,
+// boutique, confidentialité). Chaque écran a sa teinte (tokens uniquement).
 const SLIDES: Slide[] = [
-  { icon: "calendar-outline", title: "Suis ton cycle en toute simplicité", text: "Calendrier, prédictions et rappels personnalisés." },
-  { icon: "medkit-outline", title: "Des conseils de médecins vérifiées", text: "Pose tes questions et prends rendez-vous en clinique." },
-  { icon: "chatbubbles-outline", title: "Une communauté bienveillante", text: "Échange en toute confidentialité — anonyme si tu veux." },
+  { icon: "calendar-outline", tint: PHASE_COLOR.period, title: "Suis ton cycle en toute simplicité", text: "Calendrier, prédictions et rappels personnalisés, rien que pour toi." },
+  { icon: "medkit-outline", tint: colors.primary, title: "Des médecins vérifiées à tes côtés", text: "Pose tes questions et prends rendez-vous en clinique en quelques taps." },
+  { icon: "chatbubbles-outline", tint: colors.secondary, title: "Une communauté bienveillante", text: "Échange et trouve du soutien — anonyme si tu le souhaites." },
+  { icon: "bag-handle-outline", tint: colors.accent, title: "Une boutique santé de confiance", text: "Produits d'hygiène et de bien-être livrés près de chez toi." },
+  { icon: "lock-closed-outline", tint: colors.success, title: "Ta confidentialité avant tout", text: "Tes données sont protégées et ne sont jamais partagées sans ton accord." },
 ];
 
+const LAST = SLIDES.length - 1;
+
+// Point de pagination animé : largeur + couleur se fondent quand il (dé)devient
+// actif. Animated RN (non-native driver pour width/color) → compatible Expo Go.
+function Dot({ active }: { active: boolean }) {
+  const p = useRef(new Animated.Value(active ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.timing(p, { toValue: active ? 1 : 0, duration: durations.normal, useNativeDriver: false }).start();
+  }, [active, p]);
+  return (
+    <Animated.View
+      style={[
+        styles.dot,
+        {
+          width: p.interpolate({ inputRange: [0, 1], outputRange: [8, 22] }),
+          backgroundColor: p.interpolate({ inputRange: [0, 1], outputRange: [colors.border, colors.primary] }),
+        },
+      ]}
+    />
+  );
+}
+
 /**
- * Onboarding première ouverture (rôle 'user' uniquement) : 3 écrans d'intro
- * puis une 1ʳᵉ saisie (dernières règles). Marque onboarding_completed=true à
- * la fin, que la saisie soit faite ou sautée.
+ * Onboarding première ouverture (rôle 'user' uniquement) : écrans d'intro
+ * (bénéfices) avec transitions douces, puis une 1ʳᵉ saisie (dernières règles).
+ * Marque onboarding_completed=true à la fin, que la saisie soit faite ou sautée.
  */
 export function Onboarding() {
   const { session, refreshProfile } = useAuth();
-  const [step, setStep] = useState(0); // 0..2 = intro, 3 = saisie
+  const [step, setStep] = useState(0); // 0..LAST = intro, SLIDES.length = saisie
   const [startDate, setStartDate] = useState(toISODate(new Date()));
   const [cycleLen, setCycleLen] = useState("28");
   const [saving, setSaving] = useState(false);
+
+  // Entrée douce du slide courant (fondu + léger glissé) rejouée à chaque pas.
+  const slideAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (step > LAST) return;
+    slideAnim.setValue(0);
+    Animated.timing(slideAnim, { toValue: 1, duration: durations.normal, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [step, slideAnim]);
 
   async function complete(withCycle: boolean) {
     if (!session?.user) return;
@@ -58,33 +93,34 @@ export function Onboarding() {
   }
 
   // ----- Écrans d'intro -----
-  if (step < 3) {
+  if (step <= LAST) {
     const s = SLIDES[step];
+    const slideTranslate = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] });
     return (
       <View style={styles.overlay}>
         <SafeAreaView style={styles.safe} edges={["top", "bottom", "left", "right"]}>
           <View style={styles.skipRow}>
-            <Pressable onPress={() => setStep(3)} hitSlop={8}>
+            <Pressable onPress={() => setStep(SLIDES.length)} hitSlop={8}>
               <Text style={styles.skip}>Passer</Text>
             </Pressable>
           </View>
 
-          <View style={styles.center}>
-            <View style={styles.iconWrap}>
-              <Ionicons name={s.icon} size={56} color={colors.primaryDark} />
+          <Animated.View style={[styles.center, { opacity: slideAnim, transform: [{ translateX: slideTranslate }] }]}>
+            <View style={[styles.iconWrap, { backgroundColor: s.tint + "1A" }]}>
+              <Ionicons name={s.icon} size={56} color={s.tint} />
             </View>
             <Text style={styles.title}>{s.title}</Text>
             <Text style={styles.text}>{s.text}</Text>
 
             <View style={styles.dots}>
               {SLIDES.map((_, i) => (
-                <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
+                <Dot key={i} active={i === step} />
               ))}
             </View>
-          </View>
+          </Animated.View>
 
           <View style={styles.footer}>
-            <Button title={step < 2 ? "Suivant" : "Commencer"} onPress={() => setStep(step + 1)} />
+            <Button title={step < LAST ? "Suivant" : "Commencer"} onPress={() => setStep(step + 1)} />
             {step > 0 ? (
               <Button title="Précédent" variant="outline" onPress={() => setStep(step - 1)} />
             ) : null}
@@ -136,13 +172,12 @@ const styles = StyleSheet.create({
   skipRow: { alignItems: "flex-end", paddingTop: spacing.sm },
   skip: { ...typography.body, color: colors.textMuted, fontWeight: "600" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md },
-  iconWrap: { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center", marginBottom: spacing.sm },
+  iconWrap: { width: 120, height: 120, borderRadius: 60, alignItems: "center", justifyContent: "center", marginBottom: spacing.sm },
   iconWrapSmall: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: spacing.sm },
   title: { ...typography.h1, fontSize: 24, textAlign: "center" },
   text: { ...typography.body, color: colors.textMuted, textAlign: "center", lineHeight: 22 },
   dots: { flexDirection: "row", gap: spacing.xs, marginTop: spacing.lg },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
-  dotActive: { width: 22, backgroundColor: colors.primary },
+  dot: { height: 8, borderRadius: 4 },
   footer: { gap: spacing.sm, paddingBottom: spacing.lg },
   formContent: { flexGrow: 1, justifyContent: "center", gap: spacing.sm, paddingVertical: spacing.xl },
   later: { alignItems: "center", paddingVertical: spacing.sm },
