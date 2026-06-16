@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
@@ -28,6 +29,22 @@ export async function exportCsv(
   const csv = `﻿${header}\r\n${body}`; // ﻿ = BOM UTF-8
 
   const name = filename.endsWith(".csv") ? filename : `${filename}.csv`;
+
+  // Web (admin sur navigateur) : téléchargement via Blob + lien <a download>,
+  // sans expo-file-system/expo-sharing (indisponibles dans le navigateur).
+  if (Platform.OS === "web") {
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return;
+  }
+
   const uri = `${FileSystem.cacheDirectory}${name}`;
   await FileSystem.writeAsStringAsync(uri, csv);
 

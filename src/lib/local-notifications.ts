@@ -22,9 +22,15 @@ export const isExpoGo = Constants.appOwnership === "expo";
 
 export type PermStatus = "granted" | "denied" | "undetermined" | "unavailable";
 
+// Appareil physique ET hors navigateur. Sur web (admin), `Device.isDevice` peut
+// valoir true : on exclut explicitement le web pour éviter tout appel natif.
+function deviceOk(): boolean {
+  return Platform.OS !== "web" && Device.isDevice;
+}
+
 // Les notifications réelles ne fonctionnent que sur un appareil physique.
 export function notificationsSupported(): boolean {
-  return Device.isDevice;
+  return deviceOk();
 }
 
 let handlerSet = false;
@@ -32,6 +38,7 @@ let handlerSet = false;
 // alors que l'app est au premier plan.
 export function setupNotificationHandler(): void {
   if (handlerSet) return;
+  if (Platform.OS === "web") { handlerSet = true; return; } // pas de notifs sur navigateur
   handlerSet = true;
   try {
     Notifications.setNotificationHandler({
@@ -61,7 +68,7 @@ async function ensureAndroidChannel(): Promise<void> {
 }
 
 export async function getPermissionStatus(): Promise<PermStatus> {
-  if (!Device.isDevice) return "unavailable";
+  if (!deviceOk()) return "unavailable";
   try {
     const s = await Notifications.getPermissionsAsync();
     if (s.granted) return "granted";
@@ -74,7 +81,7 @@ export async function getPermissionStatus(): Promise<PermStatus> {
 
 // Demande la permission (crée le canal Android au passage). Renvoie true si accordée.
 export async function requestPermission(): Promise<boolean> {
-  if (!Device.isDevice) return false;
+  if (!deviceOk()) return false;
   try {
     await ensureAndroidChannel();
     const existing = await Notifications.getPermissionsAsync();
@@ -92,7 +99,7 @@ export type ReminderContent = { title: string; body: string };
 // Planifie une notification unique à une date précise. Ignore si la date est
 // passée (ou trop proche), si non supporté, ou en cas d'erreur.
 export async function scheduleAt(when: Date, content: ReminderContent, kind: string): Promise<void> {
-  if (!Device.isDevice) return;
+  if (!deviceOk()) return;
   const ts = when.getTime();
   if (Number.isNaN(ts) || ts <= Date.now() + 60_000) return; // au moins 1 min dans le futur
   try {
@@ -129,7 +136,7 @@ export function pushConfigured(): boolean {
 // No-op silencieux si : pas un appareil physique, permission non accordée,
 // projectId EAS absent, ou erreur (Expo Go : getExpoPushTokenAsync échoue).
 export async function registerPushToken(userId: string): Promise<void> {
-  if (!Device.isDevice) return;
+  if (!deviceOk()) return;
   try {
     if ((await getPermissionStatus()) !== "granted") return;
     const projectId = easProjectId();
@@ -154,7 +161,7 @@ export async function registerPushToken(userId: string): Promise<void> {
 
 // Supprime le jeton push courant (à la déconnexion).
 export async function unregisterPushToken(userId: string): Promise<void> {
-  if (!Device.isDevice) return;
+  if (!deviceOk()) return;
   try {
     const projectId = easProjectId();
     if (!projectId) return;
@@ -169,7 +176,7 @@ export async function unregisterPushToken(userId: string): Promise<void> {
 // Annule toutes les notifications planifiées dont `data.kind` commence par `prefix`.
 // Permet de replanifier proprement une catégorie (ex. tous les rappels cycle).
 export async function cancelByKindPrefix(prefix: string): Promise<void> {
-  if (!Device.isDevice) return;
+  if (!deviceOk()) return;
   try {
     const all = await Notifications.getAllScheduledNotificationsAsync();
     await Promise.all(
