@@ -1,5 +1,34 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { useEffect } from "react";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from "react-native-reanimated";
 import { colors, radius, spacing, typography } from "@/theme";
+
+// Léger échelonné entre barres (ms).
+const BAR_STEP = 45;
+
+// Barre qui CROÎT depuis 0 jusqu'à sa taille au montage (scaleY/scaleX depuis la
+// base), easing sortant. Re-anime si `animKey` (la valeur) change. Thread UI.
+function AnimatedBar({
+  style,
+  animKey,
+  index = 0,
+  horizontal = false,
+}: {
+  style: StyleProp<ViewStyle>;
+  animKey: number;
+  index?: number;
+  horizontal?: boolean;
+}) {
+  const p = useSharedValue(0);
+  useEffect(() => {
+    p.value = 0;
+    p.value = withDelay(index * BAR_STEP, withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }));
+  }, [p, animKey, index]);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [horizontal ? { scaleX: p.value } : { scaleY: p.value }],
+  }));
+  return <Animated.View style={[style, horizontal ? styles.originLeft : styles.originBottom, animStyle]} />;
+}
 
 type BarChartProps = {
   labels: string[];
@@ -26,7 +55,7 @@ export function BarChart({ labels, values, tint, average = null, unitSuffix = ""
           <View key={i} style={styles.barCol}>
             <Text style={styles.barValue}>{v}{unitSuffix}</Text>
             <View style={styles.barTrack}>
-              <View style={[styles.barFill, { height: `${(v / max) * 100}%`, backgroundColor: tint }]} />
+              <AnimatedBar index={i} animKey={v} style={[styles.barFill, { height: `${(v / max) * 100}%`, backgroundColor: tint }]} />
             </View>
             <Text style={styles.barLabel}>{labels[i]}</Text>
           </View>
@@ -47,7 +76,7 @@ export function BarChart({ labels, values, tint, average = null, unitSuffix = ""
         {values.map((v, i) => (
           <View key={i} style={styles.plotCol}>
             <Text style={styles.barValue}>{v}{unitSuffix}</Text>
-            <View style={[styles.plotBar, { height: (v / max) * usable, backgroundColor: tint }]} />
+            <AnimatedBar index={i} animKey={v} style={[styles.plotBar, { height: (v / max) * usable, backgroundColor: tint }]} />
           </View>
         ))}
       </View>
@@ -67,7 +96,7 @@ export function HBarChart({ items, tint }: { items: { label: string; value: numb
         <View key={i} style={styles.hRow}>
           <Text style={styles.hLabel} numberOfLines={1}>{it.label}</Text>
           <View style={styles.hTrack}>
-            <View style={[styles.hFill, { width: `${(it.value / max) * 100}%`, backgroundColor: tint }]} />
+            <AnimatedBar horizontal index={i} animKey={it.value} style={[styles.hFill, { width: `${(it.value / max) * 100}%`, backgroundColor: tint }]} />
           </View>
           <Text style={styles.hValue}>{it.value}</Text>
         </View>
@@ -77,6 +106,9 @@ export function HBarChart({ items, tint }: { items: { label: string; value: numb
 }
 
 const styles = StyleSheet.create({
+  // Origines de transformation pour la croissance des barres (depuis la base).
+  originBottom: { transformOrigin: "bottom" },
+  originLeft: { transformOrigin: "left" },
   // — Barres verticales (rendu historique, partagé avec l'admin) —
   chart: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", height: 160, gap: spacing.xs },
   barCol: { flex: 1, alignItems: "center", gap: spacing.xs },
