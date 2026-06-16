@@ -17,6 +17,10 @@ import { currentPhase, getDailyTip, PHASE_LABEL } from "@/lib/cycle-tips";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { useAuth } from "@/providers/AuthProvider";
 import { notificationsService } from "@/lib/notifications-service";
+import { appointmentsService, doctorDisplayName, formatAppointmentTime, type AppointmentWithDoctor } from "@/lib/appointments-service";
+import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
+import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, formatOrderDate, orderItemCount } from "@/lib/order-display";
+import type { AppointmentStatus, MarketplaceOrder } from "@/lib/database.types";
 import { colors, fonts, phase as PHASE_COLOR, radius, shadows, spacing, typography } from "@/theme";
 
 const logo = require("../../assets/logo/hygiena-icon-1024.png");
@@ -49,6 +53,27 @@ function todayLongLabel(): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// Clé date locale « YYYY-MM-DD » du jour (comparaison lexicale aux RDV).
+function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Libellés/teintes de statut RDV (présentation, alignés sur « Mes rendez-vous »).
+// Seuls pending/confirmed apparaissent ici (on ne montre que les RDV à venir).
+const APPT_STATUS_LABEL: Record<AppointmentStatus, string> = {
+  pending: "En attente", confirmed: "Confirmé", cancelled: "Annulé", completed: "Terminé",
+};
+const APPT_STATUS_COLOR: Record<AppointmentStatus, string> = {
+  pending: colors.accent, confirmed: colors.secondary, cancelled: colors.danger, completed: colors.success,
+};
+
+// Date de RDV compacte (« Lundi 15 juin »), midi forcé contre les décalages TZ.
+function apptShort(dateISO: string): string {
+  const s = new Date(`${dateISO}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export default function CycleHome() {
   const { profile, session, role } = useAuth();
   const { cycles, prediction, loading, reload, offline, cachedAt } = useCycles();
@@ -56,6 +81,8 @@ export default function CycleHome() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [nextAppt, setNextAppt] = useState<AppointmentWithDoctor | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<MarketplaceOrder | null>(null);
 
   const loadUnread = useCallback(async () => {
     if (!session?.user) return;
@@ -66,13 +93,31 @@ export default function CycleHome() {
     }
   }, [session?.user]);
 
-  // Les cycles se rechargent déjà au focus via useCycles ; ici on ne (re)charge
-  // que le compteur de notifications non lues.
-  useFocusEffect(useCallback(() => { loadUnread(); }, [loadUnread]));
+  // Cartes contextuelles (prochain RDV à venir + commande en cours) : lectures
+  // légères, en parallèle, NON bloquantes pour l'anneau. Bornées aux modules
+  // activés par l'admin. Chaque source est isolée (un échec n'affecte pas l'autre).
+  const loadContext = useCallback(async () => {
+    if (!session?.user) return;
+    const uid = session.user.id;
+    const key = todayKey();
+    const [appts, orders] = await Promise.all([
+      doctors_enabled ? appointmentsService.getAppointments(uid).catch(() => []) : Promise.resolve([]),
+      marketplace_enabled ? marketplaceService.getOrders(uid).catch(() => []) : Promise.resolve([]),
+    ]);
+    const upcoming = appts
+      .filter((a) => (a.status === "pending" || a.status === "confirmed") && a.appointment_date >= key)
+      .sort((a, b) => (a.appointment_date + a.appointment_time).localeCompare(b.appointment_date + b.appointment_time));
+    setNextAppt(upcoming[0] ?? null);
+    setCurrentOrder(orders.find((o) => o.status !== "completed" && o.status !== "cancelled") ?? null);
+  }, [session?.user, doctors_enabled, marketplace_enabled]);
+
+  // Les cycles se rechargent déjà au focus via useCycles ; ici on (re)charge le
+  // compteur de notifications et les cartes contextuelles (sans bloquer l'anneau).
+  useFocusEffect(useCallback(() => { loadUnread(); loadContext(); }, [loadUnread, loadContext]));
 
   async function onRefresh() {
     setRefreshing(true);
-    await Promise.all([reload(), loadUnread()]);
+    await Promise.all([reload(), loadUnread(), loadContext()]);
     setRefreshing(false);
   }
 
@@ -189,8 +234,56 @@ export default function CycleHome() {
           </PressableScale>
         </FadeInView>
 
+        {/* 3.5 · Cartes contextuelles (affichées seulement si pertinentes) */}
+        {nextAppt || currentOrder ? (
+          <FadeInView fill={false} delay={STEP * 3}>
+            <View style={styles.contextStack}>
+              {nextAppt ? (
+                <Card onPress={() => router.push("/(user)/appointments/mine")} haptic accessibilityLabel="Voir mes rendez-vous" style={styles.ctxCard}>
+                  <View style={[styles.ctxIcon, { backgroundColor: colors.primaryLight }]}>
+                    <Ionicons name="calendar" size={20} color={colors.primaryDark} />
+                  </View>
+                  <View style={styles.ctxBody}>
+                    <Text style={styles.ctxTitle}>Prochain rendez-vous</Text>
+                    <Text style={styles.ctxLine} numberOfLines={1}>
+                      {doctorDisplayName(nextAppt.doctor?.profile ?? null)}{nextAppt.doctor?.specialty ? ` · ${nextAppt.doctor.specialty}` : ""}
+                    </Text>
+                    <View style={styles.ctxMetaRow}>
+                      <Text style={styles.ctxMeta} numberOfLines={1}>{apptShort(nextAppt.appointment_date)} · {formatAppointmentTime(nextAppt.appointment_time)}</Text>
+                      <View style={[styles.ctxBadge, { backgroundColor: APPT_STATUS_COLOR[nextAppt.status] + "1A" }]}>
+                        <Text style={[styles.ctxBadgeText, { color: APPT_STATUS_COLOR[nextAppt.status] }]}>{APPT_STATUS_LABEL[nextAppt.status]}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                </Card>
+              ) : null}
+              {currentOrder ? (
+                <Card onPress={() => router.push("/(user)/marketplace/orders")} haptic accessibilityLabel="Voir mes commandes" style={styles.ctxCard}>
+                  <View style={[styles.ctxIcon, { backgroundColor: colors.surface }]}>
+                    <Ionicons name="cube-outline" size={20} color={colors.primary} />
+                  </View>
+                  <View style={styles.ctxBody}>
+                    <Text style={styles.ctxTitle}>Commande en cours</Text>
+                    <Text style={styles.ctxLine} numberOfLines={1}>
+                      {orderItemCount(currentOrder.items)} article{orderItemCount(currentOrder.items) > 1 ? "s" : ""} · {formatPrice(currentOrder.total_amount)}
+                    </Text>
+                    <View style={styles.ctxMetaRow}>
+                      <Text style={styles.ctxMeta} numberOfLines={1}>{formatOrderDate(currentOrder.created_at)}</Text>
+                      <View style={[styles.ctxBadge, { backgroundColor: ORDER_STATUS_COLORS[currentOrder.status] + "1A" }]}>
+                        <Text style={[styles.ctxBadgeText, { color: ORDER_STATUS_COLORS[currentOrder.status] }]}>{ORDER_STATUS_LABELS[currentOrder.status]}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                </Card>
+              ) : null}
+            </View>
+          </FadeInView>
+        ) : null}
+
         {/* 4 · Prédictions consolidées (+ rappel), ou amorce si pas de données */}
-        <FadeInView fill={false} delay={STEP * 3}>
+        <FadeInView fill={false} delay={STEP * 4}>
           {hasData ? (
             <>
               <Card style={styles.predBlock}>
@@ -227,7 +320,7 @@ export default function CycleHome() {
 
         {/* 5 · Conseil du jour (masqué si phase inconnue) */}
         {dailyTip && phase ? (
-          <FadeInView fill={false} delay={STEP * 4}>
+          <FadeInView fill={false} delay={STEP * 5}>
             <Card style={styles.tipCard}>
               <View style={styles.tipIcon}>
                 <Ionicons name="bulb-outline" size={20} color={colors.primaryDark} />
@@ -242,7 +335,7 @@ export default function CycleHome() {
         ) : null}
 
         {/* 6 · Accès rapide */}
-        <FadeInView fill={false} delay={STEP * 5}>
+        <FadeInView fill={false} delay={STEP * 6}>
           <Text style={[typography.h3, styles.sectionTitle]}>Accès rapide</Text>
           <View style={styles.grid}>
             {quick.map((q) => (
@@ -258,7 +351,7 @@ export default function CycleHome() {
         </FadeInView>
 
         {/* 7 · Premium (masqué si déjà premium) */}
-        <FadeInView fill={false} delay={STEP * 6}>
+        <FadeInView fill={false} delay={STEP * 7}>
           {profile?.is_premium ? (
             <View style={styles.premiumActive}>
               <Ionicons name="checkmark-circle" size={16} color={colors.primaryDark} />
@@ -339,6 +432,18 @@ const styles = StyleSheet.create({
   premiumSub: { ...typography.caption, color: colors.textMuted },
   premiumActive: { flexDirection: "row", alignItems: "center", gap: spacing.xs, alignSelf: "flex-start", backgroundColor: colors.primaryLight, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill },
   premiumActiveText: { ...typography.caption, color: colors.primaryDark, fontFamily: fonts.bodySemiBold },
+
+  // Cartes contextuelles (prochain RDV, commande en cours)
+  contextStack: { gap: spacing.sm },
+  ctxCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  ctxIcon: { width: 44, height: 44, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+  ctxBody: { flex: 1, gap: 2 },
+  ctxTitle: { ...typography.name, color: colors.text },
+  ctxLine: { ...typography.caption, color: colors.textMuted },
+  ctxMetaRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: 2, flexWrap: "wrap" },
+  ctxMeta: { ...typography.caption, color: colors.textMuted, flexShrink: 1 },
+  ctxBadge: { paddingHorizontal: spacing.xs, paddingVertical: 1, borderRadius: radius.pill },
+  ctxBadgeText: { ...typography.caption, fontSize: 11, fontFamily: fonts.bodySemiBold },
 
   // Conseil du jour
   tipCard: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md, backgroundColor: colors.primaryLight, borderColor: colors.primary },
