@@ -10,11 +10,15 @@ import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
 import { AppImage } from "@/components/AppImage";
+import { FadeInView } from "@/components/FadeInView";
 import { useToast } from "@/providers/ToastProvider";
 import { favoritesService } from "@/lib/favorites-service";
+import { hapticLight } from "@/lib/haptics";
 import { formatPrice } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
+
+const STEP = 55; // pas de l'apparition échelonnée
 
 export default function Favorites() {
   const router = useRouter();
@@ -67,14 +71,14 @@ export default function Favorites() {
           <EmptyState
             icon="heart-outline"
             title="Aucun favori pour le moment"
-            message="Touchez le cœur sur un produit pour l'ajouter ici."
+            message="Touche le cœur sur un produit pour l'ajouter ici."
           />
         ) : (
-          products.map((p) => {
+          products.map((p, i) => {
             const outOfStock = p.stock <= 0;
             return (
-              <Pressable key={p.id} onPress={() => router.push(`/(user)/marketplace/${p.id}`)}>
-                <Card style={styles.row}>
+              <FadeInView key={p.id} fill={false} delay={Math.min(i, 6) * STEP}>
+                <Card onPress={() => router.push(`/(user)/marketplace/${p.id}`)} haptic accessibilityLabel={p.name} style={styles.row}>
                   {p.image_url ? (
                     <AppImage source={p.image_url} style={styles.thumb} />
                   ) : (
@@ -92,11 +96,11 @@ export default function Favorites() {
                       {outOfStock && <Text style={styles.outOfStock}>Rupture</Text>}
                     </View>
                   </View>
-                  <Pressable onPress={() => removeFav(p.id)} hitSlop={10} style={styles.favBtn} accessibilityRole="button" accessibilityLabel={`Retirer ${p.name} des favoris`}>
+                  <Pressable onPress={() => { hapticLight(); removeFav(p.id); }} hitSlop={10} style={({ pressed }) => [styles.favBtn, pressed && styles.favBtnPressed]} accessibilityRole="button" accessibilityLabel={`Retirer ${p.name} des favoris`}>
                     <Ionicons name="heart" size={22} color={colors.danger} />
                   </Pressable>
                 </Card>
-              </Pressable>
+              </FadeInView>
             );
           })
         )}
@@ -117,4 +121,5 @@ const styles = StyleSheet.create({
   price: { ...typography.body, fontWeight: "700", color: colors.primary },
   outOfStock: { ...typography.caption, color: colors.danger, fontWeight: "700" },
   favBtn: { padding: spacing.xs },
+  favBtnPressed: { opacity: 0.5 },
 });

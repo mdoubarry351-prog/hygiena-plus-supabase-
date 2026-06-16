@@ -20,6 +20,8 @@ import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
+const STEP = 55; // pas de l'apparition échelonnée (cohérent Vagues 1-3)
+
 export default function ProductDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -73,84 +75,100 @@ export default function ProductDetail() {
 
   return (
     <Screen>
-      <FadeInView>
+      <View style={styles.fill}>
       <ScreenHeader
         right={
-          <Pressable onPress={() => toggle(product.id)} hitSlop={10} accessibilityRole="button" accessibilityLabel={favIds.has(product.id) ? "Retirer des favoris" : "Ajouter aux favoris"}>
+          <Pressable onPress={() => { hapticLight(); toggle(product.id); }} hitSlop={10} accessibilityRole="button" accessibilityLabel={favIds.has(product.id) ? "Retirer des favoris" : "Ajouter aux favoris"}>
             <HeartButton active={favIds.has(product.id)} size={24} activeColor={colors.danger} inactiveColor={colors.text} />
           </Pressable>
         }
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {(product.image_urls?.length || product.image_url) ? (
-          <PostImages imageUrls={product.image_urls} imageUrl={product.image_url} />
-        ) : (
-          <View style={[styles.image, styles.imagePlaceholder]}>
-            <Ionicons name="bag-outline" size={48} color={colors.textMuted} />
-          </View>
-        )}
+        <FadeInView fill={false} delay={0}>
+          {(product.image_urls?.length || product.image_url) ? (
+            <PostImages imageUrls={product.image_urls} imageUrl={product.image_url} />
+          ) : (
+            <View style={[styles.image, styles.imagePlaceholder]}>
+              <Ionicons name="bag-outline" size={48} color={colors.textMuted} />
+            </View>
+          )}
+        </FadeInView>
 
-        <Text style={typography.h2}>{product.name}</Text>
-        <Text style={styles.price}>{formatPrice(product.price)}</Text>
-        <StarRating value={product.rating_avg} count={product.rating_count} size={16} />
-
-        {outOfStock ? (
-          <Text style={styles.stockOut}>Rupture de stock</Text>
-        ) : (
-          <Text style={styles.stockIn}>En stock : {product.stock}</Text>
-        )}
+        <FadeInView fill={false} delay={STEP} style={styles.headBlock}>
+          <Text style={typography.h2}>{product.name}</Text>
+          <Text style={styles.price}>{formatPrice(product.price)}</Text>
+          <StarRating value={product.rating_avg} count={product.rating_count} size={16} />
+          {outOfStock ? (
+            <Text style={styles.stockOut}>Rupture de stock</Text>
+          ) : (
+            <Text style={styles.stockIn}>En stock : {product.stock}</Text>
+          )}
+        </FadeInView>
 
         {product.description ? (
-          <Card style={styles.card}>
-            <Text style={typography.h3}>Description</Text>
-            <Text style={[typography.body, styles.descText]}>{product.description}</Text>
-          </Card>
+          <FadeInView fill={false} delay={STEP * 2}>
+            <Card style={styles.card}>
+              <Text style={typography.h3}>Description</Text>
+              <Text style={[typography.body, styles.descText]}>{product.description}</Text>
+            </Card>
+          </FadeInView>
         ) : null}
 
-        {!outOfStock && (
-          <View style={styles.qtyBlock}>
-            <Text style={[typography.h3, styles.qtyLabel]}>Quantité</Text>
-            <View style={styles.stepper}>
-              <Pressable
-                onPress={() => setQuantity((q) => Math.max(1, q - 1))}
-                style={styles.stepBtn}
-                hitSlop={8}
-              >
-                <Ionicons name="remove" size={20} color={colors.text} />
-              </Pressable>
-              <Text style={styles.qtyValue}>{quantity}</Text>
-              <Pressable
-                onPress={() => setQuantity((q) => Math.min(product.stock, q + 1))}
-                style={[styles.stepBtn, maxReached && styles.stepBtnDisabled]}
-                hitSlop={8}
-              >
-                <Ionicons name="add" size={20} color={maxReached ? colors.textMuted : colors.text} />
-              </Pressable>
+        <FadeInView fill={false} delay={STEP * 3} style={styles.ctaBlock}>
+          {!outOfStock && (
+            <View style={styles.qtyBlock}>
+              <Text style={[typography.h3, styles.qtyLabel]}>Quantité</Text>
+              <View style={styles.stepper}>
+                <Pressable
+                  onPress={() => { hapticLight(); setQuantity((q) => Math.max(1, q - 1)); }}
+                  style={({ pressed }) => [styles.stepBtn, pressed && styles.stepBtnPressed]}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Diminuer la quantité"
+                >
+                  <Ionicons name="remove" size={20} color={colors.text} />
+                </Pressable>
+                <Text style={styles.qtyValue}>{quantity}</Text>
+                <Pressable
+                  onPress={() => { hapticLight(); setQuantity((q) => Math.min(product.stock, q + 1)); }}
+                  style={({ pressed }) => [styles.stepBtn, maxReached && styles.stepBtnDisabled, pressed && !maxReached && styles.stepBtnPressed]}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Augmenter la quantité"
+                >
+                  <Ionicons name="add" size={20} color={maxReached ? colors.textMuted : colors.text} />
+                </Pressable>
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {outOfStock ? (
-          <Button title="Indisponible" disabled />
-        ) : (
-          <Button title={`Ajouter au panier · ${formatPrice(product.price * quantity)}`} onPress={handleAddToCart} />
-        )}
+          {outOfStock ? (
+            <Button title="Indisponible" disabled />
+          ) : (
+            <Button title={`Ajouter au panier · ${formatPrice(product.price * quantity)}`} onPress={handleAddToCart} />
+          )}
+        </FadeInView>
 
-        <ReviewsSection
-          kind="product"
-          targetId={product.id}
-          ratingAvg={product.rating_avg}
-          ratingCount={product.rating_count}
-          onChanged={reloadProduct}
-        />
+        <FadeInView fill={false} delay={STEP * 4}>
+          <ReviewsSection
+            kind="product"
+            targetId={product.id}
+            ratingAvg={product.rating_avg}
+            ratingCount={product.rating_count}
+            onChanged={reloadProduct}
+          />
+        </FadeInView>
       </ScrollView>
-      </FadeInView>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+  headBlock: { gap: spacing.xs },
+  ctaBlock: { gap: spacing.md },
   image: { width: "100%", height: 300, borderRadius: radius.lg, backgroundColor: colors.surface },
   imagePlaceholder: { alignItems: "center", justifyContent: "center" },
   price: { ...typography.h2, color: colors.primary },
@@ -166,5 +184,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, alignItems: "center", justifyContent: "center",
   },
   stepBtnDisabled: { opacity: 0.5 },
+  stepBtnPressed: { opacity: 0.6, backgroundColor: colors.primaryLight, borderColor: colors.primary },
   qtyValue: { ...typography.h3, minWidth: 28, textAlign: "center" },
 });

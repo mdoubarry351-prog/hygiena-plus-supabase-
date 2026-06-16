@@ -13,6 +13,8 @@ import { StarRating } from "@/components/StarRating";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { AppImage } from "@/components/AppImage";
 import { HeartButton } from "@/components/HeartButton";
+import { FadeInView } from "@/components/FadeInView";
+import { PressableScale } from "@/components/PressableScale";
 import { useProducts } from "@/hooks/useProducts";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -121,20 +123,20 @@ export default function MarketplaceHome() {
       <View style={styles.topBar}>
         <Text style={typography.h2}>Hygiena+ Store</Text>
         <View style={styles.actions}>
-          <Pressable onPress={() => router.push("/(user)/marketplace/favorites")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Mes favoris">
+          <PressableScale onPress={() => router.push("/(user)/marketplace/favorites")} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Mes favoris">
             <Ionicons name="heart-outline" size={25} color={colors.text} />
-          </Pressable>
-          <Pressable onPress={() => router.push("/(user)/marketplace/orders")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Mes commandes">
+          </PressableScale>
+          <PressableScale onPress={() => router.push("/(user)/marketplace/orders")} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Mes commandes">
             <Ionicons name="receipt-outline" size={25} color={colors.text} />
-          </Pressable>
-          <Pressable onPress={() => router.push("/(user)/marketplace/cart")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Panier">
+          </PressableScale>
+          <PressableScale onPress={() => router.push("/(user)/marketplace/cart")} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Panier">
             <Ionicons name="cart-outline" size={26} color={colors.text} />
             {count > 0 && (
               <View style={styles.cartBadge}>
                 <Text style={styles.cartBadgeText}>{count}</Text>
               </View>
             )}
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
 
@@ -191,7 +193,7 @@ export default function MarketplaceHome() {
           <EmptyState
             icon="bag-handle-outline"
             title={isFiltering ? "Aucun produit trouvé" : "Aucun produit disponible"}
-            message={isFiltering ? "Essayez un autre mot-clé ou une autre catégorie." : "Revenez plus tard, de nouveaux produits arrivent bientôt."}
+            message={isFiltering ? "Essaie un autre mot-clé ou une autre catégorie." : "Reviens plus tard, de nouveaux produits arrivent bientôt."}
           />
         }
         onEndReached={onEndReached}
@@ -226,6 +228,7 @@ const ProductRow = memo(function ProductRow({ product, isFav, onToggleFav, onAdd
   }
 
   return (
+    <FadeInView fill={false}>
     <Card onPress={() => onPress(product.id)} accessibilityLabel={product.name} style={styles.row}>
         {thumbUrl ? (
           <AppImage source={thumbUrl} style={styles.thumb} />
@@ -248,14 +251,14 @@ const ProductRow = memo(function ProductRow({ product, isFav, onToggleFav, onAdd
           </View>
         </View>
         <View style={styles.rowActions}>
-          <Pressable onPress={() => onToggleFav(product.id)} hitSlop={10} style={styles.favBtn} accessibilityRole="button" accessibilityLabel={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}>
+          <Pressable onPress={() => { hapticLight(); onToggleFav(product.id); }} hitSlop={10} style={({ pressed }) => [styles.favBtn, pressed && styles.btnPressed]} accessibilityRole="button" accessibilityLabel={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}>
             <HeartButton active={isFav} size={22} activeColor={colors.danger} />
           </Pressable>
           <Pressable
             onPress={quickAdd}
             disabled={outOfStock}
             hitSlop={8}
-            style={[styles.addBtn, justAdded && styles.addBtnDone, outOfStock && styles.addBtnDisabled]}
+            style={({ pressed }) => [styles.addBtn, justAdded && styles.addBtnDone, outOfStock && styles.addBtnDisabled, pressed && !outOfStock && styles.btnPressed]}
             accessibilityRole="button"
             accessibilityLabel={`Ajouter ${product.name} au panier`}
           >
@@ -263,12 +266,14 @@ const ProductRow = memo(function ProductRow({ product, isFav, onToggleFav, onAdd
           </Pressable>
         </View>
     </Card>
+    </FadeInView>
   );
 });
 
 const THUMB = 96;
 const styles = StyleSheet.create({
   favBtn: { padding: spacing.xs },
+  btnPressed: { opacity: 0.6, transform: [{ scale: 0.92 }] },
   rowActions: { alignItems: "center", justifyContent: "space-between", alignSelf: "stretch" },
   addBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
   addBtnDone: { backgroundColor: colors.success },

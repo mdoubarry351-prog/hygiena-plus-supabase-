@@ -19,7 +19,7 @@ import {
   type StorePaymentSettings,
 } from "@/lib/marketplace-service";
 import type { DeliveryMode } from "@/lib/database.types";
-import { hapticSuccess, hapticError } from "@/lib/haptics";
+import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
 type PayMethod = "orange_money" | "mtn" | "cod" | "whatsapp";
@@ -106,7 +106,7 @@ export default function Checkout() {
     if (items.length === 0) { Alert.alert("Panier vide", "Ajoutez des produits avant de commander."); return; }
     if (!phone.trim()) { Alert.alert("Téléphone requis", "Veuillez saisir un numéro de téléphone."); return; }
     if (deliveryMode === "delivery" && !neighborhood.trim()) {
-      Alert.alert("Quartier requis", "Indiquez votre quartier pour la livraison.");
+      Alert.alert("Quartier requis", "Indique ton quartier pour la livraison.");
       return;
     }
 
@@ -208,7 +208,7 @@ export default function Checkout() {
           <Card style={styles.pickupCard}>
             <Ionicons name="storefront-outline" size={18} color={colors.primaryDark} />
             <View style={styles.pickupInfo}>
-              <Text style={styles.pickupText}>Contactez-nous à ce numéro pour obtenir les informations concernant le retrait en boutique.</Text>
+              <Text style={styles.pickupText}>Contacte-nous à ce numéro pour obtenir les informations concernant le retrait en boutique.</Text>
               {store?.whatsapp_number ? <Text style={styles.pickupNumber}>{store.whatsapp_number}</Text> : null}
             </View>
           </Card>
@@ -227,7 +227,7 @@ export default function Checkout() {
             label="Quartier"
             value={neighborhood}
             onChangeText={setNeighborhood}
-            placeholder="Votre quartier"
+            placeholder="Ton quartier"
             autoCapitalize="words"
           />
         )}
@@ -249,7 +249,7 @@ export default function Checkout() {
         {payOptions.map((o) => {
           const active = method === o.key;
           return (
-            <Pressable key={o.key} onPress={() => setMethod(o.key)} style={[styles.payRow, active && styles.payRowActive]}>
+            <Pressable key={o.key} onPress={() => { hapticLight(); setMethod(o.key); }} style={({ pressed }) => [styles.payRow, active && styles.payRowActive, pressed && styles.payRowPressed]} accessibilityRole="button" accessibilityLabel={o.label}>
               <View style={[styles.payIcon, active && styles.payIconActive]}>
                 <Ionicons name={o.icon} size={20} color={active ? colors.primaryDark : colors.textMuted} />
               </View>
@@ -293,7 +293,7 @@ export default function Checkout() {
 
 function ModeOption({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={[styles.mode, active && styles.modeActive]}>
+    <Pressable onPress={() => { hapticLight(); onPress(); }} style={({ pressed }) => [styles.mode, active && styles.modeActive, pressed && styles.modePressed]}>
       <Text style={[styles.modeText, active && styles.modeTextActive]}>{label}</Text>
     </Pressable>
   );
@@ -318,6 +318,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, alignItems: "center", justifyContent: "center",
   },
   modeActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  modePressed: { opacity: 0.7 },
   modeText: { ...typography.body, color: colors.text },
   modeTextActive: { color: colors.primaryDark, fontWeight: "600" },
   noticeRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginBottom: spacing.sm },
@@ -333,6 +334,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card,
   },
   payRowActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  payRowPressed: { opacity: 0.7 },
   payIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
   payIconActive: { backgroundColor: colors.white },
   payInfo: { flex: 1, gap: 2 },

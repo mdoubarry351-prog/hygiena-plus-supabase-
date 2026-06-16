@@ -25,6 +25,8 @@ import { hapticWarning } from "@/lib/haptics";
 import type { MarketplaceOrder } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
+const STEP = 55; // pas de l'apparition échelonnée
+
 export default function OrderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -105,7 +107,7 @@ export default function OrderDetail() {
 
   return (
     <Screen>
-      <FadeInView>
+      <View style={styles.fill}>
       <ScreenHeader
         title="Reçu"
         right={
@@ -116,6 +118,7 @@ export default function OrderDetail() {
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* En-tête reçu */}
+        <FadeInView fill={false} delay={0}>
         <Card style={styles.card}>
           <View style={styles.headRow}>
             <View>
@@ -127,8 +130,10 @@ export default function OrderDetail() {
           </View>
           <OrderTimeline status={order.status} />
         </Card>
+        </FadeInView>
 
         {/* Articles + totaux */}
+        <FadeInView fill={false} delay={STEP}>
         <Card style={styles.card}>
           <Text style={typography.h3}>Articles</Text>
           {items.map((it, i) => (
@@ -151,8 +156,10 @@ export default function OrderDetail() {
             <Text style={styles.grandVal}>{formatPrice(order.total_amount)}</Text>
           </View>
         </Card>
+        </FadeInView>
 
         {/* Paiement & réception */}
+        <FadeInView fill={false} delay={STEP * 2}>
         <Card style={styles.card}>
           <Text style={typography.h3}>Détails</Text>
           <DetailLine icon="card-outline" label="Paiement" value={`${PAYMENT_LABELS[order.payment_method ?? ""] ?? order.payment_method ?? "—"} · ${order.is_paid ? "Payé" : "À la livraison"}`} />
@@ -160,16 +167,19 @@ export default function OrderDetail() {
           <DetailLine icon="call-outline" label="Téléphone" value={order.phone} />
           {order.instructions ? <DetailLine icon="document-text-outline" label="Instructions" value={order.instructions} /> : null}
         </Card>
+        </FadeInView>
 
-        <Button title="Partager le reçu" variant="outline" onPress={shareReceipt} />
-        {order.status === "pending" ? (
-          <Pressable onPress={confirmCancel} disabled={cancelling} style={styles.cancelBtn} accessibilityRole="button" accessibilityLabel="Annuler la commande">
-            <Ionicons name="close-circle-outline" size={18} color={colors.danger} />
-            <Text style={styles.cancelText}>{cancelling ? "Annulation…" : "Annuler la commande"}</Text>
-          </Pressable>
-        ) : null}
+        <FadeInView fill={false} delay={STEP * 3} style={styles.actionsBlock}>
+          <Button title="Partager le reçu" variant="outline" onPress={shareReceipt} />
+          {order.status === "pending" ? (
+            <Pressable onPress={confirmCancel} disabled={cancelling} style={({ pressed }) => [styles.cancelBtn, pressed && styles.cancelPressed]} accessibilityRole="button" accessibilityLabel="Annuler la commande">
+              <Ionicons name="close-circle-outline" size={18} color={colors.danger} />
+              <Text style={styles.cancelText}>{cancelling ? "Annulation…" : "Annuler la commande"}</Text>
+            </Pressable>
+          ) : null}
+        </FadeInView>
       </ScrollView>
-      </FadeInView>
+      </View>
     </Screen>
   );
 }
@@ -185,7 +195,9 @@ function DetailLine({ icon, label, value }: { icon: keyof typeof Ionicons.glyphM
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+  actionsBlock: { gap: spacing.md },
   card: { gap: spacing.sm },
   headRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
   shopName: { ...typography.h3, color: colors.primaryDark },
@@ -207,5 +219,6 @@ const styles = StyleSheet.create({
   detailLabel: { ...typography.caption, color: colors.textMuted, width: 86 },
   detailValue: { ...typography.body, color: colors.text, flex: 1 },
   cancelBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, paddingVertical: spacing.sm },
+  cancelPressed: { opacity: 0.55 },
   cancelText: { ...typography.body, color: colors.danger, fontWeight: "700" },
 });

@@ -7,9 +7,13 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { AppImage } from "@/components/AppImage";
+import { FadeInView } from "@/components/FadeInView";
 import { useCart, type CartItem } from "@/providers/CartProvider";
+import { hapticLight } from "@/lib/haptics";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, radius, spacing, typography } from "@/theme";
+
+const STEP = 55; // pas de l'apparition échelonnée
 
 export default function Cart() {
   const { items, total, setQuantity, removeItem } = useCart();
@@ -30,23 +34,26 @@ export default function Cart() {
           />
         ) : (
           <>
-            {items.map((it) => (
-              <CartRow
-                key={it.product.id}
-                item={it}
-                onIncrease={() => setQuantity(it.product.id, it.quantity + 1)}
-                onDecrease={() => setQuantity(it.product.id, it.quantity - 1)}
-                onRemove={() => removeItem(it.product.id)}
-              />
+            {items.map((it, i) => (
+              <FadeInView key={it.product.id} fill={false} delay={Math.min(i, 6) * STEP}>
+                <CartRow
+                  item={it}
+                  onIncrease={() => setQuantity(it.product.id, it.quantity + 1)}
+                  onDecrease={() => setQuantity(it.product.id, it.quantity - 1)}
+                  onRemove={() => removeItem(it.product.id)}
+                />
+              </FadeInView>
             ))}
 
-            <Card style={styles.totalCard}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>{formatPrice(total)}</Text>
-            </Card>
+            <FadeInView fill={false} delay={Math.min(items.length, 7) * STEP} style={styles.summaryBlock}>
+              <Card style={styles.totalCard}>
+                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.totalValue}>{formatPrice(total)}</Text>
+              </Card>
 
-            <Button title="Passer la commande" onPress={() => router.push("/(user)/marketplace/checkout")} />
-            <Button title="Continuer mes achats" variant="outline" onPress={() => router.replace("/(user)/marketplace")} />
+              <Button title="Passer la commande" onPress={() => router.push("/(user)/marketplace/checkout")} />
+              <Button title="Continuer mes achats" variant="outline" onPress={() => router.replace("/(user)/marketplace")} />
+            </FadeInView>
           </>
         )}
       </ScrollView>
@@ -80,16 +87,16 @@ function CartRow({
         <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
         <Text style={styles.price}>{formatPrice(product.price * quantity)}</Text>
         <View style={styles.stepper}>
-          <Pressable onPress={onDecrease} style={styles.stepBtn} hitSlop={8}>
+          <Pressable onPress={() => { hapticLight(); onDecrease(); }} style={({ pressed }) => [styles.stepBtn, pressed && styles.stepBtnPressed]} hitSlop={8} accessibilityRole="button" accessibilityLabel="Diminuer la quantité">
             <Ionicons name="remove" size={18} color={colors.text} />
           </Pressable>
           <Text style={styles.qtyValue}>{quantity}</Text>
-          <Pressable onPress={onIncrease} style={[styles.stepBtn, maxReached && styles.stepBtnDisabled]} hitSlop={8}>
+          <Pressable onPress={() => { hapticLight(); onIncrease(); }} style={({ pressed }) => [styles.stepBtn, maxReached && styles.stepBtnDisabled, pressed && !maxReached && styles.stepBtnPressed]} hitSlop={8} accessibilityRole="button" accessibilityLabel="Augmenter la quantité">
             <Ionicons name="add" size={18} color={maxReached ? colors.textMuted : colors.text} />
           </Pressable>
         </View>
       </View>
-      <Pressable onPress={onRemove} hitSlop={10} style={styles.trash}>
+      <Pressable onPress={() => { hapticLight(); onRemove(); }} hitSlop={10} style={({ pressed }) => [styles.trash, pressed && styles.trashPressed]} accessibilityRole="button" accessibilityLabel="Retirer du panier">
         <Ionicons name="trash-outline" size={20} color={colors.danger} />
       </Pressable>
     </Card>
@@ -113,8 +120,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, alignItems: "center", justifyContent: "center",
   },
   stepBtnDisabled: { opacity: 0.5 },
+  stepBtnPressed: { opacity: 0.6, backgroundColor: colors.primaryLight, borderColor: colors.primary },
   qtyValue: { ...typography.body, fontWeight: "600", minWidth: 22, textAlign: "center" },
   trash: { padding: spacing.xs },
+  trashPressed: { opacity: 0.5 },
+  summaryBlock: { gap: spacing.md },
   totalCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   totalLabel: { ...typography.h3 },
   totalValue: { ...typography.h2, color: colors.primary },

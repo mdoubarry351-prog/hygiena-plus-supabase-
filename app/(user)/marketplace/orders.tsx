@@ -10,11 +10,14 @@ import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
 import { OrderTimeline } from "@/components/OrderTimeline";
+import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS, orderItemCount, formatOrderDate } from "@/lib/order-display";
 import type { MarketplaceOrder } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
+
+const STEP = 55; // pas de l'apparition échelonnée
 
 export default function Orders() {
   const { session } = useAuth();
@@ -63,10 +66,11 @@ export default function Orders() {
             message="Tes commandes apparaîtront ici après ton premier achat."
           />
         ) : (
-          orders.map((o) => {
+          orders.map((o, i) => {
             const count = orderItemCount(o.items);
             return (
-              <Card key={o.id} onPress={() => router.push({ pathname: "/(user)/marketplace/order", params: { id: o.id } })} accessibilityLabel="Voir la commande" style={styles.orderCard}>
+              <FadeInView key={o.id} fill={false} delay={Math.min(i, 6) * STEP}>
+              <Card onPress={() => router.push({ pathname: "/(user)/marketplace/order", params: { id: o.id } })} haptic accessibilityLabel="Voir la commande" style={styles.orderCard}>
                   <View style={styles.orderHead}>
                     <Text style={styles.date}>{formatOrderDate(o.created_at)}</Text>
                     <Badge label={ORDER_STATUS_LABELS[o.status]} color={ORDER_STATUS_COLORS[o.status]} />
@@ -85,6 +89,7 @@ export default function Orders() {
                     <Text style={styles.total}>{formatPrice(o.total_amount)}</Text>
                   </View>
               </Card>
+              </FadeInView>
             );
           })
         )}
