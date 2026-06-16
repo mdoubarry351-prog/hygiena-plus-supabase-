@@ -16,3 +16,8 @@ export const PREMIUM_ENABLED = false;
 // Messagerie de conseils patiente ↔ médecin (remplacée par le contact
 // post-paiement : WhatsApp/appel ou clinique selon le mode de consultation).
 export const DOCTOR_MESSAGING_ENABLED = false;
+
+// Carte « Conseils & infos » (bibliothèque d'articles santé) dans la grille
+// « Accès rapide » de l'accueil. La bibliothèque et l'admin Articles restent
+// intacts : repasser à `true` réaffiche le point d'entrée depuis l'accueil.
+export const SHOW_ARTICLES = false;

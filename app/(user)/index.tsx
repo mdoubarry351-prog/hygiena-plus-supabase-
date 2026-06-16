@@ -17,7 +17,7 @@ import { currentPhase, getDailyTip, PHASE_LABEL } from "@/lib/cycle-tips";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { useAuth } from "@/providers/AuthProvider";
 import { notificationsService } from "@/lib/notifications-service";
-import { PREMIUM_ENABLED } from "@/lib/app-config";
+import { PREMIUM_ENABLED, SHOW_ARTICLES } from "@/lib/app-config";
 import { appointmentsService, doctorDisplayName, formatAppointmentTime, type AppointmentWithDoctor } from "@/lib/appointments-service";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, formatOrderDate, orderItemCount } from "@/lib/order-display";
@@ -162,7 +162,9 @@ export default function CycleHome() {
     ...(!isDoctor ? [{ emoji: "🌼", title: "Consultations", sub: "Médecins vérifiées", href: "/(user)/appointments" as Href, module: "doctors" as const }] : []),
     { emoji: "🛍️", title: "Boutique", sub: "Produits santé", href: "/(user)/marketplace", module: "marketplace" },
     { emoji: "💬", title: "Forum", sub: "Communauté", href: "/(user)/community" },
-    { emoji: "📚", title: "Conseils & infos", sub: "Articles santé", href: "/(user)/library" },
+    // « Conseils & infos » masqué de l'accueil (réversible via SHOW_ARTICLES).
+    // La bibliothèque /(user)/library et l'admin Articles restent accessibles.
+    ...(SHOW_ARTICLES ? [{ emoji: "📚", title: "Conseils & infos", sub: "Articles santé", href: "/(user)/library" as Href }] : []),
   ];
 
   // Bloque la navigation vers un module désactivé par l'admin (message au tap).
