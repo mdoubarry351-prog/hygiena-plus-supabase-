@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
+import { AuthLogo } from "@/components/AuthLogo";
 import { FadeInView } from "@/components/FadeInView";
 import { authService } from "@/lib/auth-service";
 import { isValidEmail } from "@/lib/validation";
@@ -54,9 +55,9 @@ export default function ForgotPassword() {
   return (
     <Screen keyboardAware>
       <View style={styles.header}>
-        <Text style={styles.wordmark}>Hygiena<Text style={styles.plus}>+</Text></Text>
-        <Text style={typography.h2}>Mot de passe oublié</Text>
-        <Text style={typography.caption}>Nous t'enverrons un lien de réinitialisation.</Text>
+        <AuthLogo />
+        <Text style={[typography.h2, styles.centerText]}>Mot de passe oublié</Text>
+        <Text style={[typography.caption, styles.centerText]}>Nous t'enverrons un lien de réinitialisation.</Text>
       </View>
 
       <Input
@@ -87,7 +88,8 @@ export default function ForgotPassword() {
 }
 
 const styles = StyleSheet.create({
-  header: { marginTop: spacing.xl, marginBottom: spacing.xl, gap: spacing.xs },
+  header: { alignItems: "center", marginTop: spacing.xl, marginBottom: spacing.xl, gap: spacing.xs },
+  centerText: { textAlign: "center" },
   wordmark: { fontSize: 26, fontWeight: "700", color: colors.primaryDark, letterSpacing: 0.3, marginBottom: spacing.xs },
   plus: { color: colors.accent, fontWeight: "700" },
   footer: { marginTop: spacing.lg, alignItems: "center" },

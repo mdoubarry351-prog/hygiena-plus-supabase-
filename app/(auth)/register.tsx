@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
+import { AuthLogo } from "@/components/AuthLogo";
 import { useAuth } from "@/providers/AuthProvider";
 import { isValidEmail, passwordStrength } from "@/lib/validation";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
@@ -70,6 +71,7 @@ export default function Register() {
   return (
     <Screen keyboardAware>
       <View style={styles.header}>
+        <AuthLogo />
         <Text style={styles.wordmark}>Hygiena<Text style={styles.plus}>+</Text></Text>
         <Text style={styles.logo}>Créer un compte</Text>
         <Text style={typography.caption}>Rejoins la communauté</Text>
