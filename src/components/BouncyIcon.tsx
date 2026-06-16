@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
-import Animated, { useSharedValue, useAnimatedStyle, withSequence, withTiming, withSpring, Easing } from "react-native-reanimated";
+import { Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { durations } from "@/theme";
 
 /**
  * Icône avec micro-« pop » (ressort scale) au CHANGEMENT de `popKey` — même
- * ressenti que l'ancien HeartButton, unifié sur reanimated (thread UI).
- * N'anime PAS au premier rendu (état initial). Réutilisable pour like, bookmark,
- * ajout panier, etc. L'haptique reste gérée par le parent.
+ * ressenti que l'ancien HeartButton. Animated RN (scale, useNativeDriver) →
+ * compatible Expo Go. N'anime PAS au premier rendu (état initial). Réutilisable
+ * pour like, bookmark, ajout panier, etc. L'haptique reste gérée par le parent.
  */
 export function BouncyIcon({
   name,
@@ -21,7 +21,7 @@ export function BouncyIcon({
   // Valeur dont le changement déclenche le pop (ex. booléen aimé/enregistré).
   popKey: string | number | boolean;
 }) {
-  const scale = useSharedValue(1);
+  const scale = useRef(new Animated.Value(1)).current;
   const mounted = useRef(false);
 
   useEffect(() => {
@@ -29,16 +29,14 @@ export function BouncyIcon({
       mounted.current = true;
       return;
     }
-    scale.value = withSequence(
-      withTiming(1.3, { duration: durations.fast, easing: Easing.out(Easing.quad) }),
-      withSpring(1, { damping: 8, stiffness: 180, mass: 0.6 })
-    );
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 1.3, duration: durations.fast, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 12 }),
+    ]).start();
   }, [popKey, scale]);
 
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-
   return (
-    <Animated.View style={animStyle}>
+    <Animated.View style={{ transform: [{ scale }] }}>
       <Ionicons name={name} size={size} color={color} />
     </Animated.View>
   );

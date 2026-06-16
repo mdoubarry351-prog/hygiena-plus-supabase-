@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
-import { StyleSheet, View, type DimensionValue } from "react-native";
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, cancelAnimation } from "react-native-reanimated";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Easing, StyleSheet, View, type DimensionValue } from "react-native";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { colors, radius, spacing } from "@/theme";
 
 // Bloc fantôme avec animation SHIMMER : une bande lumineuse (couleur `card`)
 // balaie horizontalement le bloc (base `border`), clippée par overflow:hidden.
-// Animation sur le thread UI (reanimated). API inchangée (width/height/radius/style).
+// Animated RN (translateX, useNativeDriver) → compatible Expo Go.
+// API inchangée (width/height/radius/style).
 export function Skeleton({
   width = "100%",
   height = 12,
@@ -21,28 +21,25 @@ export function Skeleton({
 }) {
   // Largeur mesurée en px (les largeurs en % ne donnent pas la plage de translation).
   const [w, setW] = useState(0);
-  const progress = useSharedValue(0);
+  const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    progress.value = withRepeat(
-      withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      false
+    const loop = Animated.loop(
+      Animated.timing(progress, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
     );
-    return () => cancelAnimation(progress);
+    loop.start();
+    return () => loop.stop();
   }, [progress]);
 
   const band = Math.max(1, w * 0.5);
-  const sheenStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: -band + progress.value * (w + band) }],
-  }));
+  const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [-band, w] });
 
   return (
     <View
       onLayout={(e) => setW(e.nativeEvent.layout.width)}
       style={[styles.base, { width, height, borderRadius: r }, style]}
     >
-      {w > 0 ? <Animated.View style={[styles.sheen, { width: band }, sheenStyle]} /> : null}
+      {w > 0 ? <Animated.View style={[styles.sheen, { width: band, transform: [{ translateX }] }]} /> : null}
     </View>
   );
 }

@@ -1,13 +1,13 @@
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
-import { useEffect } from "react";
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from "react-native-reanimated";
+import { Animated, Easing, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { useEffect, useRef } from "react";
 import { colors, radius, spacing, typography } from "@/theme";
 
 // Léger échelonné entre barres (ms).
 const BAR_STEP = 45;
 
 // Barre qui CROÎT depuis 0 jusqu'à sa taille au montage (scaleY/scaleX depuis la
-// base), easing sortant. Re-anime si `animKey` (la valeur) change. Thread UI.
+// base), easing sortant. Re-anime si `animKey` (la valeur) change.
+// Animated RN (scale, useNativeDriver) → compatible Expo Go.
 function AnimatedBar({
   style,
   animKey,
@@ -19,15 +19,16 @@ function AnimatedBar({
   index?: number;
   horizontal?: boolean;
 }) {
-  const p = useSharedValue(0);
+  const p = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    p.value = 0;
-    p.value = withDelay(index * BAR_STEP, withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }));
+    p.setValue(0);
+    Animated.timing(p, { toValue: 1, duration: 520, delay: index * BAR_STEP, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [p, animKey, index]);
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [horizontal ? { scaleX: p.value } : { scaleY: p.value }],
-  }));
-  return <Animated.View style={[style, horizontal ? styles.originLeft : styles.originBottom, animStyle]} />;
+  return (
+    <Animated.View
+      style={[style, horizontal ? styles.originLeft : styles.originBottom, { transform: [horizontal ? { scaleX: p } : { scaleY: p }] }]}
+    />
+  );
 }
 
 type BarChartProps = {
