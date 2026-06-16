@@ -6,9 +6,11 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
+import { EmptyState } from "@/components/EmptyState";
 import { FadeInView } from "@/components/FadeInView";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useCycles } from "@/hooks/useCycles";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { hapticLight } from "@/lib/haptics";
 import type { MenstrualCycle } from "@/lib/database.types";
 import { colors, durations, fonts, phase, radius, spacing, typography } from "@/theme";
@@ -64,6 +66,7 @@ function painDescriptor(p: number): string {
 
 export default function CalendarScreen() {
   const { cycles, prediction, loading, offline, cachedAt } = useCycles();
+  const { cycle_enabled } = useAppSettings();
   const [viewDate, setViewDate] = useState(new Date());
   const [selected, setSelected] = useState<MenstrualCycle | null>(null);
   const router = useRouter();
@@ -152,6 +155,19 @@ export default function CalendarScreen() {
         Animated.timing(slide, { toValue: 0, duration: durations.normal, useNativeDriver: true }),
       ]).start(() => { animating.current = false; });
     });
+  }
+
+  // Service désactivé par l'admin : état neutre (n'empêche pas les autres onglets).
+  if (!cycle_enabled) {
+    return (
+      <Screen>
+        <EmptyState
+          icon="water-outline"
+          title="Service non disponible pour le moment"
+          message="Le suivi du cycle est temporairement désactivé."
+        />
+      </Screen>
+    );
   }
 
   if (loading && cycles.length === 0) return <Loading />;

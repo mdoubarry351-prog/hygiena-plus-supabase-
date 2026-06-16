@@ -15,6 +15,7 @@ import { SkeletonList } from "@/components/Skeleton";
 import { ActionSheet, type ActionSheetOption } from "@/components/ActionSheet";
 import { useCommunity } from "@/hooks/useCommunity";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   authorDisplayName,
@@ -44,6 +45,7 @@ export default function CommunityHome() {
   const [sortMode, setSortMode] = useState<"recent" | "trending">("recent");
   // Médecins correspondant à la recherche (section en tête du fil).
   const [doctorResults, setDoctorResults] = useState<DoctorSearchResult[]>([]);
+  const { community_enabled } = useAppSettings();
 
   // Filtres appliqués CÔTÉ SERVEUR (recherche + catégorie + tri + filtre médecins).
   const { posts, likedIds, loading, loadingMore, hasMore, error, reload, loadMore, toggleLike } = useCommunity({
@@ -203,6 +205,22 @@ export default function CommunityHome() {
     ),
     [likedIds, savedIds, onSavePost, openPostMenu, onPressPost, onOpenCommentsPost, onLikePost]
   );
+
+  // Service désactivé par l'admin : état neutre (n'empêche pas les autres onglets).
+  if (!community_enabled) {
+    return (
+      <Screen>
+        <View style={styles.topBar}>
+          <Text style={typography.h2}>Communauté</Text>
+        </View>
+        <EmptyState
+          icon="people-outline"
+          title="Service non disponible pour le moment"
+          message="La communauté est temporairement désactivée."
+        />
+      </Screen>
+    );
+  }
 
   if (loading && posts.length === 0) return <SkeletonList variant="post" />;
 

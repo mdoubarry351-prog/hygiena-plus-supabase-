@@ -14,10 +14,12 @@ import { PREMIUM_ENABLED } from "@/lib/app-config";
 import type { AppSettings } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
-type ToggleKey = "marketplace_enabled" | "doctors_enabled" | "premium_enabled" | "appointments_enabled" | "messaging_enabled";
+type ToggleKey = "marketplace_enabled" | "cycle_enabled" | "community_enabled" | "doctors_enabled" | "premium_enabled" | "appointments_enabled" | "messaging_enabled";
 
 const ALL_TOGGLES: { key: ToggleKey; label: string; sub: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: "marketplace_enabled", label: "Marketplace", sub: "Boutique et commandes pour les utilisatrices.", icon: "bag-handle-outline" },
+  { key: "cycle_enabled", label: "Suivi du cycle", sub: "Calendrier, prédictions et journal du cycle.", icon: "water-outline" },
+  { key: "community_enabled", label: "Communauté", sub: "Forum, publications et commentaires.", icon: "people-outline" },
   { key: "doctors_enabled", label: "Accès médecin", sub: "Annuaire des médecins et fiches publiques.", icon: "medkit-outline" },
   { key: "appointments_enabled", label: "Rendez-vous", sub: "Prise de rendez-vous payante avec les médecins.", icon: "calendar-outline" },
   { key: "messaging_enabled", label: "Téléconsultation / Messagerie", sub: "Messagerie en ligne patiente ↔ médecin.", icon: "chatbubbles-outline" },

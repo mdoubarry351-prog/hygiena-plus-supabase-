@@ -15,6 +15,8 @@ export type AppFlags = {
   appointments_enabled: boolean;
   premium_enabled: boolean;
   messaging_enabled: boolean;
+  cycle_enabled: boolean;
+  community_enabled: boolean;
   premium_price: number;
   premium_duration_days: number;
 };
@@ -26,6 +28,8 @@ const ALL_ON: AppFlags = {
   appointments_enabled: true,
   premium_enabled: true,
   messaging_enabled: true,
+  cycle_enabled: true,
+  community_enabled: true,
   premium_price: PREMIUM_PRICE,
   premium_duration_days: PREMIUM_PERIOD_DAYS,
 };
@@ -42,7 +46,7 @@ export function useAppSettings(): AppFlags & { loading: boolean; reload: () => P
     try {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("marketplace_enabled, doctors_enabled, appointments_enabled, premium_enabled, messaging_enabled, premium_price, premium_duration_days")
+        .select("marketplace_enabled, doctors_enabled, appointments_enabled, premium_enabled, messaging_enabled, cycle_enabled, community_enabled, premium_price, premium_duration_days")
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -54,6 +58,8 @@ export function useAppSettings(): AppFlags & { loading: boolean; reload: () => P
           appointments_enabled: data.appointments_enabled ?? true,
           premium_enabled: data.premium_enabled ?? true,
           messaging_enabled: data.messaging_enabled ?? true,
+          cycle_enabled: data.cycle_enabled ?? true,
+          community_enabled: data.community_enabled ?? true,
           premium_price: data.premium_price ?? PREMIUM_PRICE,
           premium_duration_days: data.premium_duration_days ?? PREMIUM_PERIOD_DAYS,
         });
