@@ -1,10 +1,13 @@
-import { useEffect, useRef } from "react";
-import { Animated, StyleSheet, View, type DimensionValue } from "react-native";
+import { useEffect, useState } from "react";
+import { StyleSheet, View, type DimensionValue } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, cancelAnimation } from "react-native-reanimated";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { colors, radius, spacing } from "@/theme";
 
-// Bloc gris animé (pulse doux en boucle). Native driver (opacity).
+// Bloc fantôme avec animation SHIMMER : une bande lumineuse (couleur `card`)
+// balaie horizontalement le bloc (base `border`), clippée par overflow:hidden.
+// Animation sur le thread UI (reanimated). API inchangée (width/height/radius/style).
 export function Skeleton({
   width = "100%",
   height = 12,
@@ -16,18 +19,32 @@ export function Skeleton({
   radius?: number;
   style?: object;
 }) {
-  const opacity = useRef(new Animated.Value(0.5)).current;
+  // Largeur mesurée en px (les largeurs en % ne donnent pas la plage de translation).
+  const [w, setW] = useState(0);
+  const progress = useSharedValue(0);
+
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.5, duration: 700, useNativeDriver: true }),
-      ])
+    progress.value = withRepeat(
+      withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      false
     );
-    loop.start();
-    return () => loop.stop();
-  }, [opacity]);
-  return <Animated.View style={[{ width, height, borderRadius: r, backgroundColor: colors.border, opacity }, style]} />;
+    return () => cancelAnimation(progress);
+  }, [progress]);
+
+  const band = Math.max(1, w * 0.5);
+  const sheenStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -band + progress.value * (w + band) }],
+  }));
+
+  return (
+    <View
+      onLayout={(e) => setW(e.nativeEvent.layout.width)}
+      style={[styles.base, { width, height, borderRadius: r }, style]}
+    >
+      {w > 0 ? <Animated.View style={[styles.sheen, { width: band }, sheenStyle]} /> : null}
+    </View>
+  );
 }
 
 // Quelques lignes de texte fantômes (la dernière plus courte).
@@ -127,6 +144,8 @@ export function SkeletonList({ variant, count = 5 }: { variant: Variant; count?:
 }
 
 const styles = StyleSheet.create({
+  base: { backgroundColor: colors.border, overflow: "hidden" },
+  sheen: { position: "absolute", top: 0, bottom: 0, backgroundColor: colors.card, opacity: 0.55 },
   list: { paddingTop: spacing.lg, gap: spacing.md },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   rowBody: { flex: 1, gap: spacing.xs },
