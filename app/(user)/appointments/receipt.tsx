@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -26,6 +26,13 @@ export default function Receipt() {
   const router = useRouter();
   const [appt, setAppt] = useState<AppointmentReceipt | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // « Pop » doux du sceau de paiement (spring scale) au premier rendu du reçu.
+  const pop = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    if (loading || !appt) return;
+    Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 12, bounciness: 12 }).start();
+  }, [loading, appt, pop]);
 
   useEffect(() => {
     let mounted = true;
@@ -55,11 +62,11 @@ export default function Receipt() {
       <ScreenHeader />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.badge}>
-          <View style={styles.badgeCircle}>
+          <Animated.View style={[styles.badgeCircle, { transform: [{ scale: pop }] }]}>
             <Ionicons name="checkmark" size={36} color={colors.white} />
-          </View>
+          </Animated.View>
           <Text style={styles.paid}>Payé</Text>
-          <Text style={styles.paidSub}>Votre paiement a bien été pris en compte</Text>
+          <Text style={styles.paidSub}>Ton paiement a bien été pris en compte</Text>
         </View>
 
         <Card style={styles.ticket}>

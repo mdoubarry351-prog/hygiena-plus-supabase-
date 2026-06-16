@@ -6,6 +6,8 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Loading } from "@/components/Loading";
+import { FadeInView } from "@/components/FadeInView";
+import { hapticLight } from "@/lib/haptics";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 export type ChatMessage = {
@@ -43,6 +45,7 @@ export function ChatThread({ title, subtitle, note, banner, messages, currentRol
   function handleSend() {
     const text = draft.trim();
     if (!text) return;
+    hapticLight();
     setDraft("");
     onSend(text);
   }
@@ -51,7 +54,7 @@ export function ChatThread({ title, subtitle, note, banner, messages, currentRol
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       {/* En-tête */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back}>
+        <Pressable onPress={() => router.back()} hitSlop={10} style={({ pressed }) => [styles.back, pressed && styles.backPressed]} accessibilityRole="button" accessibilityLabel="Retour">
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </Pressable>
         <View style={styles.headerText}>
@@ -85,24 +88,26 @@ export function ChatThread({ title, subtitle, note, banner, messages, currentRol
             showsVerticalScrollIndicator={false}
           >
             {messages.length === 0 ? (
-              <Text style={styles.emptyHint}>Aucun message pour l'instant. Écrivez le premier.</Text>
+              <Text style={styles.emptyHint}>Aucun message pour l'instant. Écris le premier.</Text>
             ) : (
               messages.map((m) => {
                 const mine = m.sender_role === currentRole;
                 return (
-                  <View key={m.id} style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowOther]}>
-                    <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
-                      <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{m.content}</Text>
+                  <FadeInView key={m.id} fill={false}>
+                    <View style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowOther]}>
+                      <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
+                        <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{m.content}</Text>
+                      </View>
+                      <View style={styles.metaRow}>
+                        <Text style={styles.time}>{formatTime(m.created_at)}</Text>
+                        {mine ? (
+                          <Text style={[styles.receipt, m.read_at ? styles.receiptRead : null]}>
+                            {m.read_at ? "✓✓ Lu" : "✓ Envoyé"}
+                          </Text>
+                        ) : null}
+                      </View>
                     </View>
-                    <View style={styles.metaRow}>
-                      <Text style={styles.time}>{formatTime(m.created_at)}</Text>
-                      {mine ? (
-                        <Text style={[styles.receipt, m.read_at ? styles.receiptRead : null]}>
-                          {m.read_at ? "✓✓ Lu" : "✓ Envoyé"}
-                        </Text>
-                      ) : null}
-                    </View>
-                  </View>
+                  </FadeInView>
                 );
               })
             )}
@@ -122,7 +127,9 @@ export function ChatThread({ title, subtitle, note, banner, messages, currentRol
           <Pressable
             onPress={handleSend}
             disabled={!draft.trim() || sending}
-            style={[styles.sendBtn, (!draft.trim() || sending) && styles.sendBtnDisabled]}
+            style={({ pressed }) => [styles.sendBtn, (!draft.trim() || sending) && styles.sendBtnDisabled, pressed && draft.trim() && !sending && styles.sendBtnPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Envoyer le message"
           >
             <Ionicons name="send" size={18} color={colors.white} />
           </Pressable>
@@ -137,6 +144,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
   back: { padding: spacing.xs, marginLeft: -spacing.xs },
+  backPressed: { opacity: 0.5 },
   headerText: { flex: 1 },
   title: { ...typography.name },
   subtitle: { ...typography.caption, color: colors.textMuted },
@@ -162,4 +170,5 @@ const styles = StyleSheet.create({
   input: { flex: 1, maxHeight: 120, minHeight: 44, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm, fontSize: 15, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surface },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
   sendBtnDisabled: { opacity: 0.4 },
+  sendBtnPressed: { opacity: 0.8, transform: [{ scale: 0.92 }] },
 });

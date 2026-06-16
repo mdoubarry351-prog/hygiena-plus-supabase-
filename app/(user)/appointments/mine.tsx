@@ -11,9 +11,10 @@ import { EmptyState } from "@/components/EmptyState";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { Loading } from "@/components/Loading";
 import { RescheduleModal } from "@/components/RescheduleModal";
+import { FadeInView } from "@/components/FadeInView";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/providers/AuthProvider";
-import { hapticWarning } from "@/lib/haptics";
+import { hapticLight, hapticWarning } from "@/lib/haptics";
 import { syncAppointmentReminders } from "@/lib/reminders";
 import {
   appointmentsService,
@@ -138,13 +139,14 @@ export default function MyAppointments() {
           <EmptyState
             icon="calendar-outline"
             title="Aucun rendez-vous"
-            message="Vos rendez-vous avec un médecin apparaîtront ici."
+            message="Tes rendez-vous avec un médecin apparaîtront ici."
           />
         ) : (
-          appointments.map((a) => {
+          appointments.map((a, i) => {
             const name = doctorDisplayName(a.doctor?.profile ?? null);
             return (
-              <Card key={a.id} style={styles.apptCard}>
+              <FadeInView key={a.id} fill={false} delay={Math.min(i, 6) * 55}>
+              <Card style={styles.apptCard}>
                 <View style={styles.apptHead}>
                   <View style={styles.apptInfo}>
                     <Text style={styles.name}>{name}</Text>
@@ -167,8 +169,10 @@ export default function MyAppointments() {
                 {a.reason ? <Text style={styles.reason}>{a.reason}</Text> : null}
                 {a.is_paid ? (
                   <Pressable
-                    onPress={() => router.push({ pathname: "/(user)/appointments/receipt", params: { id: a.id } })}
-                    style={styles.receiptBtn}
+                    onPress={() => { hapticLight(); router.push({ pathname: "/(user)/appointments/receipt", params: { id: a.id } }); }}
+                    style={({ pressed }) => [styles.receiptBtn, pressed && styles.actionPressed]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Voir le reçu"
                   >
                     <Ionicons name="receipt-outline" size={16} color={colors.primary} />
                     <Text style={styles.receiptBtnText}>Voir le reçu</Text>
@@ -177,17 +181,18 @@ export default function MyAppointments() {
 
                 {isEligible(a) ? (
                   <View style={styles.actions}>
-                    <Pressable onPress={() => setRescheduling(a)} style={[styles.actionBtn, styles.actionReschedule]}>
+                    <Pressable onPress={() => { hapticLight(); setRescheduling(a); }} style={({ pressed }) => [styles.actionBtn, styles.actionReschedule, pressed && styles.actionPressed]} accessibilityRole="button" accessibilityLabel="Reporter le rendez-vous">
                       <Ionicons name="calendar-outline" size={16} color={colors.primary} />
                       <Text style={[styles.actionText, { color: colors.primary }]}>Reporter</Text>
                     </Pressable>
-                    <Pressable onPress={() => cancelAppt(a)} style={[styles.actionBtn, styles.actionCancel]}>
+                    <Pressable onPress={() => { hapticLight(); cancelAppt(a); }} style={({ pressed }) => [styles.actionBtn, styles.actionCancel, pressed && styles.actionPressed]} accessibilityRole="button" accessibilityLabel="Annuler le rendez-vous">
                       <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
                       <Text style={[styles.actionText, { color: colors.danger }]}>Annuler le rendez-vous</Text>
                     </Pressable>
                   </View>
                 ) : null}
               </Card>
+              </FadeInView>
             );
           })
         )}
@@ -231,6 +236,7 @@ const styles = StyleSheet.create({
   reason: { ...typography.body, color: colors.text },
   actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
   actionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5 },
+  actionPressed: { opacity: 0.6 },
   actionReschedule: { borderColor: colors.primary },
   actionCancel: { borderColor: colors.danger },
   actionText: { ...typography.caption, fontWeight: "700" },

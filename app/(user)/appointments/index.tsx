@@ -13,13 +13,18 @@ import { SkeletonList } from "@/components/Skeleton";
 import { AppImage } from "@/components/AppImage";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
+import { FadeInView } from "@/components/FadeInView";
+import { PressableScale } from "@/components/PressableScale";
 import { useAuth } from "@/providers/AuthProvider";
 import { useDoctors } from "@/hooks/useDoctors";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { StarRating } from "@/components/StarRating";
 import { doctorDisplayName, hasAnyAvailability, type DoctorWithProfile } from "@/lib/appointments-service";
+import { hapticLight } from "@/lib/haptics";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
+
+const STEP = 55; // pas de l'apparition échelonnée (cohérent Vagues 1-4)
 
 // Minuscules + suppression des accents pour une recherche tolérante.
 function norm(s: string): string {
@@ -107,9 +112,9 @@ export default function AppointmentsHome() {
       <ScreenHeader
         title="Trouver une médecin"
         right={
-          <Pressable onPress={() => router.push("/(user)/appointments/mine")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Mes rendez-vous">
+          <PressableScale onPress={() => router.push("/(user)/appointments/mine")} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Mes rendez-vous">
             <Ionicons name="calendar-outline" size={25} color={colors.text} />
-          </Pressable>
+          </PressableScale>
         }
       />
 
@@ -129,7 +134,7 @@ export default function AppointmentsHome() {
           <EmptyState
             icon="medkit-outline"
             title="Aucun médecin disponible"
-            message="Revenez plus tard, de nouveaux praticiens arrivent bientôt."
+            message="Reviens plus tard, de nouveaux praticiens arrivent bientôt."
           />
         ) : (
           <>
@@ -149,22 +154,23 @@ export default function AppointmentsHome() {
 
             <View style={styles.toolbar}>
               <Text style={styles.count}>{list.length} médecin{list.length > 1 ? "s" : ""}</Text>
-              <Pressable onPress={() => setSortBest((v) => !v)} style={[styles.sortChip, sortBest && styles.sortChipActive]}>
+              <Pressable onPress={() => { hapticLight(); setSortBest((v) => !v); }} style={({ pressed }) => [styles.sortChip, sortBest && styles.sortChipActive, pressed && styles.chipPressed]} accessibilityRole="button" accessibilityLabel="Trier par mieux notés">
                 <Ionicons name="star" size={13} color={sortBest ? colors.white : colors.accent} />
                 <Text style={[styles.sortText, sortBest && styles.sortTextActive]}>Mieux notés</Text>
               </Pressable>
             </View>
 
             {list.length === 0 ? (
-              <EmptyState icon="search-outline" title="Aucun médecin trouvé" message="Essayez un autre nom ou une autre spécialité." />
+              <EmptyState icon="search-outline" title="Aucun médecin trouvé" message="Essaie un autre nom ou une autre spécialité." />
             ) : (
-              list.map((d) => (
-                <DoctorRow
-                  key={d.id}
-                  doctor={d}
-                  onPress={() => router.push(`/(user)/appointments/${d.id}`)}
-                  onContact={() => contactDoctor(d)}
-                />
+              list.map((d, i) => (
+                <FadeInView key={d.id} fill={false} delay={Math.min(i, 6) * STEP}>
+                  <DoctorRow
+                    doctor={d}
+                    onPress={() => router.push(`/(user)/appointments/${d.id}`)}
+                    onContact={() => contactDoctor(d)}
+                  />
+                </FadeInView>
               ))
             )}
           </>
@@ -178,7 +184,7 @@ function DoctorRow({ doctor, onPress, onContact }: { doctor: DoctorWithProfile; 
   const name = doctorDisplayName(doctor.profile);
   const available = hasAnyAvailability(doctor.availability);
   return (
-    <Card onPress={onPress} accessibilityLabel={name} style={styles.row}>
+    <Card onPress={onPress} haptic accessibilityLabel={name} style={styles.row}>
       <View style={styles.rowTop}>
         {doctor.profile?.avatar_url ? (
           <AppImage source={doctor.profile.avatar_url} style={styles.avatar} />
@@ -211,11 +217,11 @@ function DoctorRow({ doctor, onPress, onContact }: { doctor: DoctorWithProfile; 
         </View>
       </View>
       <View style={styles.cardActions}>
-        <Pressable onPress={onPress} style={[styles.cardBtn, styles.cardBtnPrimary]} accessibilityRole="button" accessibilityLabel={`Prendre rendez-vous avec ${name}`}>
+        <Pressable onPress={() => { hapticLight(); onPress(); }} style={({ pressed }) => [styles.cardBtn, styles.cardBtnPrimary, pressed && styles.cardBtnPressed]} accessibilityRole="button" accessibilityLabel={`Prendre rendez-vous avec ${name}`}>
           <Ionicons name="calendar" size={16} color={colors.white} />
           <Text style={styles.cardBtnPrimaryText}>Prendre rendez-vous</Text>
         </Pressable>
-        <Pressable onPress={onContact} style={[styles.cardBtn, styles.cardBtnOutline]} accessibilityRole="button" accessibilityLabel={`Contacter ${name}`}>
+        <Pressable onPress={() => { hapticLight(); onContact(); }} style={({ pressed }) => [styles.cardBtn, styles.cardBtnOutline, pressed && styles.cardBtnPressed]} accessibilityRole="button" accessibilityLabel={`Contacter ${name}`}>
           <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.primary} />
           <Text style={styles.cardBtnOutlineText}>Contacter</Text>
         </Pressable>
@@ -248,6 +254,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border,
   },
   sortChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipPressed: { opacity: 0.7 },
   sortText: { fontSize: 13, fontWeight: "700", color: colors.text },
   sortTextActive: { color: colors.white },
   empty: { alignItems: "center", gap: spacing.sm },
@@ -270,6 +277,7 @@ const styles = StyleSheet.create({
   availText: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
   cardActions: { flexDirection: "row", gap: spacing.sm },
   cardBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, height: 42, borderRadius: radius.md, borderWidth: 1.5 },
+  cardBtnPressed: { opacity: 0.75 },
   cardBtnPrimary: { backgroundColor: colors.primary, borderColor: colors.primary },
   cardBtnPrimaryText: { ...typography.caption, color: colors.white, fontWeight: "700" },
   cardBtnOutline: { borderColor: colors.primary, backgroundColor: colors.card },

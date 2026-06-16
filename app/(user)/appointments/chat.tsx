@@ -9,6 +9,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useCycles } from "@/hooks/useCycles";
 import { messagesService } from "@/lib/messages-service";
 import { buildCycleSummary } from "@/lib/cycle-service";
+import { hapticLight } from "@/lib/haptics";
 import { colors } from "@/theme";
 
 export default function PatientChat() {
@@ -78,7 +79,7 @@ export default function PatientChat() {
       sending={sending}
       onSend={handleSend}
       composerAction={
-        <Pressable onPress={shareCycle} disabled={sending} style={styles.shareBtn} accessibilityRole="button" accessibilityLabel="Partager mon suivi de cycle">
+        <Pressable onPress={() => { hapticLight(); shareCycle(); }} disabled={sending} style={({ pressed }) => [styles.shareBtn, pressed && styles.shareBtnPressed]} accessibilityRole="button" accessibilityLabel="Partager mon suivi de cycle">
           <Ionicons name="pulse-outline" size={20} color={colors.primary} />
         </Pressable>
       }
@@ -88,4 +89,5 @@ export default function PatientChat() {
 
 const styles = StyleSheet.create({
   shareBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  shareBtnPressed: { opacity: 0.6, backgroundColor: colors.primaryLight },
 });

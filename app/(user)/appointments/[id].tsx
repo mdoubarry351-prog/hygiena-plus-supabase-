@@ -42,6 +42,7 @@ const MONTHS = [
 ];
 const SLIDE = 26; // amplitude du glissement horizontal entre deux mois
 const MONTHS_AHEAD = 2; // nombre de mois navigables au-delà du mois courant
+const STEP = 55; // pas de l'apparition échelonnée (cohérent Vagues 1-4)
 
 function toISO(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -128,6 +129,7 @@ export default function BookAppointment() {
     const target = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + delta, 1);
     if (target < monthFloor || target > monthCeil) return;
     animating.current = true;
+    hapticLight();
     const out = delta > 0 ? -SLIDE : SLIDE;
     Animated.parallel([
       Animated.timing(fade, { toValue: 0, duration: durations.fast, useNativeDriver: true }),
@@ -194,7 +196,7 @@ export default function BookAppointment() {
       hapticSuccess();
       Alert.alert(
         "Rendez-vous demandé",
-        `Votre demande avec ${name} le ${formatAppointmentDate(selectedDate)} à ${selectedTime} a été envoyée. Vous serez notifiée dès sa confirmation.`,
+        `Ta demande avec ${name} le ${formatAppointmentDate(selectedDate)} à ${selectedTime} a été envoyée. Tu seras notifiée dès sa confirmation.`,
         [{ text: "OK", onPress: () => router.replace("/(user)/appointments/mine") }]
       );
     } catch (e) {
@@ -202,7 +204,7 @@ export default function BookAppointment() {
         hapticError();
         await refreshSlots();
         setSelectedTime(null);
-        Alert.alert("Créneau indisponible", "Ce créneau vient d'être réservé, choisissez-en un autre.");
+        Alert.alert("Créneau indisponible", "Ce créneau vient d'être réservé, choisis-en un autre.");
       } else {
         Alert.alert("Erreur", e instanceof Error ? e.message : "Prise de rendez-vous échouée");
       }
@@ -245,7 +247,7 @@ export default function BookAppointment() {
         hapticError();
         await refreshSlots();
         setSelectedTime(null);
-        Alert.alert("Créneau indisponible", "Ce créneau vient d'être réservé, choisissez-en un autre.");
+        Alert.alert("Créneau indisponible", "Ce créneau vient d'être réservé, choisis-en un autre.");
       } else {
         Alert.alert("Erreur", e instanceof Error ? e.message : "Paiement échoué");
       }
@@ -256,10 +258,11 @@ export default function BookAppointment() {
 
   return (
     <Screen>
-      <FadeInView>
+      <View style={styles.fill}>
       <ScreenHeader title="Prendre rendez-vous" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* En-tête profil */}
+        <FadeInView fill={false} delay={0}>
         <Card style={styles.doctorCard}>
           <Avatar uri={doctor.profile?.avatar_url} name={name} size={AVATAR} />
           <View style={styles.doctorInfo}>
@@ -286,7 +289,9 @@ export default function BookAppointment() {
             ) : null}
           </View>
         </Card>
+        </FadeInView>
 
+        <FadeInView fill={false} delay={STEP} style={styles.group}>
         <MedicalDisclaimer text="La consultation se fait en clinique ; la messagerie en ligne ne remplace pas un examen médical." />
 
         {/* À propos */}
@@ -314,15 +319,17 @@ export default function BookAppointment() {
           </Card>
         ) : null}
 
-        <Pressable onPress={handleMessage} style={styles.msgBtn}>
+        <Pressable onPress={() => { hapticLight(); handleMessage(); }} style={({ pressed }) => [styles.msgBtn, pressed && styles.msgBtnPressed]} accessibilityRole="button" accessibilityLabel="Écrire au médecin">
           <Ionicons name="chatbubbles-outline" size={18} color={colors.primary} />
           <Text style={styles.msgBtnText}>Écrire au médecin (conseils)</Text>
           {!profile?.is_premium ? <Ionicons name="star" size={14} color={colors.accent} /> : null}
         </Pressable>
         <Text style={styles.msgNote}>
-          Conseils en ligne (Premium). Pour une consultation, prenez rendez-vous ci-dessous.
+          Conseils en ligne (Premium). Pour une consultation, prends rendez-vous ci-dessous.
         </Text>
+        </FadeInView>
 
+        <FadeInView fill={false} delay={STEP * 2} style={styles.group}>
         {!availabilityDefined ? (
           <Card style={styles.noAvailCard}>
             <Ionicons name="calendar-outline" size={20} color={colors.textMuted} />
@@ -333,11 +340,11 @@ export default function BookAppointment() {
             <Text style={[typography.h3, styles.sectionTitle]}>Choisir une date</Text>
             <Card style={styles.calCard}>
               <View style={styles.calHeader}>
-                <Pressable onPress={() => changeMonth(-1)} disabled={!canPrev} hitSlop={12} style={styles.calNavBtn} accessibilityRole="button" accessibilityLabel="Mois précédent">
+                <Pressable onPress={() => changeMonth(-1)} disabled={!canPrev} hitSlop={12} style={({ pressed }) => [styles.calNavBtn, pressed && canPrev && styles.navPressed]} accessibilityRole="button" accessibilityLabel="Mois précédent">
                   <Ionicons name="chevron-back" size={22} color={canPrev ? colors.primary : colors.border} />
                 </Pressable>
                 <Animated.Text style={[styles.calMonth, { opacity: fade }]}>{MONTHS[viewMonth.getMonth()]} {viewMonth.getFullYear()}</Animated.Text>
-                <Pressable onPress={() => changeMonth(1)} disabled={!canNext} hitSlop={12} style={styles.calNavBtn} accessibilityRole="button" accessibilityLabel="Mois suivant">
+                <Pressable onPress={() => changeMonth(1)} disabled={!canNext} hitSlop={12} style={({ pressed }) => [styles.calNavBtn, pressed && canNext && styles.navPressed]} accessibilityRole="button" accessibilityLabel="Mois suivant">
                   <Ionicons name="chevron-forward" size={22} color={canNext ? colors.primary : colors.border} />
                 </Pressable>
               </View>
@@ -360,7 +367,7 @@ export default function BookAppointment() {
                       <Pressable
                         disabled={disabled}
                         onPress={() => { hapticLight(); setSelectedDate(iso); setSelectedTime(null); }}
-                        style={[styles.calDay, active && styles.calDayActive, full && styles.calDayFull]}
+                        style={({ pressed }) => [styles.calDay, active && styles.calDayActive, full && styles.calDayFull, pressed && !disabled && !active && styles.calDayPressed]}
                         accessibilityRole="button"
                         accessibilityLabel={`${d.getDate()} ${MONTHS[d.getMonth()]}${disabled ? " (indisponible)" : ""}`}
                       >
@@ -376,15 +383,15 @@ export default function BookAppointment() {
 
             <Text style={[typography.h3, styles.sectionTitle]}>Choisir une heure</Text>
             {!selectedDate ? (
-              <Text style={styles.slotHint}>Choisissez d'abord une date.</Text>
+              <Text style={styles.slotHint}>Choisis d'abord une date.</Text>
             ) : selectedSlots.length === 0 ? (
-              <Text style={styles.slotHint}>Aucun créneau disponible ce jour. Essayez une autre date.</Text>
+              <Text style={styles.slotHint}>Aucun créneau disponible ce jour. Essaie une autre date.</Text>
             ) : (
               <View style={styles.timeGrid}>
                 {selectedSlots.map((t) => {
                   const active = selectedTime === t;
                   return (
-                    <Pressable key={t} onPress={() => { hapticLight(); setSelectedTime(t); }} style={[styles.timeChip, active && styles.chipActive]}>
+                    <Pressable key={t} onPress={() => { hapticLight(); setSelectedTime(t); }} style={({ pressed }) => [styles.timeChip, active && styles.chipActive, pressed && !active && styles.timeChipPressed]} accessibilityRole="button" accessibilityLabel={`Créneau ${t}`}>
                       <Text style={[styles.timeText, active && styles.chipTextActive]}>{t}</Text>
                     </Pressable>
                   );
@@ -416,7 +423,7 @@ export default function BookAppointment() {
             <Text style={styles.payNote}>Paiement simulé — aucun débit réel.</Text>
           </Card>
         ) : (
-          <Text style={[styles.summary, styles.muted]}>Sélectionnez une date et une heure.</Text>
+          <Text style={[styles.summary, styles.muted]}>Sélectionne une date et une heure.</Text>
         )}
 
         {doctor.consultation_fee != null ? (
@@ -430,22 +437,27 @@ export default function BookAppointment() {
           <Button title="Confirmer le rendez-vous" onPress={handleBook} loading={saving} disabled={!canBook} />
         )}
         <Button title="Annuler" variant="outline" onPress={() => router.back()} />
+        </FadeInView>
 
-        <ReviewsSection
-          kind="doctor"
-          targetId={doctor.id}
-          ratingAvg={doctor.rating_avg}
-          ratingCount={doctor.rating_count}
-          onChanged={reloadDoctor}
-        />
+        <FadeInView fill={false} delay={STEP * 3}>
+          <ReviewsSection
+            kind="doctor"
+            targetId={doctor.id}
+            ratingAvg={doctor.rating_avg}
+            ratingCount={doctor.rating_count}
+            onChanged={reloadDoctor}
+          />
+        </FadeInView>
       </ScrollView>
-      </FadeInView>
+      </View>
     </Screen>
   );
 }
 
 const AVATAR = 64;
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  group: { gap: spacing.md },
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   doctorCard: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: radius.pill, backgroundColor: colors.primaryLight },
@@ -466,6 +478,7 @@ const styles = StyleSheet.create({
   calCard: { gap: spacing.sm },
   calHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   calNavBtn: { padding: spacing.xs },
+  navPressed: { opacity: 0.5 },
   calMonth: { ...typography.h3, textTransform: "capitalize" },
   calWeekRow: { flexDirection: "row" },
   calWeekday: { flex: 1, textAlign: "center", ...typography.caption, color: colors.textMuted, fontWeight: "600" },
@@ -473,6 +486,7 @@ const styles = StyleSheet.create({
   calCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: "center", justifyContent: "center" },
   calDay: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
   calDayActive: { backgroundColor: colors.primary },
+  calDayPressed: { backgroundColor: colors.primaryLight },
   calDayFull: { backgroundColor: colors.surface },
   calDayText: { ...typography.body, color: colors.text },
   calDayTextActive: { color: colors.white, fontWeight: "700" },
@@ -498,6 +512,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border, backgroundColor: colors.surface,
   },
   timeText: { ...typography.body, fontWeight: "600" },
+  timeChipPressed: { opacity: 0.6, backgroundColor: colors.primaryLight, borderColor: colors.primary },
   chipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
   chipTextActive: { color: colors.white },
   textArea: { height: 90, textAlignVertical: "top", paddingTop: spacing.sm },
@@ -509,6 +524,7 @@ const styles = StyleSheet.create({
   paySummary: { ...typography.caption, color: colors.primaryDark, textTransform: "capitalize" },
   payNote: { ...typography.caption, color: colors.textMuted },
   msgBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, height: 48, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.primary },
+  msgBtnPressed: { opacity: 0.6, backgroundColor: colors.primaryLight },
   msgBtnText: { ...typography.body, color: colors.primary, fontFamily: fonts.bodySemiBold },
   msgNote: { ...typography.caption, color: colors.textMuted, textAlign: "center" },
 });
