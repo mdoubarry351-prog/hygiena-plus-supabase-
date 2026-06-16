@@ -6,15 +6,18 @@ import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { Badge } from "@/components/Badge";
 import { Loading } from "@/components/Loading";
 import { Divider } from "@/components/Divider";
 import { FadeInView } from "@/components/FadeInView";
+import { AppointmentContact } from "@/components/AppointmentContact";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   appointmentsService,
   doctorDisplayName,
   formatAppointmentDate,
   formatAppointmentTime,
+  CONSULTATION_MODE_LABEL,
   type AppointmentReceipt,
 } from "@/lib/appointments-service";
 import { formatPrice } from "@/lib/marketplace-service";
@@ -55,6 +58,8 @@ export default function Receipt() {
 
   const doctorName = doctorDisplayName(appt.doctor?.profile ?? null);
   const clinic = appt.doctor?.clinic_name?.trim() || "Clinique non renseignée";
+  const mode = appt.consultation_mode;
+  const modeColor = mode === "remote" ? colors.secondary : colors.primary;
 
   return (
     <Screen>
@@ -67,6 +72,7 @@ export default function Receipt() {
           </Animated.View>
           <Text style={styles.paid}>Payé</Text>
           <Text style={styles.paidSub}>Ton paiement a bien été pris en compte</Text>
+          <Badge label={CONSULTATION_MODE_LABEL[mode]} color={modeColor} />
         </View>
 
         <Card style={styles.ticket}>
@@ -76,7 +82,8 @@ export default function Receipt() {
           <Divider spacing={spacing.xs} />
 
           <Row label="Gynécologue" value={doctorName} />
-          <Row label="Clinique" value={clinic} />
+          <Row label="Type" value={CONSULTATION_MODE_LABEL[mode]} />
+          {mode === "physical" ? <Row label="Clinique" value={clinic} /> : null}
           <Row label="Date" value={formatAppointmentDate(appt.appointment_date)} capitalize />
           <Row label="Heure" value={formatAppointmentTime(appt.appointment_time)} />
 
@@ -94,6 +101,8 @@ export default function Receipt() {
             </Text>
           ) : null}
         </Card>
+
+        <AppointmentContact mode={mode} phone={appt.doctor?.profile?.phone} clinicName={appt.doctor?.clinic_name} />
 
         <Text style={styles.note}>Paiement simulé — démonstration, aucun débit réel.</Text>
 

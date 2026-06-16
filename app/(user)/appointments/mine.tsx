@@ -12,6 +12,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { Loading } from "@/components/Loading";
 import { RescheduleModal } from "@/components/RescheduleModal";
 import { FadeInView } from "@/components/FadeInView";
+import { AppointmentContact } from "@/components/AppointmentContact";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/providers/AuthProvider";
 import { hapticLight, hapticWarning } from "@/lib/haptics";
@@ -21,6 +22,7 @@ import {
   doctorDisplayName,
   formatAppointmentDate,
   formatAppointmentTime,
+  CONSULTATION_MODE_LABEL,
   type AppointmentWithDoctor,
 } from "@/lib/appointments-service";
 import type { AppointmentStatus } from "@/lib/database.types";
@@ -154,7 +156,10 @@ export default function MyAppointments() {
                       <Text style={styles.specialty}>{a.doctor.specialty}</Text>
                     ) : null}
                   </View>
-                  <Badge label={STATUS_LABELS[a.status]} color={STATUS_COLORS[a.status]} />
+                  <View style={styles.headBadges}>
+                    <Badge label={STATUS_LABELS[a.status]} color={STATUS_COLORS[a.status]} />
+                    <Badge label={CONSULTATION_MODE_LABEL[a.consultation_mode]} color={a.consultation_mode === "remote" ? colors.secondary : colors.primary} />
+                  </View>
                 </View>
                 <View style={styles.apptFoot}>
                   <View style={styles.metaRow}>
@@ -177,6 +182,14 @@ export default function MyAppointments() {
                     <Ionicons name="receipt-outline" size={16} color={colors.primary} />
                     <Text style={styles.receiptBtnText}>Voir le reçu</Text>
                   </Pressable>
+                ) : null}
+
+                {(a.is_paid || a.status === "confirmed") && a.status !== "cancelled" ? (
+                  <AppointmentContact
+                    mode={a.consultation_mode}
+                    phone={a.doctor?.profile?.phone}
+                    clinicName={a.doctor?.clinic_name}
+                  />
                 ) : null}
 
                 {isEligible(a) ? (
@@ -220,6 +233,7 @@ const styles = StyleSheet.create({
   receiptBtnText: { ...typography.caption, color: colors.primary, fontFamily: fonts.bodySemiBold },
   apptCard: { gap: spacing.sm },
   apptHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
+  headBadges: { alignItems: "flex-end", gap: 4 },
   apptInfo: { flex: 1, gap: 2 },
   name: { ...typography.name },
   specialty: { ...typography.caption, color: colors.secondary, fontWeight: "600" },

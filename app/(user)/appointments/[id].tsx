@@ -20,6 +20,7 @@ import {
   appointmentsService,
   doctorDisplayName,
   formatAppointmentDate,
+  CONSULTATION_MODE_LABEL,
   generateReceiptNumber,
   dayKeyForDate,
   dayAvailability,
@@ -29,6 +30,7 @@ import {
   WEEK_DAYS,
   type DoctorWithProfile,
 } from "@/lib/appointments-service";
+import type { ConsultationMode } from "@/lib/database.types";
 import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
 import { formatPrice } from "@/lib/marketplace-service";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
@@ -60,6 +62,7 @@ export default function BookAppointment() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [reason, setReason] = useState("");
+  const [mode, setMode] = useState<ConsultationMode>("physical"); // défaut = en clinique
   const [saving, setSaving] = useState(false);
 
   const todayISO = useMemo(() => toISO(new Date()), []);
@@ -192,6 +195,7 @@ export default function BookAppointment() {
         doctorId: doctor.id,
         date: selectedDate,
         time: selectedTime,
+        mode,
         reason: reason.trim() || null,
       });
       hapticSuccess();
@@ -237,6 +241,7 @@ export default function BookAppointment() {
         doctorId: doctor.id,
         date: selectedDate,
         time: selectedTime,
+        mode,
         reason: reason.trim() || null,
         payment: { amountPaid: doctor.consultation_fee ?? 0, receiptNumber: generateReceiptNumber() },
       });
@@ -333,6 +338,24 @@ export default function BookAppointment() {
         </FadeInView>
 
         <FadeInView fill={false} delay={STEP * 2} style={styles.group}>
+        <Text style={[typography.h3, styles.sectionTitle]}>Type de consultation</Text>
+        <View style={styles.modeRow}>
+          <ModeCard
+            active={mode === "remote"}
+            icon="chatbubbles-outline"
+            title="À distance"
+            subtitle="Par WhatsApp ou appel"
+            onPress={() => { hapticLight(); setMode("remote"); }}
+          />
+          <ModeCard
+            active={mode === "physical"}
+            icon="business-outline"
+            title="En clinique"
+            subtitle={doctor.clinic_name?.trim() || "Sur place"}
+            onPress={() => { hapticLight(); setMode("physical"); }}
+          />
+        </View>
+
         {!availabilityDefined ? (
           <Card style={styles.noAvailCard}>
             <Ionicons name="calendar-outline" size={20} color={colors.textMuted} />
@@ -423,6 +446,7 @@ export default function BookAppointment() {
               </Text>
             </View>
             <Text style={styles.paySummary}>{formatAppointmentDate(selectedDate!)} à {selectedTime}</Text>
+            <Text style={styles.paySummary}>Consultation · {CONSULTATION_MODE_LABEL[mode]}</Text>
             <Text style={styles.payNote}>Paiement simulé — aucun débit réel.</Text>
           </Card>
         ) : (
@@ -457,9 +481,40 @@ export default function BookAppointment() {
   );
 }
 
+// Carte de sélection du mode de consultation (à distance / en clinique).
+function ModeCard({ active, icon, title, subtitle, onPress }: { active: boolean; icon: keyof typeof Ionicons.glyphMap; title: string; subtitle: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.modeCard, active && styles.modeCardActive, pressed && !active && styles.modeCardPressed]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={title}
+    >
+      {active ? <Ionicons name="checkmark-circle" size={16} color={colors.primary} style={styles.modeCheck} /> : null}
+      <View style={[styles.modeIcon, active && styles.modeIconActive]}>
+        <Ionicons name={icon} size={20} color={active ? colors.white : colors.primary} />
+      </View>
+      <Text style={[styles.modeTitle, active && styles.modeTitleActive]}>{title}</Text>
+      <Text style={styles.modeSub} numberOfLines={1}>{subtitle}</Text>
+    </Pressable>
+  );
+}
+
 const AVATAR = 64;
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  // Sélecteur de mode de consultation
+  modeRow: { flexDirection: "row", gap: spacing.sm },
+  modeCard: { flex: 1, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs, backgroundColor: colors.card },
+  modeCardActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  modeCardPressed: { opacity: 0.7 },
+  modeIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  modeIconActive: { backgroundColor: colors.primary },
+  modeTitle: { ...typography.name, color: colors.text },
+  modeTitleActive: { color: colors.primaryDark },
+  modeSub: { ...typography.caption, color: colors.textMuted },
+  modeCheck: { position: "absolute", top: spacing.sm, right: spacing.sm },
   group: { gap: spacing.md },
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   doctorCard: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },

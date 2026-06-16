@@ -22,6 +22,8 @@ export type AppointmentStatus =
   | "confirmed"
   | "cancelled"
   | "completed";
+// Mode de consultation (colonne appointments.consultation_mode, défaut 'physical').
+export type ConsultationMode = "remote" | "physical";
 export type DeliveryMode = "delivery" | "pickup";
 export type OrderStatus =
   | "pending"
@@ -243,6 +245,7 @@ export type Database = {
           appointment_date: string;
           appointment_time: string;
           status: AppointmentStatus;
+          consultation_mode: ConsultationMode;
           reason: string | null;
           notes: string | null;
           is_paid: boolean;
@@ -259,6 +262,7 @@ export type Database = {
           appointment_date: string;
           appointment_time: string;
           status?: AppointmentStatus;
+          consultation_mode?: ConsultationMode;
           reason?: string | null;
           notes?: string | null;
           is_paid?: boolean;
@@ -275,6 +279,7 @@ export type Database = {
           appointment_date?: string;
           appointment_time?: string;
           status?: AppointmentStatus;
+          consultation_mode?: ConsultationMode;
           reason?: string | null;
           notes?: string | null;
           is_paid?: boolean;

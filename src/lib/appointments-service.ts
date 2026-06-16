@@ -5,6 +5,7 @@ import type {
   Profile,
   Json,
   TablesInsert,
+  ConsultationMode,
 } from "@/lib/database.types";
 
 // =====================================================
@@ -77,13 +78,15 @@ export function generateSlots(start: string, end: string, stepMin = 30): string[
 }
 
 // Infos de profil jointes pour un médecin (uniquement ce dont l'UI a besoin).
-export type DoctorProfile = Pick<Profile, "full_name" | "avatar_url">;
+// Profil médecin joint : nom + avatar + téléphone (pour le contact post-paiement
+// d'une consultation à distance ; lisible via RLS pour un médecin validé).
+export type DoctorProfile = Pick<Profile, "full_name" | "avatar_url" | "phone">;
 
-// Médecin enrichi avec le profil de la personne (nom, avatar).
+// Médecin enrichi avec le profil de la personne (nom, avatar, téléphone).
 export type DoctorWithProfile = Doctor & { profile: DoctorProfile | null };
 
-// Médecin réduit tel que joint sur un rendez-vous (spécialité + nom).
-export type AppointmentDoctor = Pick<Doctor, "specialty"> & {
+// Médecin réduit tel que joint sur un rendez-vous (spécialité + clinique + profil).
+export type AppointmentDoctor = Pick<Doctor, "specialty" | "clinic_name"> & {
   profile: DoctorProfile | null;
 };
 
@@ -129,13 +132,19 @@ export function formatAppointmentTime(time: string): string {
   return time.slice(0, 5);
 }
 
+// Libellé du mode de consultation (présentation, partagé reçu/RDV/réservation).
+export const CONSULTATION_MODE_LABEL: Record<ConsultationMode, string> = {
+  remote: "À distance",
+  physical: "En clinique",
+};
+
 export const appointmentsService = {
   // Médecins validés uniquement, avec leur profil (nom, avatar), triés par
   // spécialité pour une liste lisible.
   async getDoctors(): Promise<DoctorWithProfile[]> {
     const { data, error } = await supabase
       .from("doctors")
-      .select("*, profile:profiles!doctors_user_id_fkey(full_name, avatar_url)")
+      .select("*, profile:profiles!doctors_user_id_fkey(full_name, avatar_url, phone)")
       .eq("is_validated", true)
       .order("specialty", { ascending: true });
     if (error) throw error;
@@ -146,7 +155,7 @@ export const appointmentsService = {
   async getDoctor(id: string): Promise<DoctorWithProfile | null> {
     const { data, error } = await supabase
       .from("doctors")
-      .select("*, profile:profiles!doctors_user_id_fkey(full_name, avatar_url)")
+      .select("*, profile:profiles!doctors_user_id_fkey(full_name, avatar_url, phone)")
       .eq("id", id)
       .eq("is_validated", true)
       .single();
@@ -158,7 +167,7 @@ export const appointmentsService = {
   async getAppointments(userId: string): Promise<AppointmentWithDoctor[]> {
     const { data, error } = await supabase
       .from("appointments")
-      .select("*, doctor:doctors(specialty, profile:profiles!doctors_user_id_fkey(full_name, avatar_url))")
+      .select("*, doctor:doctors(specialty, clinic_name, profile:profiles!doctors_user_id_fkey(full_name, avatar_url, phone))")
       .eq("patient_id", userId)
       .order("appointment_date", { ascending: false })
       .order("appointment_time", { ascending: false });
@@ -173,6 +182,7 @@ export const appointmentsService = {
     doctorId: string;
     date: string;
     time: string;
+    mode: ConsultationMode;
     reason?: string | null;
     payment?: { amountPaid: number; receiptNumber: string };
   }): Promise<Appointment> {
@@ -183,6 +193,7 @@ export const appointmentsService = {
       appointment_date: input.date,
       appointment_time: input.time,
       status: "pending",
+      consultation_mode: input.mode,
       reason: input.reason ?? null,
       is_paid: !!paid,
       amount_paid: paid ? paid.amountPaid : null,
@@ -229,7 +240,7 @@ export const appointmentsService = {
   async getAppointmentReceipt(id: string): Promise<AppointmentReceipt | null> {
     const { data, error } = await supabase
       .from("appointments")
-      .select("*, doctor:doctors(specialty, clinic_name, profile:profiles!doctors_user_id_fkey(full_name, avatar_url))")
+      .select("*, doctor:doctors(specialty, clinic_name, profile:profiles!doctors_user_id_fkey(full_name, avatar_url, phone))")
       .eq("id", id)
       .single();
     if (error) throw error;
