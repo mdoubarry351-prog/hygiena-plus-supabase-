@@ -13,6 +13,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { cycleService, SYMPTOMS, FLOW_OPTIONS, MOOD_OPTIONS } from "@/lib/cycle-service";
 import { resyncCycleReminders } from "@/lib/reminders";
+import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
 // Parse une date SQL « AAAA-MM-JJ » en Date locale (midi → évite les décalages DST/fuseau).
@@ -134,6 +135,7 @@ export default function LogCycle() {
         await cycleService.addCycle({ user_id: session.user.id, ...payload });
         toast.success("Tes règles ont été enregistrées.");
       }
+      hapticSuccess();
       // Replanifie les rappels locaux d'après les nouvelles prédictions (silencieux).
       resyncCycleReminders(session.user.id);
       router.back();
@@ -161,7 +163,7 @@ export default function LogCycle() {
 
         {/* Dates via picker natif */}
         <Text style={[typography.h3, styles.sectionTitle]}>Dates</Text>
-        <Pressable onPress={() => setPicker("start")} style={styles.dateRow} accessibilityRole="button" accessibilityLabel="Choisir la date de début">
+        <Pressable onPress={() => { hapticLight(); setPicker("start"); }} style={({ pressed }) => [styles.dateRow, pressed && styles.dateRowPressed]} accessibilityRole="button" accessibilityLabel="Choisir la date de début">
           <Ionicons name="calendar-outline" size={20} color={colors.primary} />
           <View style={styles.dateText}>
             <Text style={styles.dateLabel}>Début des règles</Text>
@@ -170,7 +172,7 @@ export default function LogCycle() {
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </Pressable>
 
-        <Pressable onPress={() => setPicker("end")} style={styles.dateRow} accessibilityRole="button" accessibilityLabel="Choisir la date de fin">
+        <Pressable onPress={() => { hapticLight(); setPicker("end"); }} style={({ pressed }) => [styles.dateRow, pressed && styles.dateRowPressed]} accessibilityRole="button" accessibilityLabel="Choisir la date de fin">
           <Ionicons name="calendar-outline" size={20} color={colors.primary} />
           <View style={styles.dateText}>
             <Text style={styles.dateLabel}>Fin des règles (optionnel)</Text>
@@ -205,7 +207,7 @@ export default function LogCycle() {
         <Text style={[typography.h3, styles.sectionTitle]}>Flux</Text>
         <View style={styles.chips}>
           {FLOW_OPTIONS.map((f) => (
-            <Chip key={f} label={f} active={flow === f} onPress={() => setFlow((c) => pickSingle(c, f))} variant="soft" size="lg" />
+            <Chip key={f} label={f} active={flow === f} onPress={() => setFlow((c) => pickSingle(c, f))} variant="soft" size="lg" haptic />
           ))}
         </View>
 
@@ -213,7 +215,7 @@ export default function LogCycle() {
         <Text style={[typography.h3, styles.sectionTitle]}>Humeur</Text>
         <View style={styles.chips}>
           {MOOD_OPTIONS.map((m) => (
-            <Chip key={m} label={m} active={mood === m} onPress={() => setMood((c) => pickSingle(c, m))} variant="soft" size="lg" />
+            <Chip key={m} label={m} active={mood === m} onPress={() => setMood((c) => pickSingle(c, m))} variant="soft" size="lg" haptic />
           ))}
         </View>
 
@@ -230,9 +232,9 @@ export default function LogCycle() {
             return (
               <Pressable
                 key={n}
-                onPress={() => setPain((c) => (c === n ? null : n))}
+                onPress={() => { hapticLight(); setPain((c) => (c === n ? null : n)); }}
                 hitSlop={6}
-                style={[styles.painDot, active && styles.painDotActive]}
+                style={({ pressed }) => [styles.painDot, active && styles.painDotActive, pressed && styles.painDotPressed]}
                 accessibilityRole="button"
                 accessibilityLabel={`Douleur ${n} sur 10`}
               >
@@ -250,7 +252,7 @@ export default function LogCycle() {
         <Text style={[typography.h3, styles.sectionTitle]}>Symptômes</Text>
         <View style={styles.chips}>
           {SYMPTOMS.map((s) => (
-            <Chip key={s} label={s} active={selectedSymptoms.includes(s)} onPress={() => toggleSymptom(s)} variant="soft" size="lg" />
+            <Chip key={s} label={s} active={selectedSymptoms.includes(s)} onPress={() => toggleSymptom(s)} variant="soft" size="lg" haptic />
           ))}
         </View>
 
@@ -279,6 +281,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border,
     borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
   },
+  dateRowPressed: { opacity: 0.7, backgroundColor: colors.primaryLight },
   dateText: { flex: 1, gap: 2 },
   dateLabel: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
   dateValue: { ...typography.body, color: colors.text, fontWeight: "600" },
@@ -300,6 +303,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface,
   },
   painDotActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  painDotPressed: { opacity: 0.7, transform: [{ scale: 0.92 }] },
   painDotText: { ...typography.caption, color: colors.text, fontWeight: "700" },
   painDotTextActive: { color: colors.white },
   painLegend: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.xs },

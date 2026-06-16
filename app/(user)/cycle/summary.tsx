@@ -10,7 +10,9 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
 import { FadeInView } from "@/components/FadeInView";
 import { useCycles } from "@/hooks/useCycles";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, radius, shadows, spacing, typography } from "@/theme";
+
+const STEP = 55; // pas de l'apparition échelonnée (cohérent Vague 1)
 
 function daysBetween(a: string, b: string): number {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
@@ -96,12 +98,13 @@ export default function CycleSummary() {
 
   return (
     <Screen>
-      <FadeInView>
+      <View style={styles.fill}>
       <ScreenHeader title="Résumé de mon cycle" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {offline ? <OfflineBanner cachedAt={cachedAt} /> : null}
 
-        {/* Anneau */}
+        {/* Anneau — hero */}
+        <FadeInView fill={false} delay={0}>
         <Card style={styles.ringCard}>
           <CycleRing
             cycleLength={ringN}
@@ -112,8 +115,10 @@ export default function CycleSummary() {
             ovulationDay={ovulationDay}
           />
         </Card>
+        </FadeInView>
 
         {/* Statistiques */}
+        <FadeInView fill={false} delay={STEP}>
         <Card style={styles.statsCard}>
           {cycleLengths.length >= 1 ? (
             <StatRow icon="sync-outline" label="Durée moyenne du cycle" value={`${ringN} jours`} />
@@ -124,9 +129,11 @@ export default function CycleSummary() {
           <StatRow icon="calendar-outline" label="Cycles enregistrés" value={`${cycles.length}`} />
           <StatRow icon="time-outline" label="Période couverte" value={`${formatDay(firstStart)} → ${formatDay(lastStart)}`} last />
         </Card>
+        </FadeInView>
 
         {/* Flux & humeur (affiché seulement si des données existent) */}
         {(topFlow || topMoods.length > 0) ? (
+          <FadeInView fill={false} delay={STEP * 2}>
           <Card style={styles.statsCard}>
             {topFlow ? (
               <StatRow icon="water-outline" label="Flux habituel" value={topFlow} last={topMoods.length === 0} />
@@ -135,10 +142,12 @@ export default function CycleSummary() {
               <StatRow icon="happy-outline" label="Humeur fréquente" value={topMoods.join(", ")} last />
             ) : null}
           </Card>
+          </FadeInView>
         ) : null}
 
         {/* Régularité */}
         {canAssessRegularity ? (
+          <FadeInView fill={false} delay={STEP * 3}>
           <Card style={styles.regCard}>
             <View style={styles.regHead}>
               <View style={[styles.regIcon, { backgroundColor: isRegular ? colors.primaryLight : colors.warningSoft }]}>
@@ -157,10 +166,12 @@ export default function CycleSummary() {
                 : `Vos cycles varient sensiblement (±${Math.round(std)} j) : les prévisions restent indicatives.`}
             </Text>
           </Card>
+          </FadeInView>
         ) : null}
 
         {/* Symptômes fréquents */}
         {topSymptoms.length > 0 ? (
+          <FadeInView fill={false} delay={STEP * 4}>
           <Card style={styles.symCard}>
             <Text style={styles.sectionTitle}>Symptômes les plus fréquents</Text>
             {topSymptoms.map(([name, n]) => (
@@ -171,11 +182,14 @@ export default function CycleSummary() {
               </View>
             ))}
           </Card>
+          </FadeInView>
         ) : null}
 
-        <MedicalDisclaimer text="Les prédictions sont des estimations indicatives et ne constituent pas un avis médical." />
+        <FadeInView fill={false} delay={STEP * 5}>
+          <MedicalDisclaimer text="Les prédictions sont des estimations indicatives et ne constituent pas un avis médical." />
+        </FadeInView>
       </ScrollView>
-      </FadeInView>
+      </View>
     </Screen>
   );
 }
@@ -191,8 +205,9 @@ function StatRow({ icon, label, value, last }: { icon: keyof typeof Ionicons.gly
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  ringCard: { alignItems: "center", paddingVertical: spacing.lg },
+  ringCard: { alignItems: "center", paddingVertical: spacing.xl, ...shadows.md },
   statsCard: { gap: 0 },
   statRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.sm },
   statRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },

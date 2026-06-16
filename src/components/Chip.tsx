@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { hapticLight } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
 type Variant = "solid" | "soft";
@@ -28,6 +29,7 @@ export function Chip({
   inactiveBackground = "surface",
   size = "sm",
   style,
+  haptic = false,
 }: {
   label: string;
   active?: boolean;
@@ -37,6 +39,8 @@ export function Chip({
   inactiveBackground?: Inactive;
   size?: Size;
   style?: StyleProp<ViewStyle>;
+  // Retour haptique léger à la sélection (opt-in, sans effet ailleurs).
+  haptic?: boolean;
 }) {
   const pad = SIZES[size];
   const activeBg = variant === "soft" ? colors.primaryLight : colors.primary;
@@ -48,8 +52,8 @@ export function Chip({
 
   return (
     <Pressable
-      onPress={onPress}
-      style={[
+      onPress={onPress ? () => { if (haptic) hapticLight(); onPress(); } : undefined}
+      style={({ pressed }) => [
         styles.base,
         {
           paddingHorizontal: pad.ph,
@@ -58,6 +62,7 @@ export function Chip({
           borderColor: active ? colors.primary : colors.border,
         },
         style,
+        pressed && styles.pressed,
       ]}
     >
       {icon ? <Ionicons name={icon} size={13} color={iconColor} /> : null}
@@ -73,5 +78,6 @@ export function Chip({
 
 const styles = StyleSheet.create({
   base: { flexDirection: "row", alignItems: "center", gap: spacing.xs, borderRadius: radius.pill, borderWidth: 1.5 },
+  pressed: { opacity: 0.75, transform: [{ scale: 0.97 }] },
   text: { ...typography.caption, fontSize: 13 },
 });

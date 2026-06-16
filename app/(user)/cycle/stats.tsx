@@ -15,6 +15,7 @@ import type { MenstrualCycle } from "@/lib/database.types";
 import { colors, spacing, typography } from "@/theme";
 
 const MAX_BARS = 8; // derniers cycles affichés dans les histogrammes
+const STEP = 55; // pas de l'apparition échelonnée (cohérent Vague 1)
 
 function startTime(c: MenstrualCycle): number {
   return new Date(c.period_start).getTime();
@@ -104,89 +105,103 @@ export default function CycleStats() {
 
   return (
     <Screen>
-      <FadeInView>
+      <View style={styles.fill}>
         <ScreenHeader title="Statistiques" />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
           {offline ? <OfflineBanner cachedAt={cachedAt} /> : null}
 
           {!hasAny ? (
-            <EmptyState
-              icon="bar-chart-outline"
-              title="Pas encore assez de données"
-              message="Ajoute des durées, symptômes, humeurs ou douleurs pour voir tes graphiques."
-            />
+            <FadeInView fill={false} delay={0}>
+              <EmptyState
+                icon="bar-chart-outline"
+                title="Pas encore assez de données"
+                message="Ajoute des durées, symptômes, humeurs ou douleurs pour voir tes graphiques."
+              />
+            </FadeInView>
           ) : null}
 
           {/* 1) Durée du cycle */}
           {data.cycleSeries.length >= 2 ? (
-            <ChartCard icon="sync-outline" title="Durée du cycle" subtitle="En jours, sur les derniers cycles">
-              <BarChart
-                labels={data.cycleSeries.map((d) => d.label)}
-                values={data.cycleSeries.map((d) => d.value)}
-                tint={colors.primary}
-                average={avgCycle}
-                unitSuffix=" j"
-                height={170}
-              />
-            </ChartCard>
+            <FadeInView fill={false} delay={0}>
+              <ChartCard icon="sync-outline" title="Durée du cycle" subtitle="En jours, sur les derniers cycles">
+                <BarChart
+                  labels={data.cycleSeries.map((d) => d.label)}
+                  values={data.cycleSeries.map((d) => d.value)}
+                  tint={colors.primary}
+                  average={avgCycle}
+                  unitSuffix=" j"
+                  height={170}
+                />
+              </ChartCard>
+            </FadeInView>
           ) : null}
 
           {/* 2) Durée des règles */}
           {data.periodSeries.length >= 2 ? (
-            <ChartCard icon="water-outline" title="Durée des règles" subtitle="En jours, sur les derniers cycles">
-              <BarChart
-                labels={data.periodSeries.map((d) => d.label)}
-                values={data.periodSeries.map((d) => d.value)}
-                tint={colors.primaryDark}
-                average={avgPeriod}
-                unitSuffix=" j"
-                height={150}
-              />
-            </ChartCard>
+            <FadeInView fill={false} delay={STEP}>
+              <ChartCard icon="water-outline" title="Durée des règles" subtitle="En jours, sur les derniers cycles">
+                <BarChart
+                  labels={data.periodSeries.map((d) => d.label)}
+                  values={data.periodSeries.map((d) => d.value)}
+                  tint={colors.primaryDark}
+                  average={avgPeriod}
+                  unitSuffix=" j"
+                  height={150}
+                />
+              </ChartCard>
+            </FadeInView>
           ) : null}
 
           {/* 3) Symptômes fréquents */}
           {data.topSymptoms.length > 0 ? (
-            <ChartCard icon="medkit-outline" title="Symptômes les plus fréquents" subtitle="Nombre d'occurrences">
-              <HBarChart items={data.topSymptoms} tint={colors.primary} />
-            </ChartCard>
+            <FadeInView fill={false} delay={STEP * 2}>
+              <ChartCard icon="medkit-outline" title="Symptômes les plus fréquents" subtitle="Nombre d'occurrences">
+                <HBarChart items={data.topSymptoms} tint={colors.primary} />
+              </ChartCard>
+            </FadeInView>
           ) : null}
 
           {/* 4) Répartition de l'humeur */}
           {data.moods.length > 0 ? (
-            <ChartCard icon="happy-outline" title="Répartition de l'humeur" subtitle="Nombre de saisies par humeur">
-              <HBarChart items={data.moods} tint={colors.accent} />
-            </ChartCard>
+            <FadeInView fill={false} delay={STEP * 3}>
+              <ChartCard icon="happy-outline" title="Répartition de l'humeur" subtitle="Nombre de saisies par humeur">
+                <HBarChart items={data.moods} tint={colors.accent} />
+              </ChartCard>
+            </FadeInView>
           ) : null}
 
           {/* 5) Douleur */}
           {data.painSeries.length > 0 ? (
-            <ChartCard
-              icon="pulse-outline"
-              title="Douleur"
-              subtitle={data.painAvg != null ? `Moyenne : ${data.painAvg.toFixed(1)}/10` : undefined}
-            >
-              {data.painSeries.length >= 2 ? (
-                <BarChart
-                  labels={data.painSeries.map((d) => d.label)}
-                  values={data.painSeries.map((d) => d.value)}
-                  tint={colors.accent}
-                  average={data.painAvg}
-                  unitSuffix=""
-                  height={150}
-                />
-              ) : (
-                <View style={styles.singlePain}>
-                  <Text style={styles.singlePainValue}>{data.painSeries[0].value}/10</Text>
-                  <Text style={styles.singlePainHint}>Une seule saisie de douleur pour l'instant.</Text>
-                </View>
-              )}
-            </ChartCard>
+            <FadeInView fill={false} delay={STEP * 4}>
+              <ChartCard
+                icon="pulse-outline"
+                title="Douleur"
+                subtitle={data.painAvg != null ? `Moyenne : ${data.painAvg.toFixed(1)}/10` : undefined}
+              >
+                {data.painSeries.length >= 2 ? (
+                  <BarChart
+                    labels={data.painSeries.map((d) => d.label)}
+                    values={data.painSeries.map((d) => d.value)}
+                    tint={colors.accent}
+                    average={data.painAvg}
+                    unitSuffix=""
+                    height={150}
+                  />
+                ) : (
+                  <View style={styles.singlePain}>
+                    <Text style={styles.singlePainValue}>{data.painSeries[0].value}/10</Text>
+                    <Text style={styles.singlePainHint}>Une seule saisie de douleur pour l'instant.</Text>
+                  </View>
+                )}
+              </ChartCard>
+            </FadeInView>
           ) : null}
 
-          <MedicalDisclaimer text="Ces statistiques sont indicatives et ne constituent pas un avis médical." />
+          <FadeInView fill={false} delay={STEP * 5}>
+            <MedicalDisclaimer text="Ces statistiques sont indicatives et ne constituent pas un avis médical." />
+          </FadeInView>
         </ScrollView>
-      </FadeInView>
+      </View>
     </Screen>
   );
 }
@@ -207,6 +222,7 @@ function ChartCard({ icon, title, subtitle, children }: { icon: keyof typeof Ion
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   card: { gap: spacing.md },
   cardHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

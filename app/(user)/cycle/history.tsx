@@ -9,9 +9,11 @@ import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { EmptyState } from "@/components/EmptyState";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { FadeInView } from "@/components/FadeInView";
 import { useCycles } from "@/hooks/useCycles";
 import { cycleService } from "@/lib/cycle-service";
 import { resyncCycleReminders } from "@/lib/reminders";
+import { hapticLight } from "@/lib/haptics";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -19,6 +21,7 @@ import type { MenstrualCycle } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
 const PAGE = 12;
+const STEP = 55; // pas de l'apparition échelonnée (cohérent Vague 1)
 
 function startTime(c: MenstrualCycle): number {
   return new Date(c.period_start).getTime();
@@ -115,7 +118,7 @@ export default function CycleHistory() {
           {offline ? <OfflineBanner cachedAt={cachedAt} /> : null}
           <Text style={styles.count}>{cycles.length} cycle{cycles.length > 1 ? "s" : ""} enregistré{cycles.length > 1 ? "s" : ""}</Text>
 
-          {sortedDesc.slice(0, visible).map((c) => {
+          {sortedDesc.slice(0, visible).map((c, i) => {
             const periodLen = c.period_end ? daysBetween(c.period_start, c.period_end) + 1 : null;
             const cycleLen = cycleLenById.get(c.id) ?? null;
             const irregular = isIrregular(cycleLen);
@@ -126,7 +129,8 @@ export default function CycleHistory() {
             if (c.symptoms && c.symptoms.length) recap.push(`${c.symptoms.length} symptôme${c.symptoms.length > 1 ? "s" : ""}`);
 
             return (
-              <Card key={c.id} style={styles.card}>
+              <FadeInView key={c.id} fill={false} delay={Math.min(i, 6) * STEP}>
+              <Card style={styles.card}>
                 <View style={styles.cardHead}>
                   <View style={styles.dateWrap}>
                     <Ionicons name="water" size={16} color={colors.primary} />
@@ -151,16 +155,17 @@ export default function CycleHistory() {
                 {c.notes ? <Text style={styles.notes} numberOfLines={2}>« {c.notes} »</Text> : null}
 
                 <View style={styles.actions}>
-                  <Pressable onPress={() => router.push({ pathname: "/(user)/cycle/log", params: { id: c.id } })} style={styles.actionBtn} hitSlop={6} accessibilityRole="button" accessibilityLabel="Modifier la saisie">
+                  <Pressable onPress={() => { hapticLight(); router.push({ pathname: "/(user)/cycle/log", params: { id: c.id } }); }} style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]} hitSlop={6} accessibilityRole="button" accessibilityLabel="Modifier la saisie">
                     <Ionicons name="create-outline" size={18} color={colors.primary} />
                     <Text style={styles.actionText}>Modifier</Text>
                   </Pressable>
-                  <Pressable onPress={() => confirmDelete(c)} disabled={deleting === c.id} style={styles.actionBtn} hitSlop={6} accessibilityRole="button" accessibilityLabel="Supprimer la saisie">
+                  <Pressable onPress={() => { hapticLight(); confirmDelete(c); }} disabled={deleting === c.id} style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]} hitSlop={6} accessibilityRole="button" accessibilityLabel="Supprimer la saisie">
                     <Ionicons name="trash-outline" size={18} color={colors.danger} />
                     <Text style={[styles.actionText, styles.actionDanger]}>{deleting === c.id ? "Suppression…" : "Supprimer"}</Text>
                   </Pressable>
                 </View>
               </Card>
+              </FadeInView>
             );
           })}
 
@@ -198,6 +203,7 @@ const styles = StyleSheet.create({
   notes: { ...typography.caption, color: colors.textMuted, fontStyle: "italic" },
   actions: { flexDirection: "row", gap: spacing.lg, marginTop: spacing.xs, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },
   actionBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  actionPressed: { opacity: 0.55 },
   actionText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
   actionDanger: { color: colors.danger },
 });

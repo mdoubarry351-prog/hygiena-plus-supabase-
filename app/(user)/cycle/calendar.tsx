@@ -1,15 +1,29 @@
 import { useMemo, useRef, useState } from "react";
 import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
+import { FadeInView } from "@/components/FadeInView";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useCycles } from "@/hooks/useCycles";
+import { hapticLight } from "@/lib/haptics";
 import type { MenstrualCycle } from "@/lib/database.types";
 import { colors, durations, fonts, phase, radius, spacing, typography } from "@/theme";
+
+// Pas de l'apparition échelonnée (cohérent Vague 1).
+const STEP = 55;
+
+// Cartes d'accès du module cycle.
+const LINKS: { icon: keyof typeof Ionicons.glyphMap; title: string; sub: string; href: Href }[] = [
+  { icon: "stats-chart-outline", title: "Voir mon résumé", sub: "Durée moyenne, régularité, symptômes", href: "/(user)/cycle/summary" },
+  { icon: "bar-chart-outline", title: "Statistiques", sub: "Graphiques : durées, symptômes, humeur, douleur", href: "/(user)/cycle/stats" },
+  { icon: "list-outline", title: "Historique des cycles", sub: "Tous tes cycles, modifier ou supprimer", href: "/(user)/cycle/history" },
+  { icon: "bulb-outline", title: "Comprendre mon cycle", sub: "Phases, ovulation, fertilité, irrégularités", href: "/(user)/cycle/learn" },
+  { icon: "heart-outline", title: "Suivi de grossesse", sub: "Semaine par semaine, du début à la naissance", href: "/(user)/pregnancy" },
+];
 
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
 const MONTHS = [
@@ -125,6 +139,7 @@ export default function CalendarScreen() {
   function changeMonth(delta: number) {
     if (animating.current) return;
     animating.current = true;
+    hapticLight();
     const out = delta > 0 ? -SLIDE : SLIDE;
     Animated.parallel([
       Animated.timing(fade, { toValue: 0, duration: durations.fast, useNativeDriver: true }),
@@ -146,75 +161,28 @@ export default function CalendarScreen() {
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={typography.h2}>Mon cycle</Text>
+        <FadeInView fill={false} delay={0}>
+          <Text style={typography.h2}>Mon cycle</Text>
+        </FadeInView>
 
         {offline ? <OfflineBanner cachedAt={cachedAt} /> : null}
 
-        <Pressable onPress={() => router.push("/(user)/cycle/summary")}>
-          <Card style={styles.summaryCard}>
-            <View style={styles.summaryIcon}>
-              <Ionicons name="stats-chart-outline" size={20} color={colors.primaryDark} />
-            </View>
-            <View style={styles.summaryText}>
-              <Text style={styles.summaryTitle}>Voir mon résumé</Text>
-              <Text style={styles.summarySub}>Durée moyenne, régularité, symptômes</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </Card>
-        </Pressable>
+        {LINKS.map((l, i) => (
+          <FadeInView key={l.title} fill={false} delay={STEP * (i + 1)}>
+            <Card onPress={() => router.push(l.href)} haptic accessibilityLabel={l.title} style={styles.summaryCard}>
+              <View style={styles.summaryIcon}>
+                <Ionicons name={l.icon} size={20} color={colors.primaryDark} />
+              </View>
+              <View style={styles.summaryText}>
+                <Text style={styles.summaryTitle}>{l.title}</Text>
+                <Text style={styles.summarySub}>{l.sub}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </Card>
+          </FadeInView>
+        ))}
 
-        <Pressable onPress={() => router.push("/(user)/cycle/stats")}>
-          <Card style={styles.summaryCard}>
-            <View style={styles.summaryIcon}>
-              <Ionicons name="bar-chart-outline" size={20} color={colors.primaryDark} />
-            </View>
-            <View style={styles.summaryText}>
-              <Text style={styles.summaryTitle}>Statistiques</Text>
-              <Text style={styles.summarySub}>Graphiques : durées, symptômes, humeur, douleur</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </Card>
-        </Pressable>
-
-        <Pressable onPress={() => router.push("/(user)/cycle/history")}>
-          <Card style={styles.summaryCard}>
-            <View style={styles.summaryIcon}>
-              <Ionicons name="list-outline" size={20} color={colors.primaryDark} />
-            </View>
-            <View style={styles.summaryText}>
-              <Text style={styles.summaryTitle}>Historique des cycles</Text>
-              <Text style={styles.summarySub}>Tous tes cycles, modifier ou supprimer</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </Card>
-        </Pressable>
-
-        <Pressable onPress={() => router.push("/(user)/cycle/learn")}>
-          <Card style={styles.summaryCard}>
-            <View style={styles.summaryIcon}>
-              <Ionicons name="bulb-outline" size={20} color={colors.primaryDark} />
-            </View>
-            <View style={styles.summaryText}>
-              <Text style={styles.summaryTitle}>Comprendre mon cycle</Text>
-              <Text style={styles.summarySub}>Phases, ovulation, fertilité, irrégularités</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </Card>
-        </Pressable>
-
-        <Pressable onPress={() => router.push("/(user)/pregnancy")}>
-          <Card style={styles.summaryCard}>
-            <View style={styles.summaryIcon}>
-              <Ionicons name="heart-outline" size={20} color={colors.primaryDark} />
-            </View>
-            <View style={styles.summaryText}>
-              <Text style={styles.summaryTitle}>Suivi de grossesse</Text>
-              <Text style={styles.summarySub}>Semaine par semaine, du début à la naissance</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </Card>
-        </Pressable>
-
+        <FadeInView fill={false} delay={STEP * 6}>
         <Card style={styles.calCard}>
           <View style={styles.header}>
             <Pressable onPress={() => changeMonth(-1)} hitSlop={12}><Text style={styles.nav}>‹</Text></Pressable>
@@ -252,7 +220,13 @@ export default function CalendarScreen() {
               );
               if (entry) {
                 return (
-                  <Pressable key={i} style={styles.cell} onPress={() => setSelected(entry)} accessibilityRole="button" accessibilityLabel={`Voir la saisie du ${d.getDate()}`}>
+                  <Pressable
+                    key={i}
+                    style={({ pressed }) => [styles.cell, pressed && styles.cellPressed]}
+                    onPress={() => { hapticLight(); setSelected(entry); }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Voir la saisie du ${d.getDate()}`}
+                  >
                     {dot}
                     <View style={styles.entryMark} />
                   </Pressable>
@@ -262,15 +236,18 @@ export default function CalendarScreen() {
             })}
           </Animated.View>
         </Card>
+        </FadeInView>
 
         {/* Légende */}
-        <Card style={styles.legend}>
-          <LegendItem color={phase.period} label="Règles" />
-          <LegendItem color={phase.periodSoft} label="Règles prévues" borderColor={phase.period} />
-          <LegendItem color={phase.fertileSoft} label="Fenêtre fertile" borderColor={phase.fertile} />
-          <LegendItem color={phase.ovulation} label="Ovulation" />
-          <LegendItem color={colors.accent} label="Saisie / symptômes" small />
-        </Card>
+        <FadeInView fill={false} delay={STEP * 7}>
+          <Card style={styles.legend}>
+            <LegendItem color={phase.period} label="Règles" />
+            <LegendItem color={phase.periodSoft} label="Règles prévues" borderColor={phase.period} />
+            <LegendItem color={phase.fertileSoft} label="Fenêtre fertile" borderColor={phase.fertile} />
+            <LegendItem color={phase.ovulation} label="Ovulation" />
+            <LegendItem color={colors.accent} label="Saisie / symptômes" small />
+          </Card>
+        </FadeInView>
       </ScrollView>
 
       {/* Aperçu (lecture seule) de la saisie d'un jour. */}
@@ -351,6 +328,7 @@ const styles = StyleSheet.create({
   weekday: { flex: 1, textAlign: "center", ...typography.caption, fontWeight: "600" },
   grid: { flexDirection: "row", flexWrap: "wrap" },
   cell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: "center", justifyContent: "center" },
+  cellPressed: { opacity: 0.55, transform: [{ scale: 0.92 }] },
   dayDot: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   dayText: { ...typography.body },
   dayTextLight: { color: colors.white, fontWeight: "600", fontFamily: fonts.bodySemiBold },
