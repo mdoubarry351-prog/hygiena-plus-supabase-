@@ -51,7 +51,7 @@ export default function DoctorMessages() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        <Text style={styles.note}>Conseils en ligne avec vos patientes Premium.</Text>
+        <Text style={styles.note}>Conseils en ligne avec vos patientes.</Text>
 
         {convos.length === 0 ? (
           <EmptyState

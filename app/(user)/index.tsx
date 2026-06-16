@@ -17,6 +17,7 @@ import { currentPhase, getDailyTip, PHASE_LABEL } from "@/lib/cycle-tips";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { useAuth } from "@/providers/AuthProvider";
 import { notificationsService } from "@/lib/notifications-service";
+import { PREMIUM_ENABLED } from "@/lib/app-config";
 import { appointmentsService, doctorDisplayName, formatAppointmentTime, type AppointmentWithDoctor } from "@/lib/appointments-service";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, formatOrderDate, orderItemCount } from "@/lib/order-display";
@@ -350,7 +351,8 @@ export default function CycleHome() {
           </View>
         </FadeInView>
 
-        {/* 7 · Premium (masqué si déjà premium) */}
+        {/* 7 · Premium (surface retirée tant que PREMIUM_ENABLED=false — réversible) */}
+        {PREMIUM_ENABLED ? (
         <FadeInView fill={false} delay={STEP * 7}>
           {profile?.is_premium ? (
             <View style={styles.premiumActive}>
@@ -377,6 +379,7 @@ export default function CycleHome() {
             </Card>
           )}
         </FadeInView>
+        ) : null}
       </ScrollView>
     </Screen>
   );

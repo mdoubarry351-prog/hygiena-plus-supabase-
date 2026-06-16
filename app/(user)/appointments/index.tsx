@@ -15,6 +15,7 @@ import { SegmentedControl } from "@/components/SegmentedControl";
 import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
 import { TrustRow } from "@/components/TrustRow";
 import { FadeInView } from "@/components/FadeInView";
+import { DOCTOR_MESSAGING_ENABLED } from "@/lib/app-config";
 import { PressableScale } from "@/components/PressableScale";
 import { useAuth } from "@/providers/AuthProvider";
 import { useDoctors } from "@/hooks/useDoctors";
@@ -220,10 +221,12 @@ function DoctorRow({ doctor, onPress, onContact }: { doctor: DoctorWithProfile; 
           <Ionicons name="calendar" size={16} color={colors.white} />
           <Text style={styles.cardBtnPrimaryText}>Prendre rendez-vous</Text>
         </Pressable>
-        <Pressable onPress={() => { hapticLight(); onContact(); }} style={({ pressed }) => [styles.cardBtn, styles.cardBtnOutline, pressed && styles.cardBtnPressed]} accessibilityRole="button" accessibilityLabel={`Contacter ${name}`}>
-          <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.primary} />
-          <Text style={styles.cardBtnOutlineText}>Contacter</Text>
-        </Pressable>
+        {DOCTOR_MESSAGING_ENABLED ? (
+          <Pressable onPress={() => { hapticLight(); onContact(); }} style={({ pressed }) => [styles.cardBtn, styles.cardBtnOutline, pressed && styles.cardBtnPressed]} accessibilityRole="button" accessibilityLabel={`Contacter ${name}`}>
+            <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.primary} />
+            <Text style={styles.cardBtnOutlineText}>Contacter</Text>
+          </Pressable>
+        ) : null}
       </View>
     </Card>
   );

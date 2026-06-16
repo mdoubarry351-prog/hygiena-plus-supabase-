@@ -10,6 +10,7 @@ import { useCycles } from "@/hooks/useCycles";
 import { messagesService } from "@/lib/messages-service";
 import { buildCycleSummary } from "@/lib/cycle-service";
 import { hapticLight } from "@/lib/haptics";
+import { DOCTOR_MESSAGING_ENABLED } from "@/lib/app-config";
 import { colors } from "@/theme";
 
 export default function PatientChat() {
@@ -38,6 +39,9 @@ export default function PatientChat() {
 
   // Un médecin n'utilise pas la messagerie patient ; gating premium pour le patient.
   if (role === "doctor") return <Redirect href="/(user)" />;
+  // Messagerie patiente retirée (remplacée par le contact post-paiement) — écran
+  // conservé mais inaccessible tant que DOCTOR_MESSAGING_ENABLED=false (réversible).
+  if (!DOCTOR_MESSAGING_ENABLED) return <Redirect href="/(user)/appointments" />;
   if (!profile?.is_premium) return <Redirect href="/(user)/premium" />;
 
   async function handleSend(content: string) {

@@ -15,6 +15,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { hapticSuccess } from "@/lib/haptics";
 import { authService } from "@/lib/auth-service";
 import { premiumService } from "@/lib/premium-service";
+import { PREMIUM_ENABLED } from "@/lib/app-config";
 import { formatPrice } from "@/lib/marketplace-service";
 import type { SubscriptionPayment } from "@/lib/database.types";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
@@ -97,8 +98,9 @@ export default function Premium() {
     }
   }
 
-  // Module désactivé par l'admin : premium indisponible.
-  if (!premium_enabled) {
+  // Premium retiré de l'app (PREMIUM_ENABLED=false, réversible) ou désactivé par
+  // l'admin : écran neutre, aucun point d'entrée ne mène ici dans l'UI patiente.
+  if (!PREMIUM_ENABLED || !premium_enabled) {
     return (
       <Screen>
         <ScreenHeader />

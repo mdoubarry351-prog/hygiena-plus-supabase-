@@ -8,6 +8,7 @@ import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { FadeInView } from "@/components/FadeInView";
 import { TrustRow } from "@/components/TrustRow";
+import { PREMIUM_ENABLED } from "@/lib/app-config";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { marketplaceService } from "@/lib/marketplace-service";
 import { colors, durations, radius, spacing, typography } from "@/theme";
@@ -139,10 +140,12 @@ export default function Help() {
     setOpenId((cur) => (cur === id ? null : id));
   }
 
+  // Catégorie Premium retirée tant que le Premium est désactivé (réversible).
+  const baseCategories = PREMIUM_ENABLED ? FAQ_CATEGORIES : FAQ_CATEGORIES.filter((c) => c.key !== "premium");
   const q = query.trim().toLowerCase();
   const categories = q
-    ? FAQ_CATEGORIES.map((c) => ({ ...c, items: c.items.filter((it) => (it.q + " " + it.a).toLowerCase().includes(q)) })).filter((c) => c.items.length > 0)
-    : FAQ_CATEGORIES;
+    ? baseCategories.map((c) => ({ ...c, items: c.items.filter((it) => (it.q + " " + it.a).toLowerCase().includes(q)) })).filter((c) => c.items.length > 0)
+    : baseCategories;
 
   function emailSupport() {
     Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Support Hygiena+")}`).catch(() =>

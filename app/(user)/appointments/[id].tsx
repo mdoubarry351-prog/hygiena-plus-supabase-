@@ -31,6 +31,7 @@ import {
   type DoctorWithProfile,
 } from "@/lib/appointments-service";
 import type { ConsultationMode } from "@/lib/database.types";
+import { DOCTOR_MESSAGING_ENABLED } from "@/lib/app-config";
 import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
 import { formatPrice } from "@/lib/marketplace-service";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
@@ -327,14 +328,18 @@ export default function BookAppointment() {
           </Card>
         ) : null}
 
-        <Pressable onPress={() => { hapticLight(); handleMessage(); }} style={({ pressed }) => [styles.msgBtn, pressed && styles.msgBtnPressed]} accessibilityRole="button" accessibilityLabel="Écrire au médecin">
-          <Ionicons name="chatbubbles-outline" size={18} color={colors.primary} />
-          <Text style={styles.msgBtnText}>Écrire au médecin (conseils)</Text>
-          {!profile?.is_premium ? <Ionicons name="star" size={14} color={colors.accent} /> : null}
-        </Pressable>
-        <Text style={styles.msgNote}>
-          Conseils en ligne (Premium). Pour une consultation, prends rendez-vous ci-dessous.
-        </Text>
+        {DOCTOR_MESSAGING_ENABLED ? (
+          <>
+            <Pressable onPress={() => { hapticLight(); handleMessage(); }} style={({ pressed }) => [styles.msgBtn, pressed && styles.msgBtnPressed]} accessibilityRole="button" accessibilityLabel="Écrire au médecin">
+              <Ionicons name="chatbubbles-outline" size={18} color={colors.primary} />
+              <Text style={styles.msgBtnText}>Écrire au médecin (conseils)</Text>
+              {!profile?.is_premium ? <Ionicons name="star" size={14} color={colors.accent} /> : null}
+            </Pressable>
+            <Text style={styles.msgNote}>
+              Conseils en ligne (Premium). Pour une consultation, prends rendez-vous ci-dessous.
+            </Text>
+          </>
+        ) : null}
         </FadeInView>
 
         <FadeInView fill={false} delay={STEP * 2} style={styles.group}>
