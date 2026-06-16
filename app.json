@@ -13,6 +13,11 @@
       "resizeMode": "contain",
       "backgroundColor": "#D1FAE5"
     },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/logo/hygiena-icon-512.png"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.hygiena.plus",
