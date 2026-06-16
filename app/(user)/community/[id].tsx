@@ -34,6 +34,7 @@ import {
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
 import { HeartButton } from "@/components/HeartButton";
+import { BouncyIcon } from "@/components/BouncyIcon";
 import { FadeInView } from "@/components/FadeInView";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
@@ -459,10 +460,11 @@ export default function PostDetail() {
                 </Text>
               </Pressable>
               <Pressable onPress={() => { hapticLight(); toggleSave(post.id); }} hitSlop={8} style={({ pressed }) => [styles.bookmarkBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={savedIds.has(post.id) ? "Retirer des enregistrements" : "Enregistrer la publication"}>
-                <Ionicons
+                <BouncyIcon
                   name={savedIds.has(post.id) ? "bookmark" : "bookmark-outline"}
                   size={22}
                   color={savedIds.has(post.id) ? colors.primary : colors.textMuted}
+                  popKey={savedIds.has(post.id)}
                 />
               </Pressable>
             </View>

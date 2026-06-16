@@ -30,6 +30,7 @@ import {
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
 import { HeartButton } from "@/components/HeartButton";
+import { BouncyIcon } from "@/components/BouncyIcon";
 import { hapticLight, hapticWarning } from "@/lib/haptics";
 import { useToast } from "@/providers/ToastProvider";
 import { APP_DOWNLOAD_URL } from "@/lib/app-config";
@@ -425,10 +426,11 @@ const PostRow = memo(function PostRow({
             <Text style={styles.likeCount}>{post.comments_count}</Text>
           </Pressable>
           <Pressable onPress={() => { hapticLight(); onToggleSave(post.id); }} hitSlop={8} style={({ pressed }) => [styles.bookmarkBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
-            <Ionicons
+            <BouncyIcon
               name={saved ? "bookmark" : "bookmark-outline"}
               size={20}
               color={saved ? colors.primary : colors.textMuted}
+              popKey={saved}
             />
           </Pressable>
         </View>

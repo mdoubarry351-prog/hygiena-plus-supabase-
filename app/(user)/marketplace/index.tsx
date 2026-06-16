@@ -13,6 +13,7 @@ import { StarRating } from "@/components/StarRating";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { AppImage } from "@/components/AppImage";
 import { HeartButton } from "@/components/HeartButton";
+import { BouncyIcon } from "@/components/BouncyIcon";
 import { FadeInView } from "@/components/FadeInView";
 import { PressableScale } from "@/components/PressableScale";
 import { useProducts } from "@/hooks/useProducts";
@@ -262,7 +263,7 @@ const ProductRow = memo(function ProductRow({ product, isFav, onToggleFav, onAdd
             accessibilityRole="button"
             accessibilityLabel={`Ajouter ${product.name} au panier`}
           >
-            <Ionicons name={justAdded ? "checkmark" : "add"} size={20} color={colors.white} />
+            <BouncyIcon name={justAdded ? "checkmark" : "add"} size={20} color={colors.white} popKey={justAdded} />
           </Pressable>
         </View>
     </Card>
