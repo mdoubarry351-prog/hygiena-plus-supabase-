@@ -3,6 +3,7 @@ import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, View } from "
 import { Ionicons } from "@expo/vector-icons";
 import { colors, fonts, radius, shadows, spacing } from "@/theme";
 import { hapticLight } from "@/lib/haptics";
+import { webPointer } from "@/lib/web-style";
 
 type Variant = "primary" | "secondary" | "outline" | "danger";
 type Size = "sm" | "md" | "lg";
@@ -54,6 +55,7 @@ export function Button({ title, onPress, variant = "primary", size = "md", icon,
           styles[variant],
           !isOutline && !isDisabled && shadows.sm,
           isDisabled && styles.disabled,
+          !isDisabled && webPointer,
         ]}
       >
         {loading ? (

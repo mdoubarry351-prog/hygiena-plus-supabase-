@@ -6,7 +6,7 @@ import { Button } from "@/components/Button";
 import { FadeInView } from "@/components/FadeInView";
 import { colors, spacing, typography } from "@/theme";
 
-const logo = require("../../assets/logo/hygiena-icon-1024.png");
+const logo = require("../../assets/logo/hygiena-icon-drop.png");
 
 export default function Welcome() {
   const router = useRouter();

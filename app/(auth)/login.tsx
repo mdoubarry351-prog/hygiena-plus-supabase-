@@ -11,7 +11,7 @@ import { isValidEmail } from "@/lib/validation";
 import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
-const logo = require("../../assets/logo/hygiena-icon-1024.png");
+const logo = require("../../assets/logo/hygiena-icon-drop.png");
 
 // Garde-fou anti-spam CÔTÉ UI (le vrai rate-limit reste serveur, côté Supabase) :
 // après MAX_ATTEMPTS échecs, on verrouille le bouton pendant COOLDOWN_MS.

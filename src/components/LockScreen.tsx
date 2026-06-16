@@ -7,7 +7,7 @@ import { useAppLock } from "@/providers/AppLockProvider";
 import { appLock, authenticateBiometric } from "@/lib/app-lock";
 import { colors, radius, spacing, typography } from "@/theme";
 
-const logo = require("../../assets/logo/hygiena-icon-1024.png");
+const logo = require("../../assets/logo/hygiena-icon-drop.png");
 
 export function LockScreen() {
   const { biometric, unlock } = useAppLock();

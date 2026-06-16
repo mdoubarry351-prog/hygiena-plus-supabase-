@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { Animated, Pressable, type StyleProp, type ViewStyle, type GestureResponderEvent } from "react-native";
 import { durations } from "@/theme";
 import { hapticLight } from "@/lib/haptics";
+import { webPointer } from "@/lib/web-style";
 
 // Couleur de ripple Android discrète (vert très clair translucide).
 const RIPPLE_COLOR = "rgba(16,185,129,0.12)";
@@ -70,7 +71,7 @@ export function PressableScale({
         animateTo(1, 1);
       }}
     >
-      <Animated.View style={[{ transform: [{ scale }], opacity }, style, pressed && pressedStyle]}>
+      <Animated.View style={[{ transform: [{ scale }], opacity }, style, pressed && pressedStyle, !disabled && webPointer]}>
         {children}
       </Animated.View>
     </Pressable>

@@ -6,7 +6,7 @@ import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
 import { colors, radius, shadows, spacing, typography } from "@/theme";
 
-const logo = require("../../assets/logo/hygiena-icon-1024.png");
+const logo = require("../../assets/logo/hygiena-icon-drop.png");
 
 // Construit un numéro E.164 (« +224620001001 ») à partir de l'indicatif + numéro.
 function toE164(indicatif: string, numero: string): string {

@@ -1,7 +1,7 @@
 import { Image, StyleSheet, View } from "react-native";
 import { colors } from "@/theme";
 
-const logo = require("../../assets/logo/hygiena-icon-1024.png");
+const logo = require("../../assets/logo/hygiena-icon-drop.png");
 
 // Logo « goutte » dans un halo mint — même style/dimensions que l'en-tête de
 // login.tsx (halo 124, image 78, contain). Centré, décoratif. Réutilisé pour

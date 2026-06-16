@@ -24,7 +24,7 @@ import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, formatOrderDate, orderItemCou
 import type { AppointmentStatus, MarketplaceOrder } from "@/lib/database.types";
 import { colors, fonts, phase as PHASE_COLOR, radius, shadows, spacing, typography } from "@/theme";
 
-const logo = require("../../assets/logo/hygiena-icon-1024.png");
+const logo = require("../../assets/logo/hygiena-icon-drop.png");
 
 // Pas de décalage entre blocs pour l'apparition échelonnée (stagger sobre).
 const STEP = 60;
