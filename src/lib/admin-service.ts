@@ -16,6 +16,7 @@ import type {
   UserRole,
   OrderStatus,
   AppointmentStatus,
+  ConsultationMode,
   DeliveryMode,
   Json,
   Tables,
@@ -156,6 +157,7 @@ export type AdminAppointmentRow = {
   appointment_date: string;
   appointment_time: string;
   status: AppointmentStatus;
+  consultation_mode: ConsultationMode;
   is_paid: boolean;
   amount_paid: number | null;
   created_at: string;
@@ -179,6 +181,7 @@ export type SubscriptionsSummary = {
   expiredCount: number;
   revenuePremium: number;
   revenueConsultation: number;
+  paidConsultationCount: number;
   payments: AdminSubscriptionPayment[];
 };
 
@@ -377,6 +380,7 @@ export const adminService = {
 
     const revenuePremium = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
     const revenueConsultation = (apptRes.data ?? []).reduce((s, a) => s + (a.amount_paid ?? 0), 0);
+    const paidConsultationCount = (apptRes.data ?? []).length;
 
     // Période la plus récente par abonné → actif/expiré.
     const latestByUser = new Map<string, string | null>();
@@ -402,7 +406,7 @@ export const adminService = {
       period_end: r.period_end,
     }));
 
-    return { activeCount, expiredCount, revenuePremium, revenueConsultation, payments };
+    return { activeCount, expiredCount, revenuePremium, revenueConsultation, paidConsultationCount, payments };
   },
 
   // ---------------- 2. Statistiques ----------------

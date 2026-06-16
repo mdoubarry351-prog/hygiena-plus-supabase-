@@ -10,18 +10,22 @@ import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
+import { PREMIUM_ENABLED } from "@/lib/app-config";
 import type { AppSettings } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
 type ToggleKey = "marketplace_enabled" | "doctors_enabled" | "premium_enabled" | "appointments_enabled" | "messaging_enabled";
 
-const TOGGLES: { key: ToggleKey; label: string; sub: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+const ALL_TOGGLES: { key: ToggleKey; label: string; sub: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: "marketplace_enabled", label: "Marketplace", sub: "Boutique et commandes pour les utilisatrices.", icon: "bag-handle-outline" },
   { key: "doctors_enabled", label: "Accès médecin", sub: "Annuaire des médecins et fiches publiques.", icon: "medkit-outline" },
   { key: "appointments_enabled", label: "Rendez-vous", sub: "Prise de rendez-vous payante avec les médecins.", icon: "calendar-outline" },
-  { key: "messaging_enabled", label: "Téléconsultation / Messagerie", sub: "Messagerie en ligne patiente ↔ médecin (Premium).", icon: "chatbubbles-outline" },
+  { key: "messaging_enabled", label: "Téléconsultation / Messagerie", sub: "Messagerie en ligne patiente ↔ médecin.", icon: "chatbubbles-outline" },
   { key: "premium_enabled", label: "Premium", sub: "Abonnement premium et avantages associés.", icon: "star-outline" },
 ];
+
+// Toggle Premium retiré de l'UI tant que le Premium est désactivé (réversible).
+const TOGGLES = PREMIUM_ENABLED ? ALL_TOGGLES : ALL_TOGGLES.filter((t) => t.key !== "premium_enabled");
 
 export default function AdminSettings() {
   const { session } = useAuth();
@@ -143,21 +147,24 @@ export default function AdminSettings() {
               );
             })}
 
-            {/* Tarification Premium (modifiable par l'admin) */}
-            <Card style={styles.priceCard}>
-              <View style={styles.priceHead}>
-                <View style={[styles.moduleIcon, { backgroundColor: colors.primaryLight }]}>
-                  <Ionicons name="cash-outline" size={22} color={colors.primaryDark} />
+            {/* Tarification Premium (modifiable par l'admin) — masquée tant que
+                le Premium est retiré (PREMIUM_ENABLED=false, réversible). */}
+            {PREMIUM_ENABLED ? (
+              <Card style={styles.priceCard}>
+                <View style={styles.priceHead}>
+                  <View style={[styles.moduleIcon, { backgroundColor: colors.primaryLight }]}>
+                    <Ionicons name="cash-outline" size={22} color={colors.primaryDark} />
+                  </View>
+                  <View style={styles.moduleInfo}>
+                    <Text style={styles.moduleTitle}>Tarification Premium</Text>
+                    <Text style={styles.moduleSub}>Prix et durée de l'abonnement (paiement simulé).</Text>
+                  </View>
                 </View>
-                <View style={styles.moduleInfo}>
-                  <Text style={styles.moduleTitle}>Tarification Premium</Text>
-                  <Text style={styles.moduleSub}>Prix et durée de l'abonnement (paiement simulé).</Text>
-                </View>
-              </View>
-              <Input label="Prix de l'abonnement Premium (GNF)" value={priceStr} onChangeText={setPriceStr} keyboardType="numeric" placeholder="Ex. 50000" />
-              <Input label="Durée (jours)" value={durationStr} onChangeText={setDurationStr} keyboardType="numeric" placeholder="Ex. 30" />
-              <Button title="Enregistrer la tarification" onPress={savePricing} loading={savingPrice} />
-            </Card>
+                <Input label="Prix de l'abonnement Premium (GNF)" value={priceStr} onChangeText={setPriceStr} keyboardType="numeric" placeholder="Ex. 50000" />
+                <Input label="Durée (jours)" value={durationStr} onChangeText={setDurationStr} keyboardType="numeric" placeholder="Ex. 30" />
+                <Button title="Enregistrer la tarification" onPress={savePricing} loading={savingPrice} />
+              </Card>
+            ) : null}
           </>
         )}
       </ScrollView>

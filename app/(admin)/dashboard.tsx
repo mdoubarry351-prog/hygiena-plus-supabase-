@@ -9,14 +9,19 @@ import { EmptyState } from "@/components/EmptyState";
 import { AdminHeader } from "@/components/AdminHeader";
 import { adminService, type DashboardRpc } from "@/lib/admin-service";
 import { formatPrice } from "@/lib/marketplace-service";
+import { PREMIUM_ENABLED } from "@/lib/app-config";
 import { colors, radius, spacing, typography } from "@/theme";
 
-type CardDef = { key: keyof DashboardRpc; label: string; icon: keyof typeof Ionicons.glyphMap; tint: string; href: Href };
+type CardDef = { key: keyof DashboardRpc; label: string; icon: keyof typeof Ionicons.glyphMap; tint: string; href: Href; money?: boolean };
 
 const CARDS: CardDef[] = [
   { key: "usersTotal", label: "Utilisateurs inscrits", icon: "people-outline", tint: colors.primary, href: "/(admin)/users" },
   { key: "activeUsers", label: "Utilisateurs actifs", icon: "pulse-outline", tint: colors.secondary, href: "/(admin)/users" },
-  { key: "premiumCount", label: "Abonnés Premium", icon: "star-outline", tint: colors.accent, href: "/(admin)/subscriptions" },
+  // KPI Premium remplacé par les revenus consultations tant que le Premium est
+  // retiré (PREMIUM_ENABLED=false) ; le KPI Premium reste réactivable.
+  PREMIUM_ENABLED
+    ? { key: "premiumCount", label: "Abonnés Premium", icon: "star-outline", tint: colors.accent, href: "/(admin)/subscriptions" }
+    : { key: "revenueConsultation", label: "Revenus consultations", icon: "medkit-outline", tint: colors.accent, href: "/(admin)/subscriptions", money: true },
   { key: "doctorsActive", label: "Médecins actifs", icon: "medkit-outline", tint: colors.secondary, href: "/(admin)/doctors" },
   { key: "appointmentsToday", label: "RDV du jour", icon: "calendar-outline", tint: colors.primary, href: "/(admin)/appointments" },
   { key: "ordersTotal", label: "Commandes Marketplace", icon: "receipt-outline", tint: colors.primary, href: "/(admin)/orders" },
@@ -125,7 +130,7 @@ export default function AdminDashboard() {
           </View>
           <Text style={styles.revenueValue}>{formatPrice(stats.revenueTotal)}</Text>
           <Text style={styles.revenueBreak}>
-            Marketplace {formatPrice(stats.revenueMarketplace)} · Consultations {formatPrice(stats.revenueConsultation)} · Premium {formatPrice(stats.revenuePremium)}
+            Marketplace {formatPrice(stats.revenueMarketplace)} · Consultations {formatPrice(stats.revenueConsultation)}{PREMIUM_ENABLED ? ` · Premium ${formatPrice(stats.revenuePremium)}` : ""}
           </Text>
         </Card>
 
@@ -136,7 +141,7 @@ export default function AdminDashboard() {
                 <View style={[styles.icon, { backgroundColor: c.tint + "22" }]}>
                   <Ionicons name={c.icon} size={20} color={c.tint} />
                 </View>
-                <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit>{stats[c.key]}</Text>
+                <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit>{c.money ? formatPrice(stats[c.key] as number) : stats[c.key]}</Text>
                 <Text style={styles.label} numberOfLines={2}>{c.label}</Text>
                 {c.key === "ordersTotal" && stats.ordersPending > 0 ? (
                   <Text style={styles.sub} numberOfLines={1}>{stats.ordersPending} en attente</Text>

@@ -38,7 +38,7 @@ export const ADMIN_TABS: AdminTab[] = [
     ],
   },
   { label: "Rendez-vous", icon: "calendar-outline", href: "/(admin)/appointments", seg: "appointments" },
-  { label: "Abonnements & Paiements", icon: "card-outline", href: "/(admin)/subscriptions", seg: "subscriptions" },
+  { label: "Consultations & paiements", icon: "cash-outline", href: "/(admin)/subscriptions", seg: "subscriptions" },
   {
     label: "Paramètres", icon: "settings-outline", href: "/(admin)/settings", seg: "settings",
     subs: [
