@@ -6,7 +6,9 @@ import { colors, radius, spacing } from "@/theme";
 
 /**
  * Galerie d'images d'une publication / d'un produit.
- * - 1 image → pleine largeur ; ≥ 2 → grille 2 colonnes.
+ * - 1 image → pleine largeur, affichée EN ENTIER (contentFit="contain") sur un
+ *   fond neutre (token surface) pour les éventuelles bandes ; hauteur bornée.
+ * - ≥ 2 → grille 2 colonnes (cadrage carré cover ; le tap montre l'entièreté).
  * - Repli sur `imageUrl` (ancien champ unique) si `imageUrls` est vide.
  * - Tap sur une image → visionneur plein écran (photo ENTIÈRE + téléchargement).
  */
@@ -19,7 +21,7 @@ export function PostImages({ imageUrls, imageUrl }: { imageUrls?: string[] | nul
     <>
       {urls.length === 1 ? (
         <Pressable onPress={() => setViewer(urls[0])} accessibilityRole="imagebutton" accessibilityLabel="Agrandir la photo">
-          <AppImage source={urls[0]} style={styles.single} />
+          <AppImage source={urls[0]} style={styles.single} contentFit="contain" />
         </Pressable>
       ) : (
         <View style={styles.grid}>
@@ -42,7 +44,7 @@ export function PostImages({ imageUrls, imageUrl }: { imageUrls?: string[] | nul
 }
 
 const styles = StyleSheet.create({
-  single: { width: "100%", height: 200, borderRadius: radius.md, backgroundColor: colors.surface },
+  single: { width: "100%", height: 300, borderRadius: radius.md, backgroundColor: colors.surface },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   cell: { width: "48.5%", aspectRatio: 1, borderRadius: radius.md, overflow: "hidden", backgroundColor: colors.surface },
   cellImg: { width: "100%", height: "100%" },
