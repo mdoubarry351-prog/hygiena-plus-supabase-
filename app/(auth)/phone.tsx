@@ -1,32 +1,28 @@
 import { useState } from "react";
-import { Alert, Image, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Image, StyleSheet, Text, View } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { Button } from "@/components/Button";
+import { PhoneInput } from "@/components/PhoneInput";
 import { useAuth } from "@/providers/AuthProvider";
+import { onlyDigits, toE164, isValidGuineaLocal } from "@/lib/phone";
 import { colors, radius, shadows, spacing, typography } from "@/theme";
 
 const logo = require("../../assets/logo/hygiena-icon-drop.png");
 
-// Construit un numéro E.164 (« +224620001001 ») à partir de l'indicatif + numéro.
-function toE164(indicatif: string, numero: string): string {
-  const digits = `${indicatif}${numero}`.replace(/[^\d]/g, "");
-  return `+${digits}`;
-}
-
 export default function PhoneLogin() {
   const { signInWithPhone } = useAuth();
   const router = useRouter();
-  const [indicatif, setIndicatif] = useState("+224");
-  const [numero, setNumero] = useState("");
+  const [numero, setNumero] = useState(""); // valeur AFFICHÉE (formatée à tirets)
   const [loading, setLoading] = useState(false);
 
   async function handleSendCode() {
-    const phone = toE164(indicatif, numero);
-    if (phone.replace(/\D/g, "").length < 8) {
-      Alert.alert("Numéro invalide", "Saisissez un numéro de téléphone valide.");
+    const local = onlyDigits(numero);
+    if (!isValidGuineaLocal(local)) {
+      Alert.alert("Numéro invalide", "Saisissez un numéro guinéen à 9 chiffres (ex. 620-00-10-01).");
       return;
     }
+    const phone = toE164(local); // « +224XXXXXXXXX » envoyé à l'OTP
     setLoading(true);
     try {
       await signInWithPhone(phone);
@@ -51,25 +47,12 @@ export default function PhoneLogin() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.label}>Numéro de téléphone</Text>
-        <View style={styles.phoneRow}>
-          <TextInput
-            value={indicatif}
-            onChangeText={setIndicatif}
-            keyboardType="phone-pad"
-            style={styles.indicatif}
-            maxLength={5}
-          />
-          <TextInput
-            value={numero}
-            onChangeText={setNumero}
-            keyboardType="phone-pad"
-            placeholder="620 00 10 01"
-            placeholderTextColor={colors.textMuted}
-            style={styles.numero}
-            autoFocus
-          />
-        </View>
+        <PhoneInput
+          label="Numéro de téléphone"
+          value={numero}
+          onChangeText={(f) => setNumero(f)}
+          autoFocus
+        />
         <Text style={styles.hint}>Un code vous sera envoyé par SMS.</Text>
         <Button title="Recevoir le code" onPress={handleSendCode} loading={loading} />
       </View>
@@ -102,16 +85,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm,
     borderWidth: 1, borderColor: colors.border,
     ...shadows.sm,
-  },
-  label: { ...typography.caption, fontWeight: "700", color: colors.text },
-  phoneRow: { flexDirection: "row", gap: spacing.sm },
-  indicatif: {
-    width: 78, height: 52, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border,
-    backgroundColor: colors.surface, textAlign: "center", fontSize: 16, fontWeight: "700", color: colors.primary,
-  },
-  numero: {
-    flex: 1, height: 52, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border,
-    backgroundColor: colors.surface, paddingHorizontal: spacing.md, fontSize: 16, color: colors.text,
   },
   hint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.xs },
   footer: { marginTop: spacing.xl, alignItems: "center" },

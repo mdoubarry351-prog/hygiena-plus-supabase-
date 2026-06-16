@@ -5,11 +5,13 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { PhoneInput } from "@/components/PhoneInput";
 import { Loading } from "@/components/Loading";
 import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { authService } from "@/lib/auth-service";
+import { onlyDigits, toE164, isValidGuineaLocal, formatStoredPhone } from "@/lib/phone";
 import { hapticSuccess } from "@/lib/haptics";
 import type { Profile } from "@/lib/database.types";
 import { colors, spacing, typography } from "@/theme";
@@ -35,7 +37,8 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
   const init = initialNames(profile);
   const [firstName, setFirstName] = useState(init.first);
   const [lastName, setLastName] = useState(init.last);
-  const [phone, setPhone] = useState(profile?.phone ?? "");
+  // Affichage formaté à tirets (numéro stocké E.164 → parsé pour pré-remplir).
+  const [phone, setPhone] = useState(formatStoredPhone(profile?.phone));
   const [email, setEmail] = useState(profile?.email ?? "");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -63,9 +66,15 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
   }
 
   async function savePhone() {
+    const local = onlyDigits(phone);
+    if (local && !isValidGuineaLocal(local)) {
+      Alert.alert("Téléphone invalide", "Saisissez un numéro guinéen à 9 chiffres (ou laissez vide).");
+      return;
+    }
     setBusy("phone");
     try {
-      await authService.updatePhone(userId, phone.trim() ? phone.trim() : null);
+      // Stocké en E.164 « +224… » (vide → null pour effacer le numéro).
+      await authService.updatePhone(userId, local ? toE164(local) : null);
       await refreshProfile();
       hapticSuccess();
       toast.success("Ton numéro a été mis à jour.");
@@ -141,13 +150,10 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
         <FadeInView fill={false} delay={STEP}>
         <Card style={styles.card}>
           <Text style={typography.h3}>Téléphone</Text>
-          <Input
+          <PhoneInput
             label="Numéro de téléphone"
-            icon="call-outline"
             value={phone}
-            onChangeText={setPhone}
-            placeholder="Ex. +224 620 00 10 01"
-            keyboardType="phone-pad"
+            onChangeText={(f) => setPhone(f)}
           />
           <Button title="Enregistrer" onPress={savePhone} loading={busy === "phone"} />
         </Card>

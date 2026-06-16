@@ -4,9 +4,11 @@ import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Input } from "@/components/Input";
+import { PhoneInput } from "@/components/PhoneInput";
 import { Button } from "@/components/Button";
 import { AuthLogo } from "@/components/AuthLogo";
 import { useAuth } from "@/providers/AuthProvider";
+import { onlyDigits, toE164 } from "@/lib/phone";
 import { isValidEmail, passwordStrength } from "@/lib/validation";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 import { colors, spacing, typography } from "@/theme";
@@ -45,10 +47,11 @@ export default function Register() {
     if (!formValid) return;
     setLoading(true);
     try {
+      const localPhone = onlyDigits(phone);
       const { needsEmailConfirmation } = await signUp(email.trim(), password, {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        phone: phone.trim() || undefined,
+        phone: localPhone ? toE164(localPhone) : undefined, // E.164 « +224… »
       });
       hapticSuccess();
       if (needsEmailConfirmation) {
@@ -101,16 +104,11 @@ export default function Register() {
         onSubmitEditing={() => phoneRef.current?.focus()}
         blurOnSubmit={false}
       />
-      <Input
+      <PhoneInput
         ref={phoneRef}
         label="Téléphone"
-        icon="call-outline"
         value={phone}
-        onChangeText={setPhone}
-        placeholder="Ex. +224 620 00 00 00"
-        keyboardType="phone-pad"
-        textContentType="telephoneNumber"
-        autoComplete="tel"
+        onChangeText={(f) => setPhone(f)}
         returnKeyType="next"
         onSubmitEditing={() => emailRef.current?.focus()}
         blurOnSubmit={false}

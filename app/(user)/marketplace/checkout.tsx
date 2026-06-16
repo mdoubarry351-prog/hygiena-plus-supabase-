@@ -7,7 +7,9 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { PhoneInput } from "@/components/PhoneInput";
 import { TrustRow } from "@/components/TrustRow";
+import { onlyDigits, toE164, isValidGuineaLocal, formatStoredPhone } from "@/lib/phone";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { useCart } from "@/providers/CartProvider";
@@ -38,7 +40,8 @@ export default function Checkout() {
   const router = useRouter();
   const toast = useToast();
 
-  const [phone, setPhone] = useState(profile?.phone ?? "");
+  // Affichage formaté à tirets (numéro stocké E.164 → parsé pour pré-remplir).
+  const [phone, setPhone] = useState(formatStoredPhone(profile?.phone));
   const [neighborhood, setNeighborhood] = useState("");
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("delivery");
   const [instructions, setInstructions] = useState("");
@@ -47,7 +50,7 @@ export default function Checkout() {
   // Paiement
   const [store, setStore] = useState<StorePaymentSettings | null>(null);
   const [method, setMethod] = useState<PayMethod>("orange_money");
-  const [payPhone, setPayPhone] = useState("+224 ");
+  const [payPhone, setPayPhone] = useState("");
 
   useEffect(() => {
     marketplaceService.getStorePaymentSettings().then(setStore).catch(() => setStore(null));
@@ -96,7 +99,7 @@ export default function Checkout() {
     const num = (store?.whatsapp_number ?? "").replace(/[^\d]/g, "");
     const lines = items.map((it) => `• ${it.quantity} × ${it.product.name}`).join("\n");
     const livraison = deliveryMode === "delivery" ? `\nLivraison : ${delivery.free ? "Gratuite" : formatPrice(delivery.fee)}` : "";
-    const msg = `Bonjour, je souhaite commander :\n${lines}\nSous-total : ${formatPrice(total)}${livraison}\nTotal : ${formatPrice(grandTotal)}\nTéléphone : ${phone.trim()}`;
+    const msg = `Bonjour, je souhaite commander :\n${lines}\nSous-total : ${formatPrice(total)}${livraison}\nTotal : ${formatPrice(grandTotal)}\nTéléphone : ${toE164(onlyDigits(phone))}`;
     Linking.openURL(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`).catch(() =>
       Alert.alert("WhatsApp indisponible", "Impossible d'ouvrir WhatsApp sur cet appareil.")
     );
@@ -105,7 +108,7 @@ export default function Checkout() {
   async function handleSubmit() {
     if (!session?.user) return;
     if (items.length === 0) { Alert.alert("Panier vide", "Ajoutez des produits avant de commander."); return; }
-    if (!phone.trim()) { Alert.alert("Téléphone requis", "Veuillez saisir un numéro de téléphone."); return; }
+    if (!isValidGuineaLocal(phone)) { Alert.alert("Téléphone invalide", "Saisissez un numéro guinéen à 9 chiffres."); return; }
     if (deliveryMode === "delivery" && !neighborhood.trim()) {
       Alert.alert("Quartier requis", "Indique ton quartier pour la livraison.");
       return;
@@ -113,8 +116,8 @@ export default function Checkout() {
 
     if (method === "whatsapp") { openWhatsApp(); return; }
 
-    if (isMobileMoney && !payPhone.trim()) {
-      Alert.alert("Numéro requis", "Saisissez le numéro Mobile Money pour payer.");
+    if (isMobileMoney && !isValidGuineaLocal(payPhone)) {
+      Alert.alert("Numéro requis", "Saisissez un numéro Mobile Money guinéen à 9 chiffres.");
       return;
     }
 
@@ -131,14 +134,14 @@ export default function Checkout() {
 
       await marketplaceService.createOrder({
         userId: session.user.id,
-        phone: phone.trim(),
+        phone: toE164(onlyDigits(phone)),
         neighborhood: deliveryMode === "delivery" ? neighborhood.trim() : null,
         deliveryMode,
         instructions: deliveryMode === "delivery" && instructions.trim() ? instructions.trim() : null,
         items: orderItems,
         totalAmount: grandTotal,
         paymentMethod: method,
-        paymentPhone: isMobileMoney ? payPhone.trim() : null,
+        paymentPhone: isMobileMoney ? toE164(onlyDigits(payPhone)) : null,
         isPaid: isMobileMoney,
       });
       clear();
@@ -215,12 +218,10 @@ export default function Checkout() {
           </Card>
         )}
 
-        <Input
+        <PhoneInput
           label="Téléphone"
           value={phone}
-          onChangeText={setPhone}
-          placeholder="Ex. 620 00 00 00"
-          keyboardType="phone-pad"
+          onChangeText={(f) => setPhone(f)}
         />
 
         {deliveryMode === "delivery" && (
@@ -268,13 +269,10 @@ export default function Checkout() {
         })}
 
         {isMobileMoney && (
-          <Input
+          <PhoneInput
             label="Numéro Mobile Money"
             value={payPhone}
-            onChangeText={setPayPhone}
-            placeholder="+224 620 00 00 00"
-            keyboardType="phone-pad"
-            autoCapitalize="none"
+            onChangeText={(f) => setPayPhone(f)}
           />
         )}
 

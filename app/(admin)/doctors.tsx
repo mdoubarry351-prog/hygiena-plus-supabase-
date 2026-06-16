@@ -14,6 +14,8 @@ import { ExportButton } from "@/components/ExportButton";
 import { StarRating } from "@/components/StarRating";
 import { AppImage } from "@/components/AppImage";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
+import { PhoneInput } from "@/components/PhoneInput";
+import { onlyDigits, toE164, isValidGuineaLocal } from "@/lib/phone";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, type DoctorRow, type DoctorActivity } from "@/lib/admin-service";
 import { uploadAvatar } from "@/lib/storage";
@@ -212,7 +214,7 @@ export default function AdminDoctors() {
     if (avatarUploading) { Alert.alert("Patientez", "La photo est encore en cours d'envoi."); return; }
     if (!fullName.trim()) { Alert.alert("Nom requis", "Indiquez le nom complet du médecin."); return; }
     if (!specialty) { Alert.alert("Spécialité requise", "Sélectionnez une spécialité."); return; }
-    if (!phone.trim()) { Alert.alert("Téléphone requis", "Le téléphone est l'identifiant de connexion du médecin."); return; }
+    if (!isValidGuineaLocal(phone)) { Alert.alert("Téléphone requis", "Saisissez le numéro de connexion du médecin (9 chiffres)."); return; }
 
     const parts = fullName.trim().split(/\s+/);
     const firstName = parts[0];
@@ -227,7 +229,7 @@ export default function AdminDoctors() {
       const res = await adminService.createDoctor({
         firstName,
         lastName,
-        phone: phone.trim(),
+        phone: toE164(onlyDigits(phone)),
         email: email.trim() || null,
         specialty,
         yearsExperience: years,
@@ -238,7 +240,7 @@ export default function AdminDoctors() {
       });
       const lines = [
         "Identifiants de connexion à communiquer au médecin :",
-        `Téléphone : ${res.phone ?? phone.trim()}`,
+        `Téléphone : ${res.phone ?? toE164(onlyDigits(phone))}`,
       ];
       if (res.email) lines.push(`Email : ${res.email}`);
       lines.push(`Mot de passe temporaire : ${res.temp_password}`);
@@ -401,7 +403,7 @@ export default function AdminDoctors() {
             <Input label="Années d'expérience" value={yearsExp} onChangeText={setYearsExp} placeholder="0" keyboardType="numeric" />
 
             {/* Téléphone (connexion) */}
-            <Input label="Téléphone (connexion) *" value={phone} onChangeText={setPhone} placeholder="620 00 00 00" keyboardType="phone-pad" autoCapitalize="none" />
+            <PhoneInput label="Téléphone (connexion) *" value={phone} onChangeText={(f) => setPhone(f)} />
             <Text style={styles.note}>Identifiant de connexion du médecin. Pour une connexion immédiate, renseignez aussi un email (la connexion par SMS nécessite un fournisseur SMS).</Text>
 
             {/* Email (optionnel) */}
