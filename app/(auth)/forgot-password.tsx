@@ -8,6 +8,7 @@ import { Button } from "@/components/Button";
 import { FadeInView } from "@/components/FadeInView";
 import { authService } from "@/lib/auth-service";
 import { isValidEmail } from "@/lib/validation";
+import { hapticSuccess } from "@/lib/haptics";
 import { colors, spacing, typography } from "@/theme";
 
 export default function ForgotPassword() {
@@ -21,6 +22,7 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       await authService.resetPassword(email.trim(), "hygienaplus://reset-password");
+      hapticSuccess();
       setSent(true);
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Erreur inconnue");
@@ -40,7 +42,7 @@ export default function ForgotPassword() {
             </View>
             <Text style={styles.successTitle}>E-mail envoyé</Text>
             <Text style={styles.successText}>
-              Un lien de réinitialisation a été envoyé à {email.trim()}. Ouvrez-le sur cet appareil pour choisir un nouveau mot de passe.
+              Un lien de réinitialisation a été envoyé à {email.trim()}. Ouvre-le sur cet appareil pour choisir un nouveau mot de passe.
             </Text>
             <Button title="Retour à la connexion" onPress={() => router.replace("/(auth)/login")} />
           </View>
@@ -54,7 +56,7 @@ export default function ForgotPassword() {
       <View style={styles.header}>
         <Text style={styles.wordmark}>Hygiena<Text style={styles.plus}>+</Text></Text>
         <Text style={typography.h2}>Mot de passe oublié</Text>
-        <Text style={typography.caption}>Nous vous enverrons un lien de réinitialisation.</Text>
+        <Text style={typography.caption}>Nous t'enverrons un lien de réinitialisation.</Text>
       </View>
 
       <Input

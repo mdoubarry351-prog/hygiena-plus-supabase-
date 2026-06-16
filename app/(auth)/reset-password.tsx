@@ -113,7 +113,7 @@ export default function ResetPassword() {
               <Ionicons name="alert-circle-outline" size={34} color={colors.accent} />
             </View>
             <Text style={styles.title}>Lien invalide ou expiré</Text>
-            <Text style={styles.message}>Le lien de réinitialisation n'est plus valide. Demandez-en un nouveau depuis « Mot de passe oublié ».</Text>
+            <Text style={styles.message}>Le lien de réinitialisation n'est plus valide. Demandes-en un nouveau depuis « Mot de passe oublié ».</Text>
             <Button title="Retour à la connexion" onPress={() => router.replace("/(auth)/login")} />
           </View>
         </FadeInView>

@@ -7,6 +7,7 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
 import { isValidEmail, passwordStrength } from "@/lib/validation";
+import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 import { colors, spacing, typography } from "@/theme";
 
 const STRENGTH_COLORS = [colors.border, colors.danger, colors.accent, colors.success];
@@ -48,15 +49,17 @@ export default function Register() {
         lastName: lastName.trim(),
         phone: phone.trim() || undefined,
       });
+      hapticSuccess();
       if (needsEmailConfirmation) {
         Alert.alert(
           "Compte créé",
-          "Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous.",
+          "Vérifie ta boîte mail pour confirmer ton adresse, puis connecte-toi.",
           [{ text: "OK", onPress: () => router.replace("/(auth)/login") }]
         );
       }
       // Sinon, la session est active : l'aiguilleur racine redirige automatiquement.
     } catch (e) {
+      hapticError();
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       Alert.alert("Inscription échouée", msg);
     } finally {
@@ -69,7 +72,7 @@ export default function Register() {
       <View style={styles.header}>
         <Text style={styles.wordmark}>Hygiena<Text style={styles.plus}>+</Text></Text>
         <Text style={styles.logo}>Créer un compte</Text>
-        <Text style={typography.caption}>Rejoignez la communauté</Text>
+        <Text style={typography.caption}>Rejoins la communauté</Text>
       </View>
 
       <Input
@@ -170,7 +173,7 @@ export default function Register() {
       />
 
       {/* Acceptation des conditions */}
-      <Pressable onPress={() => setAccepted((a) => !a)} style={styles.terms} accessibilityRole="checkbox" accessibilityState={{ checked: accepted }}>
+      <Pressable onPress={() => { hapticLight(); setAccepted((a) => !a); }} style={({ pressed }) => [styles.terms, pressed && styles.termsPressed]} accessibilityRole="checkbox" accessibilityState={{ checked: accepted }}>
         <Ionicons name={accepted ? "checkbox" : "square-outline"} size={22} color={accepted ? colors.primary : colors.textMuted} />
         <Text style={styles.termsText}>
           J'accepte les <Link href="/(user)/terms" style={styles.termsLink}>conditions d'utilisation</Link> et la <Link href="/(user)/privacy" style={styles.termsLink}>politique de confidentialité</Link>.
@@ -198,6 +201,7 @@ const styles = StyleSheet.create({
   strengthBar: { flex: 1, height: 5, borderRadius: 3, backgroundColor: colors.border },
   strengthLabel: { ...typography.caption, fontWeight: "700", width: 52, textAlign: "right" },
   terms: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, marginBottom: spacing.md },
+  termsPressed: { opacity: 0.6 },
   termsText: { ...typography.caption, color: colors.textMuted, flex: 1, lineHeight: 18 },
   termsLink: { color: colors.primary, fontWeight: "700" },
   footer: { marginTop: spacing.lg, alignItems: "center" },

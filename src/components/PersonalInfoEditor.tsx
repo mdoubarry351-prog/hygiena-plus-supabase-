@@ -8,10 +8,13 @@ import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { authService } from "@/lib/auth-service";
+import { hapticSuccess } from "@/lib/haptics";
 import type { Profile } from "@/lib/database.types";
 import { colors, spacing, typography } from "@/theme";
 
+const STEP = 55; // pas de l'apparition échelonnée
 type Busy = "names" | "phone" | "email" | "password" | null;
 
 // Prénom/Nom initiaux : depuis first_name/last_name, sinon dérivés de full_name.
@@ -27,6 +30,7 @@ function initialNames(profile: Profile | null): { first: string; last: string } 
 // Présentation + appels auth-service uniquement ; full_name reste synchronisé.
 export function PersonalInfoEditor({ title = "Mes informations" }: { title?: string }) {
   const { profile, session, refreshProfile } = useAuth();
+  const toast = useToast();
 
   const init = initialNames(profile);
   const [firstName, setFirstName] = useState(init.first);
@@ -42,14 +46,15 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
 
   async function saveNames() {
     if (!firstName.trim() || !lastName.trim()) {
-      Alert.alert("Nom requis", "Indiquez votre prénom et votre nom.");
+      Alert.alert("Nom requis", "Indique ton prénom et ton nom.");
       return;
     }
     setBusy("names");
     try {
       await authService.updateNames(userId, firstName.trim(), lastName.trim());
       await refreshProfile();
-      Alert.alert("Enregistré", "Votre nom a été mis à jour.");
+      hapticSuccess();
+      toast.success("Ton nom a été mis à jour.");
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
     } finally {
@@ -62,7 +67,8 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
     try {
       await authService.updatePhone(userId, phone.trim() ? phone.trim() : null);
       await refreshProfile();
-      Alert.alert("Enregistré", "Votre numéro a été mis à jour.");
+      hapticSuccess();
+      toast.success("Ton numéro a été mis à jour.");
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
     } finally {
@@ -73,13 +79,14 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
   async function saveEmail() {
     const next = email.trim();
     if (!next) {
-      Alert.alert("Email requis", "Saisissez une adresse email.");
+      Alert.alert("Email requis", "Saisis une adresse email.");
       return;
     }
     setBusy("email");
     try {
       await authService.updateEmail(userId, next);
       await refreshProfile();
+      hapticSuccess();
       Alert.alert(
         "Email mis à jour",
         "Un email de confirmation a pu être envoyé à la nouvelle adresse. Le changement sera effectif après confirmation."
@@ -105,7 +112,8 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
       await authService.updatePassword(password);
       setPassword("");
       setConfirm("");
-      Alert.alert("Mot de passe modifié", "Votre mot de passe a été mis à jour.");
+      hapticSuccess();
+      toast.success("Ton mot de passe a été mis à jour.");
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Changement de mot de passe échoué");
     } finally {
@@ -115,19 +123,22 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
 
   return (
     <Screen>
-      <FadeInView>
+      <View style={styles.fill}>
       <ScreenHeader title={title} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
         {/* Identité */}
+        <FadeInView fill={false} delay={0}>
         <Card style={styles.card}>
           <Text style={typography.h3}>Identité</Text>
           <Input label="Prénom" value={firstName} onChangeText={setFirstName} placeholder="Awa" autoCapitalize="words" />
           <Input label="Nom" value={lastName} onChangeText={setLastName} placeholder="Diop" autoCapitalize="words" />
           <Button title="Enregistrer" onPress={saveNames} loading={busy === "names"} />
         </Card>
+        </FadeInView>
 
         {/* Téléphone */}
+        <FadeInView fill={false} delay={STEP}>
         <Card style={styles.card}>
           <Text style={typography.h3}>Téléphone</Text>
           <Input
@@ -140,8 +151,10 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
           />
           <Button title="Enregistrer" onPress={savePhone} loading={busy === "phone"} />
         </Card>
+        </FadeInView>
 
         {/* Email */}
+        <FadeInView fill={false} delay={STEP * 2}>
         <Card style={styles.card}>
           <Text style={typography.h3}>Adresse email</Text>
           <Input
@@ -157,8 +170,10 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
           <Text style={styles.hint}>Un email de confirmation peut être envoyé à la nouvelle adresse.</Text>
           <Button title="Mettre à jour l'email" onPress={saveEmail} loading={busy === "email"} />
         </Card>
+        </FadeInView>
 
         {/* Mot de passe */}
+        <FadeInView fill={false} delay={STEP * 3}>
         <Card style={styles.card}>
           <Text style={typography.h3}>Mot de passe</Text>
           <Input
@@ -183,13 +198,15 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
           />
           <Button title="Changer le mot de passe" onPress={savePassword} loading={busy === "password"} />
         </Card>
+        </FadeInView>
       </ScrollView>
-      </FadeInView>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   back: { flexDirection: "row", alignItems: "center", gap: 2, marginLeft: -spacing.xs },
   backText: { ...typography.body, color: colors.text },

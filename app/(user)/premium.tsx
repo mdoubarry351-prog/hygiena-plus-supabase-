@@ -34,8 +34,8 @@ function formatPeriod(start: string | null, end: string | null): string | null {
 }
 
 const BENEFITS: { icon: keyof typeof Ionicons.glyphMap; title: string; sub: string }[] = [
-  { icon: "chatbubbles-outline", title: "Messagerie illimitée", sub: "Échangez des conseils avec les médecins vérifiées." },
-  { icon: "shield-checkmark-outline", title: "Suivi prioritaire", sub: "Vos prédictions et rappels mis en avant." },
+  { icon: "chatbubbles-outline", title: "Messagerie illimitée", sub: "Échange des conseils avec les médecins vérifiées." },
+  { icon: "shield-checkmark-outline", title: "Suivi prioritaire", sub: "Tes prédictions et rappels mis en avant." },
   { icon: "heart-outline", title: "Soutien bien-être", sub: "Plus de contenus et d'accompagnement." },
 ];
 
@@ -117,7 +117,7 @@ export default function Premium() {
           </View>
           <Text style={styles.title}>Hygiena+ Premium</Text>
           <Text style={styles.sub}>
-            {isPremium ? "Votre abonnement est actif." : "Débloquez la messagerie avec les médecins."}
+            {isPremium ? "Ton abonnement est actif." : "Débloque la messagerie avec les médecins."}
           </Text>
           {isPremium ? (
             <View style={styles.activePill}>
@@ -126,6 +126,18 @@ export default function Premium() {
             </View>
           ) : null}
         </View>
+
+        {/* Plan : prix + durée (clairs et élégants) — masqué si déjà abonnée. */}
+        {!isPremium ? (
+          <Card style={styles.planCard}>
+            <Text style={styles.planLabel}>Abonnement Premium</Text>
+            <View style={styles.planPriceRow}>
+              <Text style={styles.planPrice}>{formatPrice(premium_price)}</Text>
+              <Text style={styles.planPeriod}> / {premium_duration_days} jours</Text>
+            </View>
+            <Text style={styles.planNote}>Sans engagement · paiement simulé, aucun débit réel.</Text>
+          </Card>
+        ) : null}
 
         {BENEFITS.map((b) => (
           <Card key={b.title} style={styles.benefit}>
@@ -199,6 +211,12 @@ const styles = StyleSheet.create({
   sub: { ...typography.body, color: colors.textMuted, textAlign: "center" },
   activePill: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.primaryLight, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, marginTop: spacing.xs },
   activeText: { ...typography.caption, color: colors.primaryDark, fontFamily: fonts.bodySemiBold },
+  planCard: { alignItems: "center", gap: spacing.xs, backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  planLabel: { ...typography.caption, color: colors.primaryDark, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
+  planPriceRow: { flexDirection: "row", alignItems: "baseline" },
+  planPrice: { ...typography.h1, color: colors.primaryDark },
+  planPeriod: { ...typography.body, color: colors.primaryDark, fontWeight: "600" },
+  planNote: { ...typography.caption, color: colors.primaryDark, opacity: 0.8 },
   benefit: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   benefitIcon: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
   benefitText: { flex: 1, gap: 2 },

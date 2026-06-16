@@ -14,7 +14,10 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { authService } from "@/lib/auth-service";
 import { healthService, BLOOD_GROUPS } from "@/lib/health-service";
+import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
+
+const STEP = 55; // pas de l'apparition échelonnée
 
 // Date locale « AAAA-MM-JJ » (composants locaux → pas de décalage de fuseau).
 function toISODate(d: Date): string {
@@ -85,8 +88,8 @@ export default function HealthInfo() {
     const userId = session.user.id;
     const h = height.trim() ? parseInt(height.replace(/\s/g, ""), 10) : null;
     const w = weight.trim() ? parseFloat(weight.replace(",", ".").replace(/\s/g, "")) : null;
-    if (h != null && (Number.isNaN(h) || h <= 0 || h > 300)) { Alert.alert("Taille invalide", "Indiquez une taille en cm (1–300)."); return; }
-    if (w != null && (Number.isNaN(w) || w <= 0 || w > 500)) { Alert.alert("Poids invalide", "Indiquez un poids en kg (1–500)."); return; }
+    if (h != null && (Number.isNaN(h) || h <= 0 || h > 300)) { Alert.alert("Taille invalide", "Indique une taille en cm (1–300)."); return; }
+    if (w != null && (Number.isNaN(w) || w <= 0 || w > 500)) { Alert.alert("Poids invalide", "Indique un poids en kg (1–500)."); return; }
     setSaving(true);
     try {
       const nextDob = dob ? toISODate(dob) : null;
@@ -102,6 +105,7 @@ export default function HealthInfo() {
         health_notes: notes.trim() ? notes.trim() : null,
       });
       await refreshProfile();
+      hapticSuccess();
       toast.success("Tes informations de santé ont été enregistrées.");
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Enregistrement échoué");
@@ -114,18 +118,21 @@ export default function HealthInfo() {
 
   return (
     <Screen>
-      <FadeInView>
+      <View style={styles.fill}>
       <ScreenHeader title="Informations de santé" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <FadeInView fill={false} delay={0}>
         <View style={styles.privacyRow}>
           <Ionicons name="lock-closed-outline" size={15} color={colors.primaryDark} />
           <Text style={styles.privacyText}>Ces informations sont privées et visibles uniquement par toi.</Text>
         </View>
+        </FadeInView>
 
         {/* Date de naissance + âge */}
+        <FadeInView fill={false} delay={STEP}>
         <Card style={styles.card}>
           <Text style={typography.h3}>Date de naissance</Text>
-          <Pressable onPress={() => setShowPicker(true)} style={styles.dateRow} accessibilityRole="button" accessibilityLabel="Choisir la date de naissance">
+          <Pressable onPress={() => { hapticLight(); setShowPicker(true); }} style={({ pressed }) => [styles.dateRow, pressed && styles.dateRowPressed]} accessibilityRole="button" accessibilityLabel="Choisir la date de naissance">
             <Ionicons name="calendar-outline" size={20} color={colors.primary} />
             <Text style={[styles.dateValue, !dob && styles.dateValueMuted]}>
               {dob ? formatDateLabel(dob) : "Non renseignée"}
@@ -145,42 +152,53 @@ export default function HealthInfo() {
             <Button title="Terminé" variant="outline" size="sm" onPress={() => setShowPicker(false)} />
           ) : null}
         </Card>
+        </FadeInView>
 
         {/* Mesures */}
+        <FadeInView fill={false} delay={STEP * 2}>
         <Card style={styles.card}>
           <Text style={typography.h3}>Mesures</Text>
           <Input label="Taille (cm)" value={height} onChangeText={setHeight} placeholder="Ex. 165" keyboardType="numeric" />
           <Input label="Poids (kg)" value={weight} onChangeText={setWeight} placeholder="Ex. 60" keyboardType="numeric" />
         </Card>
+        </FadeInView>
 
         {/* Groupe sanguin */}
+        <FadeInView fill={false} delay={STEP * 3}>
         <Card style={styles.card}>
           <Text style={typography.h3}>Groupe sanguin</Text>
           <View style={styles.chips}>
             {BLOOD_GROUPS.map((g) => (
-              <Chip key={g} label={g} active={bloodGroup === g} onPress={() => setBloodGroup((c) => (c === g ? null : g))} size="lg" />
+              <Chip key={g} label={g} active={bloodGroup === g} onPress={() => setBloodGroup((c) => (c === g ? null : g))} size="lg" haptic />
             ))}
           </View>
         </Card>
+        </FadeInView>
 
         {/* Antécédents */}
+        <FadeInView fill={false} delay={STEP * 4}>
         <Card style={styles.card}>
           <Text style={typography.h3}>Antécédents</Text>
           <Input label="Allergies" value={allergies} onChangeText={setAllergies} placeholder="Ex. pénicilline, arachides…" multiline numberOfLines={2} style={styles.area} />
           <Input label="Traitements en cours" value={treatments} onChangeText={setTreatments} placeholder="Ex. contraception, supplément de fer…" multiline numberOfLines={2} style={styles.area} />
           <Input label="Notes santé" value={notes} onChangeText={setNotes} placeholder="Tout ce qui te semble utile" multiline numberOfLines={3} style={styles.area} />
         </Card>
+        </FadeInView>
 
-        <Button title="Enregistrer" onPress={handleSave} loading={saving} />
+        <FadeInView fill={false} delay={STEP * 5}>
+          <Button title="Enregistrer" onPress={handleSave} loading={saving} />
+        </FadeInView>
       </ScrollView>
-      </FadeInView>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   privacyRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.primaryLight, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md },
+  dateRowPressed: { opacity: 0.7, backgroundColor: colors.primaryLight },
   privacyText: { ...typography.caption, color: colors.primaryDark, flex: 1 },
   card: { gap: spacing.sm },
   dateRow: {

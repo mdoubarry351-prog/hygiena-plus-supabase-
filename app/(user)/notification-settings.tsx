@@ -22,6 +22,7 @@ import {
   type PermStatus,
 } from "@/lib/local-notifications";
 import { resyncAllReminders } from "@/lib/reminders";
+import { hapticLight } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
 export default function NotificationSettings() {
@@ -43,6 +44,7 @@ export default function NotificationSettings() {
   }, []);
 
   function toggle(key: string, value: boolean) {
+    hapticLight();
     setPrefs((prev) => {
       const next = { ...prev, [key]: value };
       saveNotifPrefs(next); // persistance locale immédiate (best-effort)

@@ -8,6 +8,7 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
 import { isValidEmail } from "@/lib/validation";
+import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
 const logo = require("../../assets/logo/hygiena-icon-1024.png");
@@ -56,11 +57,13 @@ export default function Login() {
     setLoading(true);
     try {
       await signIn(email.trim(), password);
+      hapticSuccess();
       // Succès : on remet le compteur à zéro.
       setFailCount(0);
       setLockedUntil(0);
       AsyncStorage.multiRemove([KEY_FAILS, KEY_LOCK]).catch(() => {});
     } catch (e) {
+      hapticError();
       const next = failCount + 1;
       setFailCount(next);
       AsyncStorage.setItem(KEY_FAILS, String(next)).catch(() => {});
@@ -89,7 +92,7 @@ export default function Login() {
         <Text style={styles.wordmark}>
           Hygiena<Text style={styles.plus}>+</Text>
         </Text>
-        <Text style={styles.tagline}>Prenez soin de vous, jour après jour 🌿</Text>
+        <Text style={styles.tagline}>Prends soin de toi, jour après jour 🌿</Text>
       </View>
 
       <View style={styles.form}>
@@ -127,7 +130,7 @@ export default function Login() {
         {locked ? (
           <View style={styles.lockNote}>
             <Ionicons name="time-outline" size={15} color={colors.danger} />
-            <Text style={styles.lockText}>Trop de tentatives. Réessayez dans {remaining}s.</Text>
+            <Text style={styles.lockText}>Trop de tentatives. Réessaie dans {remaining}s.</Text>
           </View>
         ) : null}
 

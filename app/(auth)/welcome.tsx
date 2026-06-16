@@ -1,4 +1,5 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Image, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { Button } from "@/components/Button";
@@ -9,19 +10,24 @@ const logo = require("../../assets/logo/hygiena-icon-1024.png");
 
 export default function Welcome() {
   const router = useRouter();
+  // « Pop » doux du logo au lancement (spring scale), première impression.
+  const pop = useRef(new Animated.Value(0.7)).current;
+  useEffect(() => {
+    Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 9, bounciness: 10 }).start();
+  }, [pop]);
   return (
     <Screen>
       <View style={styles.glow} pointerEvents="none" />
       <FadeInView>
         <View style={styles.container}>
           <View style={styles.header}>
-            <View style={styles.logoHalo}>
+            <Animated.View style={[styles.logoHalo, { transform: [{ scale: pop }] }]}>
               <Image source={logo} style={styles.logoImg} resizeMode="contain" />
-            </View>
+            </Animated.View>
             <Text style={styles.wordmark}>
               Hygiena<Text style={styles.plus}>+</Text>
             </Text>
-            <Text style={styles.tagline}>Votre santé féminine, accompagnée au quotidien 🌿</Text>
+            <Text style={styles.tagline}>Ta santé féminine, accompagnée au quotidien 🌿</Text>
           </View>
 
           <View style={styles.actions}>
