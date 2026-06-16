@@ -7,6 +7,8 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { useToast } from "@/providers/ToastProvider";
+import { FadeInView } from "@/components/FadeInView";
+import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import {
   doctorService,
@@ -39,6 +41,7 @@ export default function DoctorAvailability() {
     setSaving(true);
     try {
       await doctorService.updateAvailability(doctor.id, week);
+      hapticSuccess();
       toast.success("Disponibilités enregistrées.");
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Enregistrement échoué");
@@ -55,15 +58,16 @@ export default function DoctorAvailability() {
           Indiquez vos jours et plages horaires de consultation.
         </Text>
 
-        {WEEKDAYS.map(({ key, label }) => {
+        {WEEKDAYS.map(({ key, label }, i) => {
           const day = week[key];
           return (
-            <Card key={key} style={styles.dayCard}>
+            <FadeInView key={key} fill={false} delay={Math.min(i, 6) * 45}>
+            <Card style={styles.dayCard}>
               <View style={styles.dayHead}>
                 <Text style={styles.dayLabel}>{label}</Text>
                 <Switch
                   value={day.enabled}
-                  onValueChange={(v) => setDay(key, { enabled: v })}
+                  onValueChange={(v) => { hapticLight(); setDay(key, { enabled: v }); }}
                   trackColor={{ false: colors.border, true: colors.primary }}
                   thumbColor={colors.white}
                 />
@@ -83,6 +87,7 @@ export default function DoctorAvailability() {
                 </View>
               )}
             </Card>
+            </FadeInView>
           );
         })}
 

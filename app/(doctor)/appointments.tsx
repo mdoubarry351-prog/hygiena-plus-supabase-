@@ -7,11 +7,15 @@ import { Card } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
+import { FadeInView } from "@/components/FadeInView";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import { doctorService, type AppointmentWithPatient } from "@/lib/doctor-service";
 import { formatAppointmentDate, formatAppointmentTime } from "@/lib/appointments-service";
+import { hapticLight } from "@/lib/haptics";
 import type { AppointmentStatus } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
+
+const STEP = 55; // pas de l'apparition échelonnée
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
   pending: "En attente",
@@ -96,8 +100,9 @@ export default function DoctorAppointments() {
             message="Les demandes de rendez-vous de vos patients apparaîtront ici."
           />
         ) : (
-          appointments.map((a) => (
-            <Card key={a.id} style={styles.apptCard}>
+          appointments.map((a, i) => (
+            <FadeInView key={a.id} fill={false} delay={Math.min(i, 6) * STEP}>
+            <Card style={styles.apptCard}>
               <View style={styles.apptHead}>
                 <View style={styles.apptInfo}>
                   <Text style={styles.patientName}>{a.patient?.full_name?.trim() || "Patient"}</Text>
@@ -132,6 +137,7 @@ export default function DoctorAppointments() {
                 onCancel={() => confirmCancel(a.id)}
               />
             </Card>
+            </FadeInView>
           ))
         )}
       </ScrollView>
@@ -190,13 +196,16 @@ function ActionBtn({
   const outline = variant === "outline";
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => { hapticLight(); onPress(); }}
       disabled={disabled}
-      style={[
+      style={({ pressed }) => [
         styles.actionBtn,
         outline ? { borderWidth: 1.5, borderColor: color } : { backgroundColor: color },
         disabled && styles.actionDisabled,
+        pressed && !disabled && styles.actionPressed,
       ]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
     >
       <Ionicons name={icon} size={16} color={outline ? color : colors.white} />
       <Text style={[styles.actionLabel, { color: outline ? color : colors.white }]}>{label}</Text>
@@ -231,6 +240,7 @@ const styles = StyleSheet.create({
     height: 44, borderRadius: radius.md,
   },
   actionDisabled: { opacity: 0.5 },
+  actionPressed: { opacity: 0.8 },
   actionLabel: { fontSize: 14, fontWeight: "700" },
   terminalRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginTop: spacing.xs },
   terminalText: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },

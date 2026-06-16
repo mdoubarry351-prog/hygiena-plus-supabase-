@@ -7,6 +7,8 @@ import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
+import { FadeInView } from "@/components/FadeInView";
+import { hapticLight } from "@/lib/haptics";
 import { useAuth } from "@/providers/AuthProvider";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import {
@@ -74,7 +76,7 @@ export default function DoctorDashboard() {
 
   return (
     <Screen>
-      <Pressable onPress={() => router.replace("/(user)")} style={styles.switchBar} hitSlop={6}>
+      <Pressable onPress={() => { hapticLight(); router.replace("/(user)"); }} style={({ pressed }) => [styles.switchBar, pressed && styles.switchPressed]} hitSlop={6} accessibilityRole="button" accessibilityLabel="Revenir à mon espace perso">
         <Ionicons name="arrow-back" size={16} color={colors.primary} />
         <Text style={styles.switchText}>Mon espace perso</Text>
       </Pressable>
@@ -93,34 +95,38 @@ export default function DoctorDashboard() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        <View style={styles.statsGrid}>
-          <StatCard icon="calendar" label="À venir" value={stats.upcoming} tint={colors.primary} />
-          <StatCard icon="today" label="Aujourd'hui" value={stats.today} tint={colors.secondary} />
-          <StatCard icon="hourglass-outline" label="En attente" value={stats.pending} tint={colors.accent} />
-          <StatCard icon="checkmark-done" label="Terminés" value={stats.completed} tint={colors.success} />
-        </View>
+        <FadeInView fill={false} delay={0}>
+          <View style={styles.statsGrid}>
+            <StatCard icon="calendar" label="À venir" value={stats.upcoming} tint={colors.primary} />
+            <StatCard icon="today" label="Aujourd'hui" value={stats.today} tint={colors.secondary} />
+            <StatCard icon="hourglass-outline" label="En attente" value={stats.pending} tint={colors.accent} />
+            <StatCard icon="checkmark-done" label="Terminés" value={stats.completed} tint={colors.success} />
+          </View>
+        </FadeInView>
 
-        <Text style={[typography.h3, styles.sectionTitle]}>Rendez-vous du jour</Text>
-        {todays.length === 0 ? (
-          <EmptyState icon="cafe-outline" title="Aucun rendez-vous aujourd'hui" />
-        ) : (
-          todays.map((a) => (
-            <Card key={a.id} style={styles.todayRow}>
-              <View style={styles.timePill}>
-                <Text style={styles.timeText}>{formatAppointmentTime(a.appointment_time)}</Text>
-              </View>
-              <View style={styles.todayInfo}>
-                <Text style={styles.patientName} numberOfLines={1}>
-                  {a.patient?.full_name?.trim() || "Patient"}
+        <FadeInView fill={false} delay={STEP} style={styles.todayBlock}>
+          <Text style={[typography.h3, styles.sectionTitle]}>Rendez-vous du jour</Text>
+          {todays.length === 0 ? (
+            <EmptyState icon="cafe-outline" title="Aucun rendez-vous aujourd'hui" />
+          ) : (
+            todays.map((a) => (
+              <Card key={a.id} style={styles.todayRow}>
+                <View style={styles.timePill}>
+                  <Text style={styles.timeText}>{formatAppointmentTime(a.appointment_time)}</Text>
+                </View>
+                <View style={styles.todayInfo}>
+                  <Text style={styles.patientName} numberOfLines={1}>
+                    {a.patient?.full_name?.trim() || "Patient"}
+                  </Text>
+                  {a.reason ? <Text style={styles.reason} numberOfLines={1}>{a.reason}</Text> : null}
+                </View>
+                <Text style={[styles.miniBadge, a.status === "confirmed" ? styles.badgeConfirmed : styles.badgePending]}>
+                  {a.status === "confirmed" ? "Confirmé" : "En attente"}
                 </Text>
-                {a.reason ? <Text style={styles.reason} numberOfLines={1}>{a.reason}</Text> : null}
-              </View>
-              <Text style={[styles.miniBadge, a.status === "confirmed" ? styles.badgeConfirmed : styles.badgePending]}>
-                {a.status === "confirmed" ? "Confirmé" : "En attente"}
-              </Text>
-            </Card>
-          ))
-        )}
+              </Card>
+            ))
+          )}
+        </FadeInView>
       </ScrollView>
     </Screen>
   );
@@ -138,8 +144,11 @@ function StatCard({ icon, label, value, tint }: { icon: keyof typeof Ionicons.gl
   );
 }
 
+const STEP = 55; // pas de l'apparition échelonnée
 const styles = StyleSheet.create({
   switchBar: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingTop: spacing.lg },
+  switchPressed: { opacity: 0.5 },
+  todayBlock: { gap: spacing.md },
   switchText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.sm, gap: spacing.sm },
   greeting: { ...typography.h2, flex: 1 },

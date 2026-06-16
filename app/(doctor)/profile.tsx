@@ -11,12 +11,16 @@ import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { Avatar } from "@/components/Avatar";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
+import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import { doctorService } from "@/lib/doctor-service";
 import { authService } from "@/lib/auth-service";
 import { uploadKycDocument, uploadAvatar } from "@/lib/storage";
+import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
+
+const STEP = 55; // pas de l'apparition échelonnée
 
 export default function DoctorProfile() {
   const { profile, signOut, refreshProfile } = useAuth();
@@ -55,6 +59,7 @@ export default function DoctorProfile() {
       const url = await uploadAvatar(asset.base64);
       await authService.updateProfile(profile.id, { avatar_url: url });
       await refreshProfile();
+      hapticSuccess();
       Alert.alert("Photo mise à jour", "Votre photo de profil a été enregistrée. Elle est visible par les patientes.");
     } catch (e) {
       Alert.alert("Échec de l'envoi", e instanceof Error ? e.message : "Mise à jour de la photo échouée.");
@@ -119,6 +124,7 @@ export default function DoctorProfile() {
         consultation_fee: feeNumber,
       });
       setDoctor(updated);
+      hapticSuccess();
       Alert.alert("Enregistré", "Votre fiche a été mise à jour.");
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
@@ -149,6 +155,7 @@ export default function DoctorProfile() {
       const path = await uploadKycDocument(asset.base64);
       const updated = await doctorService.updateLicenseDocument(doctor.id, path);
       setDoctor(updated);
+      hapticSuccess();
       Alert.alert("Document envoyé", "Votre document a été transmis. Il sera vérifié par un administrateur.");
     } catch (e) {
       Alert.alert("Échec de l'envoi", e instanceof Error ? e.message : "Réessayez.");
@@ -170,8 +177,9 @@ export default function DoctorProfile() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <Text style={typography.h2}>Profil médecin</Text>
 
+        <FadeInView fill={false} delay={0}>
         <View style={styles.avatarBlock}>
-          <Pressable onPress={pickAvatar} disabled={avatarUploading} style={styles.avatarWrap} accessibilityRole="button" accessibilityLabel="Changer la photo de profil">
+          <Pressable onPress={() => { hapticLight(); pickAvatar(); }} disabled={avatarUploading} style={({ pressed }) => [styles.avatarWrap, pressed && styles.avatarPressed]} accessibilityRole="button" accessibilityLabel="Changer la photo de profil">
             <Avatar uri={profile?.avatar_url} name={profile?.full_name ?? profile?.email} size={AVATAR} />
             <View style={styles.cameraBadge}>
               {avatarUploading ? (
@@ -185,7 +193,9 @@ export default function DoctorProfile() {
           {profile?.email ? <Text style={styles.email}>{profile.email}</Text> : null}
           <Text style={styles.avatarHint}>{avatarUploading ? "Envoi en cours…" : "Modifier la photo"}</Text>
         </View>
+        </FadeInView>
 
+        <FadeInView fill={false} delay={STEP}>
         <Card style={styles.statusCard}>
           <View style={styles.statusLeft}>
             <Ionicons
@@ -205,8 +215,10 @@ export default function DoctorProfile() {
             </View>
           </View>
         </Card>
+        </FadeInView>
 
         {/* Document de vérification (KYC) — bucket privé */}
+        <FadeInView fill={false} delay={STEP * 2}>
         <Card style={styles.kycCard}>
           <Text style={typography.h3}>Document de vérification</Text>
           <View style={styles.kycStatus}>
@@ -217,7 +229,7 @@ export default function DoctorProfile() {
             </View>
           </View>
           {!doctor.is_validated ? (
-            <Pressable onPress={pickKycDocument} disabled={kycUploading} style={[styles.kycBtn, kycUploading && styles.kycBtnDisabled]}>
+            <Pressable onPress={() => { hapticLight(); pickKycDocument(); }} disabled={kycUploading} style={({ pressed }) => [styles.kycBtn, kycUploading && styles.kycBtnDisabled, pressed && !kycUploading && styles.kycBtnPressed]} accessibilityRole="button" accessibilityLabel="Téléverser un document de vérification">
               {kycUploading ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
@@ -229,21 +241,23 @@ export default function DoctorProfile() {
             </Pressable>
           ) : null}
         </Card>
+        </FadeInView>
 
         {/* Infos personnelles (distinctes de la fiche pro) */}
-        <Pressable onPress={() => router.push("/(doctor)/account")}>
-          <Card style={styles.accountRow}>
-            <View style={styles.accountIcon}>
-              <Ionicons name="person-outline" size={22} color={colors.primary} />
-            </View>
-            <View style={styles.accountText}>
-              <Text style={styles.accountTitle}>Mes informations personnelles</Text>
-              <Text style={styles.accountSub}>Nom, téléphone, email, mot de passe</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </Card>
-        </Pressable>
+        <FadeInView fill={false} delay={STEP * 3}>
+        <Card onPress={() => router.push("/(doctor)/account")} haptic accessibilityLabel="Mes informations personnelles" style={styles.accountRow}>
+          <View style={styles.accountIcon}>
+            <Ionicons name="person-outline" size={22} color={colors.primary} />
+          </View>
+          <View style={styles.accountText}>
+            <Text style={styles.accountTitle}>Mes informations personnelles</Text>
+            <Text style={styles.accountSub}>Nom, téléphone, email, mot de passe</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        </Card>
+        </FadeInView>
 
+        <FadeInView fill={false} delay={STEP * 4}>
         <Card style={styles.formCard}>
           <Text style={typography.h3}>Fiche professionnelle</Text>
           <Input
@@ -279,10 +293,12 @@ export default function DoctorProfile() {
           />
           <Button title="Enregistrer" onPress={handleSave} loading={saving} disabled={!dirty || feeInvalid} />
         </Card>
+        </FadeInView>
 
-        <Button title="Se déconnecter" variant="outline" onPress={() => handleSignOut(signOut)} />
-
-        <DeleteAccountButton />
+        <FadeInView fill={false} delay={STEP * 5} style={styles.actionsBlock}>
+          <Button title="Se déconnecter" variant="outline" onPress={() => handleSignOut(signOut)} />
+          <DeleteAccountButton />
+        </FadeInView>
       </ScrollView>
     </Screen>
   );
@@ -311,6 +327,8 @@ const styles = StyleSheet.create({
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   avatarBlock: { alignItems: "center", gap: spacing.xs, marginVertical: spacing.sm },
   avatarWrap: { width: AVATAR, height: AVATAR },
+  avatarPressed: { opacity: 0.8 },
+  actionsBlock: { gap: spacing.md },
   avatar: {
     width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, backgroundColor: colors.primaryLight,
     alignItems: "center", justifyContent: "center",
@@ -338,6 +356,7 @@ const styles = StyleSheet.create({
   kycSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
   kycBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.primary },
   kycBtnDisabled: { opacity: 0.6 },
+  kycBtnPressed: { opacity: 0.6, backgroundColor: colors.primaryLight },
   kycBtnText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
   accountRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   accountIcon: { width: 44, height: 44, borderRadius: radius.pill, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },

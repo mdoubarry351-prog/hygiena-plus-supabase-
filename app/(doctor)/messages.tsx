@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Screen } from "@/components/Screen";
@@ -7,6 +7,7 @@ import { Card } from "@/components/Card";
 import { Avatar } from "@/components/Avatar";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
+import { FadeInView } from "@/components/FadeInView";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import { messagesService, type DoctorConversation } from "@/lib/messages-service";
 import { formatRelativeTime } from "@/lib/community-service";
@@ -59,12 +60,14 @@ export default function DoctorMessages() {
             message="Les conseils de vos patientes apparaîtront ici."
           />
         ) : (
-          convos.map((c) => (
-            <Pressable
-              key={c.patientId}
-              onPress={() => router.push({ pathname: "/(doctor)/chat", params: { patientId: c.patientId, patientName: c.patientName } })}
-            >
-              <Card style={styles.row}>
+          convos.map((c, i) => (
+            <FadeInView key={c.patientId} fill={false} delay={Math.min(i, 6) * 50}>
+              <Card
+                onPress={() => router.push({ pathname: "/(doctor)/chat", params: { patientId: c.patientId, patientName: c.patientName } })}
+                haptic
+                accessibilityLabel={`Conversation avec ${c.patientName}`}
+                style={styles.row}
+              >
                 <Avatar name={c.patientName} size={44} />
                 <View style={styles.info}>
                   <View style={styles.head}>
@@ -74,7 +77,7 @@ export default function DoctorMessages() {
                   <Text style={styles.last} numberOfLines={1}>{c.lastContent}</Text>
                 </View>
               </Card>
-            </Pressable>
+            </FadeInView>
           ))
         )}
       </ScrollView>
