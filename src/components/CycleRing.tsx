@@ -1,7 +1,12 @@
 import { useEffect, useRef } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
-import { colors, fonts, phase as PHASE_COLOR, radius, spacing, typography } from "@/theme";
+import { colors, durations, fonts, phase as PHASE_COLOR, radius, spacing, typography } from "@/theme";
+
+// Halo : diamètre de base + durée du cycle de pulsation (emanation douce depuis
+// le marqueur). Durée de boucle = micro-interaction lente, hors échelle `durations`.
+const HALO = 18;
+const PULSE_MS = 1700;
 
 type Phase = "period" | "fertile" | "ovulation" | "luteal";
 
@@ -38,14 +43,36 @@ export function CycleRing({
   ovulationDay,
   size = 208,
 }: Props) {
-  // Apparition douce du chiffre central au montage (fade + léger scale).
+  // Apparition douce du chiffre central au montage (fade + léger scale), easing
+  // sortant pour un atterrissage doux ; durée tokenisée.
   const appear = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(appear, { toValue: 1, duration: 450, useNativeDriver: true }).start();
+    Animated.timing(appear, {
+      toValue: 1,
+      duration: durations.slow,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
   }, [appear]);
   const appearStyle = {
     opacity: appear,
     transform: [{ scale: appear.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }],
+  };
+
+  // Halo pulsé discret autour du marqueur du jour courant (emanation douce qui
+  // attire l'œil sans distraire). Boucle native (scale + opacity).
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (currentDay == null) return;
+    const loop = Animated.loop(
+      Animated.timing(pulse, { toValue: 1, duration: PULSE_MS, easing: Easing.out(Easing.ease), useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse, currentDay]);
+  const pulseStyle = {
+    opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0] }),
+    transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] }) }],
   };
 
   const N = Math.max(1, cycleLength);
@@ -107,6 +134,18 @@ export function CycleRing({
           )}
         </Svg>
 
+        {/* Halo pulsé sous le marqueur (emanation douce). */}
+        {marker && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.halo,
+              { left: marker.x - HALO / 2, top: marker.y - HALO / 2, backgroundColor: markerColor },
+              pulseStyle,
+            ]}
+          />
+        )}
+
         <View style={[styles.center, { width: size, height: size }]} pointerEvents="none">
           {currentDay != null ? (
             <Animated.View style={[styles.centerInner, appearStyle]}>
@@ -143,10 +182,11 @@ const styles = StyleSheet.create({
   pill: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill },
   pillDot: { width: 8, height: 8, borderRadius: 4 },
   pillText: { ...typography.caption, fontFamily: fonts.bodySemiBold },
+  halo: { position: "absolute", width: HALO, height: HALO, borderRadius: HALO / 2 },
   center: { position: "absolute", top: 0, left: 0, alignItems: "center", justifyContent: "center" },
-  centerInner: { alignItems: "center" },
-  jour: { ...typography.caption, color: colors.textMuted, letterSpacing: 2, fontSize: 11 },
-  day: { fontFamily: fonts.titleBold, fontSize: 52, color: colors.text, lineHeight: 56 },
+  centerInner: { alignItems: "center", gap: 1 },
+  jour: { fontFamily: fonts.bodySemiBold, color: colors.textMuted, letterSpacing: 3, fontSize: 11 },
+  day: { fontFamily: fonts.titleBold, fontSize: 54, color: colors.text, lineHeight: 58, letterSpacing: -1 },
   sub: { ...typography.caption, color: colors.textMuted },
   empty: { ...typography.body, color: colors.textMuted, textAlign: "center" },
   legend: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: spacing.md },

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +8,8 @@ import { Card } from "@/components/Card";
 import { Divider } from "@/components/Divider";
 import { Loading } from "@/components/Loading";
 import { CycleRing } from "@/components/CycleRing";
+import { FadeInView } from "@/components/FadeInView";
+import { PressableScale } from "@/components/PressableScale";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
 import { useCycles } from "@/hooks/useCycles";
@@ -15,9 +17,12 @@ import { currentPhase, getDailyTip, PHASE_LABEL } from "@/lib/cycle-tips";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { useAuth } from "@/providers/AuthProvider";
 import { notificationsService } from "@/lib/notifications-service";
-import { colors, fonts, radius, spacing, typography } from "@/theme";
+import { colors, fonts, phase as PHASE_COLOR, radius, shadows, spacing, typography } from "@/theme";
 
 const logo = require("../../assets/logo/hygiena-icon-1024.png");
+
+// Pas de décalage entre blocs pour l'apparition échelonnée (stagger sobre).
+const STEP = 60;
 
 function formatShort(d: Date | null | undefined): string {
   if (!d) return "—";
@@ -129,120 +134,143 @@ export default function CycleHome() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {/* 1 · En-tête */}
-        <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Image source={logo} style={styles.avatarImg} resizeMode="contain" />
+        <FadeInView fill={false} delay={0}>
+          <View style={styles.header}>
+            <View style={styles.avatar}>
+              <Image source={logo} style={styles.avatarImg} resizeMode="contain" />
+            </View>
+            <View style={styles.headerText}>
+              <Text style={styles.hello} numberOfLines={1}>{greet.word}, {firstName || "toi"} {greet.emoji}</Text>
+              <Text style={styles.headerDate} numberOfLines={1}>{todayLabel}</Text>
+            </View>
+            <PressableScale onPress={() => router.push("/(user)/notifications")} haptic hitSlop={8} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel={unread > 0 ? `Notifications, ${unread} non lues` : "Notifications"}>
+              <Ionicons name="notifications-outline" size={24} color={colors.text} />
+              {unread > 0 && (
+                <View style={styles.badge}><Text style={styles.badgeText}>{unread > 99 ? "99+" : unread}</Text></View>
+              )}
+            </PressableScale>
+            <PressableScale onPress={() => router.push("/(user)/profile")} haptic hitSlop={8} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Mon profil">
+              <Ionicons name="heart-outline" size={24} color={colors.primary} />
+            </PressableScale>
           </View>
-          <View style={styles.headerText}>
-            <Text style={styles.hello} numberOfLines={1}>{greet.word}, {firstName || "toi"} {greet.emoji}</Text>
-            <Text style={styles.headerDate} numberOfLines={1}>{todayLabel}</Text>
-          </View>
-          <Pressable onPress={() => router.push("/(user)/notifications")} hitSlop={8} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel={unread > 0 ? `Notifications, ${unread} non lues` : "Notifications"}>
-            <Ionicons name="notifications-outline" size={24} color={colors.text} />
-            {unread > 0 && (
-              <View style={styles.badge}><Text style={styles.badgeText}>{unread > 99 ? "99+" : unread}</Text></View>
-            )}
-          </Pressable>
-          <Pressable onPress={() => router.push("/(user)/profile")} hitSlop={8} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Mon profil">
-            <Ionicons name="heart-outline" size={24} color={colors.primary} />
-          </Pressable>
-        </View>
+        </FadeInView>
 
         {offline ? <OfflineBanner cachedAt={cachedAt} /> : null}
 
-        {/* 1 · Anneau du cycle segmenté par phase — remonté en tête (élément central, visible sans scroller) */}
-        <Card style={styles.ringCard}>
-          <CycleRing
-            cycleLength={ringN}
-            currentDay={day ?? null}
-            periodLength={periodLen}
-            fertileStartDay={fertileStartDay}
-            fertileEndDay={fertileEndDay}
-            ovulationDay={ovulationDay}
-          />
-        </Card>
-
-        {/* 2 · Grand bouton d'action */}
-        <Pressable onPress={() => router.push("/(user)/cycle/log")} style={styles.cta}>
-          <View style={styles.ctaIcon}><Ionicons name="add" size={22} color={colors.white} /></View>
-          <View style={styles.ctaText}>
-            <Text style={styles.ctaTitle}>Enregistrer aujourd'hui</Text>
-            <Text style={styles.ctaSub}>Flux, douleurs, humeurs et symptômes</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={20} color={colors.white} />
-        </Pressable>
-
-        {/* 3 · Prédictions consolidées (confiance + 3 lignes), ou amorce si pas de données */}
-        {hasData ? (
-          <Card style={styles.predBlock}>
-            <View style={styles.confRow}>
-              <View style={[styles.confDot, { backgroundColor: conf.color }]} />
-              <Text style={styles.confText}>Confiance {conf.label} — Fiabilité des prévisions</Text>
-            </View>
-            <Divider />
-            <PredRow
-              label="Prochaines règles"
-              value={formatShort(prediction?.nextPeriodStart)}
-              extra={periodIn != null && periodIn >= 0 ? `dans ${periodIn} jour${periodIn > 1 ? "s" : ""}` : undefined}
+        {/* 2 · Anneau du cycle — hero (visible sans scroller) */}
+        <FadeInView fill={false} delay={STEP}>
+          <Card style={styles.ringCard}>
+            <CycleRing
+              cycleLength={ringN}
+              currentDay={day ?? null}
+              periodLength={periodLen}
+              fertileStartDay={fertileStartDay}
+              fertileEndDay={fertileEndDay}
+              ovulationDay={ovulationDay}
             />
-            <PredRow label="Ovulation estimée" value={formatShort(prediction?.nextOvulation)} />
-            <PredRow label="Fenêtre fertile" value={`${formatShort(fertileStart)} → ${formatShort(fertileEnd)}`} />
           </Card>
-        ) : (
-          <Card style={styles.emptyCard}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="sparkles-outline" size={20} color={colors.primaryDark} />
+        </FadeInView>
+
+        {/* 3 · CTA Enregistrer aujourd'hui */}
+        <FadeInView fill={false} delay={STEP * 2}>
+          <PressableScale
+            onPress={() => router.push("/(user)/cycle/log")}
+            haptic
+            style={styles.cta}
+            pressedStyle={styles.ctaPressed}
+            accessibilityLabel="Enregistrer aujourd'hui"
+          >
+            <View style={styles.ctaIcon}><Ionicons name="add" size={22} color={colors.white} /></View>
+            <View style={styles.ctaText}>
+              <Text style={styles.ctaTitle}>Enregistrer aujourd'hui</Text>
+              <Text style={styles.ctaSub}>Flux, douleurs, humeurs et symptômes</Text>
             </View>
-            <Text style={styles.emptyText}>
-              Commence par enregistrer tes règles pour voir tes prédictions et ton cycle.
-            </Text>
-          </Card>
-        )}
+            <Ionicons name="arrow-forward" size={20} color={colors.white} />
+          </PressableScale>
+        </FadeInView>
 
-        {/* Rappel : les prédictions sont indicatives, pas un avis médical (sous les prédictions). */}
-        {hasData ? (
-          <MedicalDisclaimer text="Les prédictions sont des estimations indicatives et ne constituent pas un avis médical." />
-        ) : null}
-
-        {/* 4 · Conseil du jour (remonté, avant Accès rapide ; masqué si phase inconnue) */}
-        {dailyTip && phase ? (
-          <Card style={styles.tipCard}>
-            <View style={styles.tipIcon}>
-              <Ionicons name="bulb-outline" size={20} color={colors.primaryDark} />
-            </View>
-            <View style={styles.tipBody}>
-              <Text style={styles.tipTitle}>Conseil du jour · {PHASE_LABEL[phase]}</Text>
-              <Text style={styles.tipText}>{dailyTip}</Text>
-              <MedicalDisclaimer text="Conseils bien-être, pas un avis médical." compact />
-            </View>
-          </Card>
-        ) : null}
-
-        {/* 5 · Accès rapide */}
-        <Text style={[typography.h3, styles.sectionTitle]}>Accès rapide</Text>
-
-        {/* 6 · Grille 2×2 */}
-        <View style={styles.grid}>
-          {quick.map((q) => (
-            <View key={q.title} style={styles.quickWrap}>
-              <Card onPress={() => openQuick(q)} haptic accessibilityLabel={q.title} style={styles.quickCard}>
-                <View style={styles.quickIcon}><Text style={styles.quickEmoji}>{q.emoji}</Text></View>
-                <Text style={styles.quickTitle}>{q.title}</Text>
-                <Text style={styles.quickSub}>{q.sub}</Text>
+        {/* 4 · Prédictions consolidées (+ rappel), ou amorce si pas de données */}
+        <FadeInView fill={false} delay={STEP * 3}>
+          {hasData ? (
+            <>
+              <Card style={styles.predBlock}>
+                <View style={styles.confRow}>
+                  <View style={[styles.confDot, { backgroundColor: conf.color }]} />
+                  <Text style={styles.confText}>Confiance {conf.label} — Fiabilité des prévisions</Text>
+                </View>
+                <Divider />
+                <PredRow
+                  icon="water-outline"
+                  tint={PHASE_COLOR.period}
+                  label="Prochaines règles"
+                  value={formatShort(prediction?.nextPeriodStart)}
+                  extra={periodIn != null && periodIn >= 0 ? `dans ${periodIn} jour${periodIn > 1 ? "s" : ""}` : undefined}
+                />
+                <PredRow icon="ellipse-outline" tint={PHASE_COLOR.ovulation} label="Ovulation estimée" value={formatShort(prediction?.nextOvulation)} />
+                <PredRow icon="leaf-outline" tint={PHASE_COLOR.fertile} label="Fenêtre fertile" value={`${formatShort(fertileStart)} → ${formatShort(fertileEnd)}`} />
               </Card>
-            </View>
-          ))}
-        </View>
+              <View style={styles.afterCard}>
+                <MedicalDisclaimer text="Les prédictions sont des estimations indicatives et ne constituent pas un avis médical." />
+              </View>
+            </>
+          ) : (
+            <Card style={styles.emptyCard}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="sparkles-outline" size={20} color={colors.primaryDark} />
+              </View>
+              <Text style={styles.emptyText}>
+                Commence par enregistrer tes règles pour voir tes prédictions et ton cycle.
+              </Text>
+            </Card>
+          )}
+        </FadeInView>
 
-        {/* 7 · Promotion Premium (masquée si déjà premium) */}
-        {profile?.is_premium ? (
-          <View style={styles.premiumActive}>
-            <Ionicons name="checkmark-circle" size={16} color={colors.primaryDark} />
-            <Text style={styles.premiumActiveText}>Premium actif</Text>
+        {/* 5 · Conseil du jour (masqué si phase inconnue) */}
+        {dailyTip && phase ? (
+          <FadeInView fill={false} delay={STEP * 4}>
+            <Card style={styles.tipCard}>
+              <View style={styles.tipIcon}>
+                <Ionicons name="bulb-outline" size={20} color={colors.primaryDark} />
+              </View>
+              <View style={styles.tipBody}>
+                <Text style={styles.tipTitle}>Conseil du jour · {PHASE_LABEL[phase]}</Text>
+                <Text style={styles.tipText}>{dailyTip}</Text>
+                <MedicalDisclaimer text="Conseils bien-être, pas un avis médical." compact />
+              </View>
+            </Card>
+          </FadeInView>
+        ) : null}
+
+        {/* 6 · Accès rapide */}
+        <FadeInView fill={false} delay={STEP * 5}>
+          <Text style={[typography.h3, styles.sectionTitle]}>Accès rapide</Text>
+          <View style={styles.grid}>
+            {quick.map((q) => (
+              <View key={q.title} style={styles.quickWrap}>
+                <Card onPress={() => openQuick(q)} haptic accessibilityLabel={q.title} style={styles.quickCard}>
+                  <View style={styles.quickIcon}><Text style={styles.quickEmoji}>{q.emoji}</Text></View>
+                  <Text style={styles.quickTitle}>{q.title}</Text>
+                  <Text style={styles.quickSub}>{q.sub}</Text>
+                </Card>
+              </View>
+            ))}
           </View>
-        ) : (
-          <Pressable onPress={() => { if (!premium_enabled) return showServiceUnavailable(); router.push("/(user)/premium"); }}>
-            <Card style={styles.premiumCard}>
+        </FadeInView>
+
+        {/* 7 · Premium (masqué si déjà premium) */}
+        <FadeInView fill={false} delay={STEP * 6}>
+          {profile?.is_premium ? (
+            <View style={styles.premiumActive}>
+              <Ionicons name="checkmark-circle" size={16} color={colors.primaryDark} />
+              <Text style={styles.premiumActiveText}>Premium actif</Text>
+            </View>
+          ) : (
+            <Card
+              onPress={() => { if (!premium_enabled) return showServiceUnavailable(); router.push("/(user)/premium"); }}
+              haptic
+              accessibilityLabel="Passer au mode premium"
+              style={styles.premiumCard}
+            >
               <View style={styles.premiumIcon}>
                 <Ionicons name="sparkles" size={20} color={colors.accent} />
               </View>
@@ -254,18 +282,24 @@ export default function CycleHome() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.primaryDark} />
             </Card>
-          </Pressable>
-        )}
+          )}
+        </FadeInView>
       </ScrollView>
     </Screen>
   );
 }
 
-// Ligne de prédiction : libellé à gauche, valeur (+ extra) à droite.
-function PredRow({ label, value, extra }: { label: string; value: string; extra?: string }) {
+// Ligne de prédiction : pastille colorée + libellé discret à gauche, valeur
+// forte (+ délai en accent) à droite. Alignement vertical centré.
+function PredRow({ icon, tint, label, value, extra }: { icon: keyof typeof Ionicons.glyphMap; tint: string; label: string; value: string; extra?: string }) {
   return (
     <View style={styles.predRow2}>
-      <Text style={styles.predRowLabel}>{label}</Text>
+      <View style={styles.predRowLeft}>
+        <View style={[styles.predIcon, { backgroundColor: tint + "1A" }]}>
+          <Ionicons name={icon} size={14} color={tint} />
+        </View>
+        <Text style={styles.predRowLabel} numberOfLines={1}>{label}</Text>
+      </View>
       <View style={styles.predRowRight}>
         <Text style={styles.predRowValue}>{value}</Text>
         {extra ? <Text style={styles.predRowExtra}>{extra}</Text> : null}
@@ -290,6 +324,8 @@ const styles = StyleSheet.create({
 
   // CTA
   cta: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.primary, borderRadius: radius.lg, padding: spacing.md, shadowColor: colors.primaryDark, shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
+  // État pressé : on creuse le halo coloré (même teinte primaryDark).
+  ctaPressed: { shadowOpacity: 0.34, shadowRadius: 18, shadowOffset: { width: 0, height: 9 }, elevation: 7 },
   ctaIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
   ctaText: { flex: 1, gap: 2 },
   ctaTitle: { color: colors.white, fontSize: 16, fontFamily: fonts.bodyBold, fontWeight: "700" },
@@ -321,18 +357,20 @@ const styles = StyleSheet.create({
   quickTitle: { ...typography.body, fontFamily: fonts.bodySemiBold, fontWeight: "700" },
   quickSub: { ...typography.caption, color: colors.textMuted },
 
-  // Anneau
-  ringCard: { alignItems: "center", paddingVertical: spacing.lg },
+  // Anneau — hero (ombre douce md, plus d'air)
+  ringCard: { alignItems: "center", paddingVertical: spacing.xl, ...shadows.md },
 
   // Bloc prédictions consolidé
   predBlock: { gap: spacing.sm },
+  afterCard: { marginTop: spacing.md },
   confRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   confDot: { width: 10, height: 10, borderRadius: 5 },
   confText: { ...typography.caption, color: colors.text, fontFamily: fonts.bodyMedium },
-  predDivider: { height: 1, backgroundColor: colors.border },
-  predRow2: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: spacing.sm },
-  predRowLabel: { ...typography.caption, color: colors.textMuted, fontFamily: fonts.bodySemiBold },
-  predRowRight: { flexDirection: "row", alignItems: "baseline", gap: spacing.xs, flexShrink: 1 },
+  predRow2: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, paddingVertical: 3 },
+  predRowLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexShrink: 1 },
+  predIcon: { width: 26, height: 26, borderRadius: radius.sm, alignItems: "center", justifyContent: "center" },
+  predRowLabel: { ...typography.caption, color: colors.textMuted, fontFamily: fonts.bodySemiBold, flexShrink: 1 },
+  predRowRight: { flexDirection: "row", alignItems: "baseline", gap: spacing.xs, flexShrink: 0 },
   predRowValue: { ...typography.body, fontFamily: fonts.bodyBold, fontWeight: "700", color: colors.text, textTransform: "capitalize" },
   predRowExtra: { ...typography.caption, color: colors.primary, fontFamily: fonts.bodySemiBold },
 
