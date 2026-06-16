@@ -11,6 +11,7 @@ import { SkeletonList } from "@/components/Skeleton";
 import { FadeInView } from "@/components/FadeInView";
 import { CategoryTag } from "@/components/CommunityBadges";
 import { communityService, formatRelativeTime, type MyComment } from "@/lib/community-service";
+import { hapticLight } from "@/lib/haptics";
 import type { CommunityPost, CommunityPostSafe } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -58,7 +59,7 @@ export default function CommunityActivity() {
           {TABS.map((t) => {
             const active = tab === t.key;
             return (
-              <Pressable key={t.key} onPress={() => setTab(t.key)} style={[styles.segBtn, active && styles.segBtnActive]}>
+              <Pressable key={t.key} onPress={() => { hapticLight(); setTab(t.key); }} style={({ pressed }) => [styles.segBtn, active && styles.segBtnActive, pressed && styles.segPressed]}>
                 <Text style={[styles.segText, active && styles.segTextActive]} numberOfLines={1}>{t.label}</Text>
               </Pressable>
             );
@@ -71,10 +72,10 @@ export default function CommunityActivity() {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
             {tab === "posts" ? (
               posts.length === 0 ? (
-                <EmptyState emoji="📝" title="Aucune publication" message="Vos publications apparaîtront ici." />
+                <EmptyState emoji="📝" title="Aucune publication" message="Tes publications apparaîtront ici." />
               ) : (
                 posts.map((p) => (
-                  <Card key={p.id} onPress={() => open(p.id)} style={styles.card}>
+                  <Card key={p.id} onPress={() => open(p.id)} haptic style={styles.card}>
                     <View style={styles.cardHead}>
                       {p.is_anonymous ? <Text style={styles.anon}>Anonyme</Text> : null}
                       <CategoryTag category={p.category} />
@@ -94,10 +95,10 @@ export default function CommunityActivity() {
 
             {tab === "comments" ? (
               comments.length === 0 ? (
-                <EmptyState emoji="💬" title="Aucun commentaire" message="Vos commentaires apparaîtront ici." />
+                <EmptyState emoji="💬" title="Aucun commentaire" message="Tes commentaires apparaîtront ici." />
               ) : (
                 comments.map((c) => (
-                  <Card key={c.id} onPress={() => open(c.post_id)} style={styles.card}>
+                  <Card key={c.id} onPress={() => open(c.post_id)} haptic style={styles.card}>
                     <Text style={styles.body} numberOfLines={3}>{c.content}</Text>
                     {c.postExcerpt ? (
                       <Text style={styles.onPost} numberOfLines={1}>Sur : {c.postExcerpt}</Text>
@@ -110,10 +111,10 @@ export default function CommunityActivity() {
 
             {tab === "likes" ? (
               likes.length === 0 ? (
-                <EmptyState emoji="💗" title="Aucune réaction" message="Les publications que vous aimez apparaîtront ici." />
+                <EmptyState emoji="💗" title="Aucune réaction" message="Les publications que tu aimes apparaîtront ici." />
               ) : (
                 likes.map((p) => (
-                  <Card key={p.id} onPress={() => open(p.id)} style={styles.card}>
+                  <Card key={p.id} onPress={() => open(p.id)} haptic style={styles.card}>
                     <View style={styles.cardHead}>
                       <CategoryTag category={p.category} />
                       <Text style={styles.time}>{formatRelativeTime(p.created_at)}</Text>
@@ -134,6 +135,7 @@ const styles = StyleSheet.create({
   segment: { flexDirection: "row", gap: spacing.xs, marginTop: spacing.sm, marginBottom: spacing.xs },
   segBtn: { flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, alignItems: "center" },
   segBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  segPressed: { opacity: 0.7 },
   segText: { fontSize: 12, fontWeight: "700", color: colors.text },
   segTextActive: { color: colors.white },
   content: { paddingTop: spacing.sm, paddingBottom: spacing.xxl, gap: spacing.md },

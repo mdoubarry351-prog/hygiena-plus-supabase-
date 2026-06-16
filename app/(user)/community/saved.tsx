@@ -8,8 +8,10 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
+import { FadeInView } from "@/components/FadeInView";
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { hapticLight } from "@/lib/haptics";
 import {
   communityService,
   authorDisplayName,
@@ -63,14 +65,14 @@ export default function SavedPosts() {
           <EmptyState
             icon="bookmark-outline"
             title="Aucune publication enregistrée"
-            message="Touchez le signet sur une publication pour la retrouver ici."
+            message="Touche le signet sur une publication pour la retrouver ici."
           />
         ) : (
-          posts.map((post) => {
+          posts.map((post, i) => {
             const name = authorDisplayName(post.is_anonymous, post.author);
             return (
-              <Pressable key={post.id} onPress={() => router.push(`/(user)/community/${post.id}`)}>
-                <Card style={styles.post}>
+              <FadeInView key={post.id} fill={false} delay={Math.min(i, 6) * 55}>
+                <Card onPress={() => router.push(`/(user)/community/${post.id}`)} haptic accessibilityLabel="Ouvrir la publication" style={styles.post}>
                   <View style={styles.postHead}>
                     <View style={styles.avatar}>
                       <Ionicons name={post.is_anonymous ? "person-outline" : "person"} size={18} color={colors.primary} />
@@ -96,12 +98,12 @@ export default function SavedPosts() {
                       <Ionicons name="chatbubble-outline" size={18} color={colors.textMuted} />
                       <Text style={styles.metricText}>{post.comments_count}</Text>
                     </View>
-                    <Pressable onPress={() => unsave(post.id)} hitSlop={8} style={styles.bookmarkBtn}>
+                    <Pressable onPress={() => { hapticLight(); unsave(post.id); }} hitSlop={8} style={({ pressed }) => [styles.bookmarkBtn, pressed && styles.bookmarkPressed]} accessibilityRole="button" accessibilityLabel="Retirer des enregistrements">
                       <Ionicons name="bookmark" size={20} color={colors.primary} />
                     </Pressable>
                   </View>
                 </Card>
-              </Pressable>
+              </FadeInView>
             );
           })
         )}
@@ -124,4 +126,5 @@ const styles = StyleSheet.create({
   metric: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   metricText: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
   bookmarkBtn: { marginLeft: "auto", padding: spacing.xs },
+  bookmarkPressed: { opacity: 0.5 },
 });

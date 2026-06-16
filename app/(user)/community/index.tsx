@@ -9,6 +9,8 @@ import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { AppImage } from "@/components/AppImage";
+import { FadeInView } from "@/components/FadeInView";
+import { PressableScale } from "@/components/PressableScale";
 import { SkeletonList } from "@/components/Skeleton";
 import { ActionSheet, type ActionSheetOption } from "@/components/ActionSheet";
 import { useCommunity } from "@/hooks/useCommunity";
@@ -28,10 +30,10 @@ import {
 import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
 import { HeartButton } from "@/components/HeartButton";
-import { hapticWarning } from "@/lib/haptics";
+import { hapticLight, hapticWarning } from "@/lib/haptics";
 import { useToast } from "@/providers/ToastProvider";
 import { APP_DOWNLOAD_URL } from "@/lib/app-config";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, radius, shadows, spacing, typography } from "@/theme";
 
 export default function CommunityHome() {
   const [refreshing, setRefreshing] = useState(false);
@@ -230,16 +232,16 @@ export default function CommunityHome() {
       <View style={styles.topBar}>
         <Text style={typography.h2}>Communauté</Text>
         <View style={styles.topActions}>
-          <Pressable onPress={() => router.push("/(user)/community/rules")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Règles de la communauté">
+          <PressableScale onPress={() => router.push("/(user)/community/rules")} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Règles de la communauté">
             <Ionicons name="information-circle-outline" size={23} color={colors.text} />
-          </Pressable>
-          <Pressable onPress={() => router.push("/(user)/community/saved")} hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Publications enregistrées">
+          </PressableScale>
+          <PressableScale onPress={() => router.push("/(user)/community/saved")} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Publications enregistrées">
             <Ionicons name="bookmark-outline" size={22} color={colors.text} />
-          </Pressable>
-          <Pressable onPress={() => router.push("/(user)/community/new")} hitSlop={10} style={styles.newBtn}>
+          </PressableScale>
+          <PressableScale onPress={() => router.push("/(user)/community/new")} haptic style={styles.newBtn} pressedStyle={styles.newBtnPressed} accessibilityLabel="Publier">
             <Ionicons name="create-outline" size={18} color={colors.white} />
             <Text style={styles.newBtnText}>Publier</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
 
@@ -254,27 +256,27 @@ export default function CommunityHome() {
       </View>
 
       <View style={styles.segment}>
-        <Pressable onPress={() => setSortMode("recent")} style={[styles.segBtn, sortMode === "recent" && styles.segBtnActive]}>
+        <Pressable onPress={() => { hapticLight(); setSortMode("recent"); }} style={({ pressed }) => [styles.segBtn, sortMode === "recent" && styles.segBtnActive, pressed && styles.chipPressed]}>
           <Ionicons name="time-outline" size={15} color={sortMode === "recent" ? colors.white : colors.textMuted} />
           <Text style={[styles.segText, sortMode === "recent" && styles.segTextActive]}>Récents</Text>
         </Pressable>
-        <Pressable onPress={() => setSortMode("trending")} style={[styles.segBtn, sortMode === "trending" && styles.segBtnActive]}>
+        <Pressable onPress={() => { hapticLight(); setSortMode("trending"); }} style={({ pressed }) => [styles.segBtn, sortMode === "trending" && styles.segBtnActive, pressed && styles.chipPressed]}>
           <Ionicons name="flame-outline" size={15} color={sortMode === "trending" ? colors.white : colors.accent} />
           <Text style={[styles.segText, sortMode === "trending" && styles.segTextActive]}>Tendances</Text>
         </Pressable>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterChips}>
-        <Pressable onPress={() => setActiveCat("all")} style={[styles.filterChip, activeCat === "all" && styles.filterChipActive]}>
+        <Pressable onPress={() => { hapticLight(); setActiveCat("all"); }} style={({ pressed }) => [styles.filterChip, activeCat === "all" && styles.filterChipActive, pressed && styles.chipPressed]}>
           <Text style={[styles.filterChipText, activeCat === "all" && styles.filterChipTextActive]}>✨ Toutes</Text>
         </Pressable>
-        <Pressable onPress={() => setDoctorsOnly((v) => !v)} style={[styles.filterChip, doctorsOnly && styles.filterChipActive]}>
+        <Pressable onPress={() => { hapticLight(); setDoctorsOnly((v) => !v); }} style={({ pressed }) => [styles.filterChip, doctorsOnly && styles.filterChipActive, pressed && styles.chipPressed]}>
           <Text style={[styles.filterChipText, doctorsOnly && styles.filterChipTextActive]}>👩‍⚕️ Médecins</Text>
         </Pressable>
         {COMMUNITY_CATEGORIES.map((c) => {
           const active = activeCat === c;
           return (
-            <Pressable key={c} onPress={() => setActiveCat(c)} style={[styles.filterChip, active && styles.filterChipActive]}>
+            <Pressable key={c} onPress={() => { hapticLight(); setActiveCat(c); }} style={({ pressed }) => [styles.filterChip, active && styles.filterChipActive, pressed && styles.chipPressed]}>
               <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{categoryLabel(c)}</Text>
             </Pressable>
           );
@@ -334,7 +336,7 @@ export default function CommunityHome() {
             <EmptyState
               emoji="💬"
               title={isFiltering ? "Aucune publication trouvée" : "Aucune publication"}
-              message={isFiltering ? "Essayez un autre mot-clé ou une autre catégorie." : "Soyez la première à partager quelque chose avec la communauté."}
+              message={isFiltering ? "Essaie un autre mot-clé ou une autre catégorie." : "Sois la première à partager quelque chose avec la communauté."}
             />
           )
         }
@@ -384,6 +386,7 @@ const PostRow = memo(function PostRow({
   const edited = wasEdited(post.created_at, post.updated_at);
 
   return (
+    <FadeInView fill={false}>
     <Card onPress={() => onPress(post.id)} accessibilityLabel="Ouvrir la publication" style={styles.post}>
         <View style={styles.postHead}>
           <View style={styles.avatar}>
@@ -411,17 +414,17 @@ const PostRow = memo(function PostRow({
         <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
         <View style={styles.postFoot}>
-          <Pressable onPress={() => onLike(post.id)} hitSlop={8} style={styles.likeBtn} accessibilityRole="button" accessibilityLabel={liked ? "Je n'aime plus cette publication" : "J'aime cette publication"}>
+          <Pressable onPress={() => { hapticLight(); onLike(post.id); }} hitSlop={8} style={({ pressed }) => [styles.likeBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={liked ? "Je n'aime plus cette publication" : "J'aime cette publication"}>
             <HeartButton active={liked} size={20} />
             <Text style={[styles.likeCount, liked && styles.likeCountActive]}>
               {post.likes_count}
             </Text>
           </Pressable>
-          <Pressable onPress={() => onOpenComments(post.id)} hitSlop={8} style={styles.likeBtn} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
+          <Pressable onPress={() => onOpenComments(post.id)} hitSlop={8} style={({ pressed }) => [styles.likeBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
             <Ionicons name="chatbubble-outline" size={20} color={colors.textMuted} />
             <Text style={styles.likeCount}>{post.comments_count}</Text>
           </Pressable>
-          <Pressable onPress={() => onToggleSave(post.id)} hitSlop={8} style={styles.bookmarkBtn} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
+          <Pressable onPress={() => { hapticLight(); onToggleSave(post.id); }} hitSlop={8} style={({ pressed }) => [styles.bookmarkBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
             <Ionicons
               name={saved ? "bookmark" : "bookmark-outline"}
               size={20}
@@ -430,6 +433,7 @@ const PostRow = memo(function PostRow({
           </Pressable>
         </View>
     </Card>
+    </FadeInView>
   );
 });
 
@@ -475,6 +479,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   newBtnText: { color: colors.white, fontSize: 14, fontWeight: "600" },
+  newBtnPressed: { ...shadows.sm },
+  chipPressed: { opacity: 0.7 },
+  footPressed: { opacity: 0.5 },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   listContent: { paddingBottom: spacing.xxl, gap: spacing.md },
   empty: { gap: spacing.sm, alignItems: "center" },

@@ -11,6 +11,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AppImage } from "@/components/AppImage";
+import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
 import { authService } from "@/lib/auth-service";
 import { communityService, COMMUNITY_CATEGORIES, DEFAULT_CATEGORY, categoryLabel, authorDisplayName } from "@/lib/community-service";
@@ -18,6 +19,7 @@ import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
 import { CommunityRules } from "@/components/CommunityRules";
 import { useToast } from "@/providers/ToastProvider";
+import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { uploadCommunityImage } from "@/lib/storage";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -147,6 +149,7 @@ export default function NewPost() {
           category,
           imageUrls: images,
         });
+        hapticSuccess();
         toast.success("Publication modifiée.");
         router.back();
       } else {
@@ -157,7 +160,8 @@ export default function NewPost() {
           category,
           imageUrls: images,
         });
-        toast.success("Votre publication a été partagée.");
+        hapticSuccess();
+        toast.success("Ta publication a été partagée.");
         router.back();
       }
     } catch (e) {
@@ -185,6 +189,7 @@ export default function NewPost() {
 
   return (
     <Screen>
+      <FadeInView>
       <ScreenHeader title={isEdit ? "Modifier la publication" : "Nouvelle publication"} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
@@ -198,10 +203,10 @@ export default function NewPost() {
         ) : null}
 
         <Input
-          label="Votre message"
+          label="Ton message"
           value={content}
           onChangeText={setContent}
-          placeholder="Partagez votre expérience, posez une question…"
+          placeholder="Partage ton expérience, pose une question…"
           multiline
           numberOfLines={6}
           style={styles.textArea}
@@ -210,7 +215,7 @@ export default function NewPost() {
         <Text style={styles.catLabel}>Catégorie</Text>
         <View style={styles.chips}>
           {COMMUNITY_CATEGORIES.map((c) => (
-            <Chip key={c} label={categoryLabel(c)} active={category === c} onPress={() => setCategory(c)} size="md" inactiveBackground="transparent" />
+            <Chip key={c} label={categoryLabel(c)} active={category === c} onPress={() => setCategory(c)} size="md" inactiveBackground="transparent" haptic />
           ))}
         </View>
 
@@ -236,9 +241,9 @@ export default function NewPost() {
         ) : null}
         {images.length < MAX_IMAGES ? (
           <View style={styles.photoActions}>
-            <Pressable onPress={pickImages} disabled={uploading} style={[styles.photoBtn, uploading && styles.photoBtnDisabled]}>
+            <Pressable onPress={() => { hapticLight(); pickImages(); }} disabled={uploading} style={({ pressed }) => [styles.photoBtn, uploading && styles.photoBtnDisabled, pressed && styles.photoBtnPressed]} accessibilityRole="button" accessibilityLabel="Ajouter des photos">
               <Ionicons name="image" size={18} color={colors.primary} />
-              <Text style={styles.photoBtnText}>{images.length > 0 ? "Ajouter des photos" : "Ajouter des photos"}</Text>
+              <Text style={styles.photoBtnText}>Ajouter des photos</Text>
             </Pressable>
           </View>
         ) : null}
@@ -251,7 +256,7 @@ export default function NewPost() {
             </View>
             <View style={styles.anonText}>
               <Text style={styles.anonTitle}>Publier anonymement</Text>
-              <Text style={styles.anonHint}>Votre nom sera masqué et remplacé par « Anonyme ».</Text>
+              <Text style={styles.anonHint}>Ton nom sera masqué et remplacé par « Anonyme ».</Text>
             </View>
             <Switch
               value={isAnonymous}
@@ -266,6 +271,7 @@ export default function NewPost() {
         <Button title={isEdit ? "Enregistrer" : "Publier"} onPress={handlePublish} loading={saving} disabled={uploading || needsRules} />
         <Button title="Annuler" variant="outline" onPress={() => router.back()} />
       </ScrollView>
+      </FadeInView>
 
       {/* Aperçu avant publication : rendu tel qu'il apparaîtra dans le fil. */}
       <Modal visible={showPreview} transparent animationType="slide" onRequestClose={() => setShowPreview(false)}>
@@ -336,6 +342,7 @@ const styles = StyleSheet.create({
   photoActions: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.sm },
   photoBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.primary },
   photoBtnDisabled: { opacity: 0.5 },
+  photoBtnPressed: { opacity: 0.6, backgroundColor: colors.primaryLight },
   photoBtnText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
   anonRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.md },
   anonIcon: {

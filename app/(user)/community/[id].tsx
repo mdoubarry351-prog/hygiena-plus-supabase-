@@ -36,7 +36,7 @@ import { PostImages } from "@/components/PostImages";
 import { HeartButton } from "@/components/HeartButton";
 import { FadeInView } from "@/components/FadeInView";
 import { useBookmarks } from "@/hooks/useBookmarks";
-import { hapticLight, hapticWarning } from "@/lib/haptics";
+import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { useToast } from "@/providers/ToastProvider";
 import { APP_DOWNLOAD_URL } from "@/lib/app-config";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
@@ -90,6 +90,7 @@ export default function PostDetail() {
 
   async function handleLike() {
     if (!session?.user || !post) return;
+    hapticLight();
     try {
       const { liked: nowLiked, likesCount } = await communityService.toggleLike(post.id, session.user.id);
       setLiked(nowLiked);
@@ -117,6 +118,7 @@ export default function PostDetail() {
       setReplyTo(null);
       const c = await communityService.getComments(post.id);
       setComments(c);
+      hapticSuccess();
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Commentaire échoué");
     } finally {
@@ -242,7 +244,7 @@ export default function PostDetail() {
 
   // Bloque un utilisateur (auteur d'un post ou d'un commentaire).
   function confirmBlock(userId: string, afterBlock: () => void) {
-    Alert.alert("Bloquer cet utilisateur ?", "Vous ne verrez plus les publications de cette personne.", [
+    Alert.alert("Bloquer cet utilisateur ?", "Tu ne verras plus les publications de cette personne.", [
       { text: "Annuler", style: "cancel" },
       {
         text: "Bloquer",
@@ -396,7 +398,7 @@ export default function PostDetail() {
                   <HeartButton active={c.likedByMe} size={16} />
                   <Text style={[styles.commentActionText, c.likedByMe && styles.likeCountActive]}>{c.likes_count}</Text>
                 </Pressable>
-                <Pressable onPress={() => setReplyTo(c)} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel="Répondre">
+                <Pressable onPress={() => { hapticLight(); setReplyTo(c); }} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel="Répondre">
                   <Ionicons name="return-down-forward-outline" size={15} color={colors.textMuted} />
                   <Text style={styles.commentActionText}>Répondre</Text>
                 </Pressable>
@@ -450,13 +452,13 @@ export default function PostDetail() {
             <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
             <View style={styles.postFoot}>
-              <Pressable onPress={handleLike} hitSlop={8} style={styles.likeBtn}>
+              <Pressable onPress={handleLike} hitSlop={8} style={({ pressed }) => [styles.likeBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={liked ? "Je n'aime plus cette publication" : "J'aime cette publication"}>
                 <HeartButton active={liked} size={22} />
                 <Text style={[styles.likeCount, liked && styles.likeCountActive]}>
                   {post.likes_count}
                 </Text>
               </Pressable>
-              <Pressable onPress={() => toggleSave(post.id)} hitSlop={8} style={styles.bookmarkBtn} accessibilityRole="button" accessibilityLabel={savedIds.has(post.id) ? "Retirer des enregistrements" : "Enregistrer la publication"}>
+              <Pressable onPress={() => { hapticLight(); toggleSave(post.id); }} hitSlop={8} style={({ pressed }) => [styles.bookmarkBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={savedIds.has(post.id) ? "Retirer des enregistrements" : "Enregistrer la publication"}>
                 <Ionicons
                   name={savedIds.has(post.id) ? "bookmark" : "bookmark-outline"}
                   size={22}
@@ -510,7 +512,7 @@ export default function PostDetail() {
           <Input
             value={comment}
             onChangeText={setComment}
-            placeholder={replyTo ? "Votre réponse…" : "Écrire un commentaire…"}
+            placeholder={replyTo ? "Ta réponse…" : "Écrire un commentaire…"}
             multiline
             style={styles.composerInput}
           />
@@ -561,6 +563,7 @@ const styles = StyleSheet.create({
   postImage: { width: "100%", height: 200, borderRadius: radius.md, backgroundColor: colors.surface, marginTop: spacing.sm },
   postFoot: { flexDirection: "row", alignItems: "center", marginTop: spacing.xs },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  footPressed: { opacity: 0.5 },
   bookmarkBtn: { marginLeft: "auto", padding: spacing.xs },
   likeCount: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
   likeCountActive: { color: colors.primary },
