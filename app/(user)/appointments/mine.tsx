@@ -188,8 +188,9 @@ export default function MyAppointments() {
                 {(a.is_paid || a.status === "confirmed") && a.status !== "cancelled" ? (
                   <AppointmentContact
                     mode={a.consultation_mode}
-                    phone={a.doctor?.profile?.phone}
                     clinicName={a.doctor?.clinic_name}
+                    doctorId={a.doctor_id}
+                    doctorName={name}
                     noun={L.noun}
                   />
                 ) : null}

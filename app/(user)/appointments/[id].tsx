@@ -226,14 +226,12 @@ export default function BookAppointment() {
 
   // Messagerie premium : conseils en ligne (≠ consultation, qui passe par un RDV).
   function handleMessage() {
-    // Messagerie/téléconsultation désactivée par l'admin (ou Premium désactivé).
-    if (!messaging_enabled || !premium_enabled) return showServiceUnavailable();
+    // Téléconsultation désactivée par l'admin → message générique.
+    if (!messaging_enabled) return showServiceUnavailable();
     if (!doctor) return;
-    if (profile?.is_premium) {
-      router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: doctor.id, doctorName: name } });
-    } else {
-      router.push("/(user)/premium");
-    }
+    // Accès direct à la salle de consultation (l'envoi est lié à un RDV via la RLS).
+    hapticLight();
+    router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: doctor.id, doctorName: name } });
   }
 
   // Paiement SIMULÉ : crée le RDV payé + reçu, puis ouvre le reçu.
@@ -345,13 +343,12 @@ export default function BookAppointment() {
 
         {DOCTOR_MESSAGING_ENABLED ? (
           <>
-            <Pressable onPress={() => { hapticLight(); handleMessage(); }} style={({ pressed }) => [styles.msgBtn, pressed && styles.msgBtnPressed]} accessibilityRole="button" accessibilityLabel="Écrire au médecin">
+            <Pressable onPress={() => { hapticLight(); handleMessage(); }} style={({ pressed }) => [styles.msgBtn, pressed && styles.msgBtnPressed]} accessibilityRole="button" accessibilityLabel={`Écrire à votre ${L.noun}`}>
               <Ionicons name="chatbubbles-outline" size={18} color={colors.primary} />
-              <Text style={styles.msgBtnText}>Écrire au médecin (conseils)</Text>
-              {!profile?.is_premium ? <Ionicons name="star" size={14} color={colors.accent} /> : null}
+              <Text style={styles.msgBtnText}>Écrire à votre {L.noun}</Text>
             </Pressable>
             <Text style={styles.msgNote}>
-              Conseils en ligne (Premium). Pour une consultation, prends rendez-vous ci-dessous.
+              Salle de consultation in-app. La messagerie s'active une fois ta consultation réservée.
             </Text>
           </>
         ) : null}

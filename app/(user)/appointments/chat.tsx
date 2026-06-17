@@ -1,21 +1,22 @@
 import { useState, useCallback } from "react";
-import { Alert, Pressable, StyleSheet } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { Redirect, useLocalSearchParams } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { ChatThread, type ChatMessage } from "@/components/ChatThread";
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
+import { ConsultationCall } from "@/components/ConsultationCall";
 import { useAuth } from "@/providers/AuthProvider";
 import { useCycles } from "@/hooks/useCycles";
 import { messagesService } from "@/lib/messages-service";
 import { buildCycleSummary } from "@/lib/cycle-service";
 import { hapticLight } from "@/lib/haptics";
 import { DOCTOR_MESSAGING_ENABLED } from "@/lib/app-config";
-import { colors } from "@/theme";
+import { colors, spacing } from "@/theme";
 
 export default function PatientChat() {
   const { doctorId, doctorName } = useLocalSearchParams<{ doctorId: string; doctorName?: string }>();
-  const { session, profile, role } = useAuth();
+  const { session, role } = useAuth();
   const { cycles, prediction } = useCycles();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,12 +38,10 @@ export default function PatientChat() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  // Un médecin n'utilise pas la messagerie patient ; gating premium pour le patient.
+  // Un médecin n'utilise pas la messagerie patient.
   if (role === "doctor") return <Redirect href="/(user)" />;
-  // Messagerie patiente retirée (remplacée par le contact post-paiement) — écran
-  // conservé mais inaccessible tant que DOCTOR_MESSAGING_ENABLED=false (réversible).
+  // Salle conservée mais inaccessible si la messagerie est désactivée (réversible).
   if (!DOCTOR_MESSAGING_ENABLED) return <Redirect href="/(user)/appointments" />;
-  if (!profile?.is_premium) return <Redirect href="/(user)/premium" />;
 
   async function handleSend(content: string) {
     if (!session?.user || !doctorId) return;
@@ -51,7 +50,13 @@ export default function PatientChat() {
       const msg = await messagesService.sendPatientMessage(session.user.id, doctorId, content);
       setMessages((prev) => [...prev, msg]);
     } catch (e) {
-      Alert.alert("Envoi impossible", e instanceof Error ? e.message : "Erreur");
+      // La RLS exige un rendez-vous avec ce praticien : message clair.
+      const raw = e instanceof Error ? e.message : "";
+      const denied = /row-level security|policy|denied|not allowed|permission/i.test(raw);
+      Alert.alert(
+        "Envoi impossible",
+        denied ? "Réservez une consultation avec ce praticien pour pouvoir échanger." : (raw || "Erreur")
+      );
     } finally {
       setSending(false);
     }
@@ -72,10 +77,13 @@ export default function PatientChat() {
 
   return (
     <ChatThread
-      title={doctorName || "Médecin"}
-      subtitle="Conseils en ligne"
+      title={doctorName || "Praticien"}
+      subtitle="Salle de consultation"
       banner={
-        <MedicalDisclaimer text="Ces échanges sont des conseils généraux et ne remplacent pas une consultation. En cas d'urgence, consultez un médecin ou rendez-vous aux urgences." />
+        <View style={styles.banner}>
+          <ConsultationCall />
+          <MedicalDisclaimer text="Ces échanges ne remplacent pas une consultation médicale. En cas d'urgence, rendez-vous aux urgences." />
+        </View>
       }
       messages={messages}
       currentRole="patient"
@@ -92,6 +100,7 @@ export default function PatientChat() {
 }
 
 const styles = StyleSheet.create({
+  banner: { gap: spacing.sm },
   shareBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: colors.primary, alignItems: "center", justifyContent: "center" },
   shareBtnPressed: { opacity: 0.6, backgroundColor: colors.primaryLight },
 });

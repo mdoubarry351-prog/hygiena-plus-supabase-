@@ -13,9 +13,9 @@ export const APP_DOWNLOAD_URL = "https://hygiena.plus";
 // Abonnement Premium (écran, carte accueil, statut profil, FAQ, notifs).
 export const PREMIUM_ENABLED = false;
 
-// Messagerie de conseils patiente ↔ médecin (remplacée par le contact
-// post-paiement : WhatsApp/appel ou clinique selon le mode de consultation).
-export const DOCTOR_MESSAGING_ENABLED = false;
+// Messagerie / salle de consultation in-app patiente ↔ praticien. L'accès est
+// désormais lié à l'existence d'un rendez-vous (RLS), plus au Premium.
+export const DOCTOR_MESSAGING_ENABLED = true;
 
 // Carte « Conseils & infos » (bibliothèque d'articles santé) dans la grille
 // « Accès rapide » de l'accueil. La bibliothèque et l'admin Articles restent

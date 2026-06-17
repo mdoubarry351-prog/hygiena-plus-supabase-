@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { ChatThread, type ChatMessage } from "@/components/ChatThread";
+import { ConsultationCall } from "@/components/ConsultationCall";
 import { Loading } from "@/components/Loading";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import { messagesService } from "@/lib/messages-service";
@@ -48,7 +49,8 @@ export default function DoctorChat() {
   return (
     <ChatThread
       title={patientName || "Patiente"}
-      subtitle="Conseils en ligne"
+      subtitle="Salle de consultation"
+      banner={<ConsultationCall />}
       messages={messages}
       currentRole="doctor"
       loading={loading}

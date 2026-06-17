@@ -54,15 +54,10 @@ export default function AppointmentsHome() {
   const onListLayout = (e: LayoutChangeEvent) => { listY.current = e.nativeEvent.layout.y; };
   const scrollToList = () => scrollRef.current?.scrollTo({ y: Math.max(0, listY.current - 12), animated: true });
 
-  // Contacter = messagerie premium (même règle que la fiche : Premium → chat, sinon page Premium).
+  // Contacter = salle de consultation in-app (l'envoi est lié à un RDV via la RLS).
   const contactDoctor = useCallback((d: DoctorWithProfile) => {
-    if (!premium_enabled) return showServiceUnavailable();
-    if (profile?.is_premium) {
-      router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: d.id, doctorName: doctorDisplayName(d.profile) } });
-    } else {
-      router.push("/(user)/premium");
-    }
-  }, [premium_enabled, profile?.is_premium, router]);
+    router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: d.id, doctorName: doctorDisplayName(d.profile) } });
+  }, [router]);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [activeSpec, setActiveSpec] = useState<string>("all");
