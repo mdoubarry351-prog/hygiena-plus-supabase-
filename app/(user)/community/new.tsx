@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import {
+  ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable,
+  ScrollView, StyleSheet, Text, TextInput, View,
+} from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen } from "@/components/Screen";
-import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
-import { Chip } from "@/components/Chip";
 import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AppImage } from "@/components/AppImage";
 import { FadeInView } from "@/components/FadeInView";
+import { ActionSheet, type ActionSheetOption } from "@/components/ActionSheet";
 import { useAuth } from "@/providers/AuthProvider";
 import { authService } from "@/lib/auth-service";
 import { communityService, COMMUNITY_CATEGORIES, DEFAULT_CATEGORY, categoryLabel, authorDisplayName } from "@/lib/community-service";
@@ -22,7 +23,7 @@ import { useToast } from "@/providers/ToastProvider";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { uploadCommunityImage } from "@/lib/storage";
 import { getDraft, setDraft, clearDraft, DRAFT_KEYS } from "@/lib/draft";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, fonts, radius, spacing, typography } from "@/theme";
 
 // Brouillon local (création uniquement) : texte + catégorie. PAS les images
 // (les URIs/URLs ne sont pas pertinentes à persister comme brouillon).
@@ -31,6 +32,7 @@ type PostDraft = { content: string; category: string };
 export default function NewPost() {
   const { session, profile, refreshProfile } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   // En mode édition, `id` est l'id du post à modifier (sinon création).
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEdit = !!id;
@@ -49,6 +51,7 @@ export default function NewPost() {
   const [saving, setSaving] = useState(false);
   const [loadingPost, setLoadingPost] = useState(isEdit);
   const [showPreview, setShowPreview] = useState(false);
+  const [showCatSheet, setShowCatSheet] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   // Vrai une fois la restauration du brouillon tentée (évite d'écraser au montage).
   const hydrated = useRef(false);
@@ -201,6 +204,7 @@ export default function NewPost() {
         router.back();
       }
     } catch (e) {
+      // L'erreur backend (ex. mots interdits) est affichée telle quelle.
       Alert.alert("Erreur", e instanceof Error ? e.message : "Publication échouée");
     } finally {
       setSaving(false);
@@ -221,102 +225,151 @@ export default function NewPost() {
     await handlePublish();
   }
 
+  // Fermeture : confirmation si du contenu non publié existe.
+  function handleClose() {
+    const dirty = content.trim().length > 0 || images.length > 0;
+    if (dirty) {
+      Alert.alert(
+        "Quitter sans publier ?",
+        isEdit ? "Tes modifications ne seront pas enregistrées." : "Ton brouillon reste enregistré sur cet appareil.",
+        [
+          { text: "Continuer", style: "cancel" },
+          { text: "Quitter", style: "destructive", onPress: () => router.back() },
+        ]
+      );
+    } else {
+      router.back();
+    }
+  }
+
+  const catOptions: ActionSheetOption[] = COMMUNITY_CATEGORIES.map((c) => ({
+    label: categoryLabel(c),
+    icon: category === c ? "checkmark-circle" : undefined,
+    onPress: () => { hapticLight(); setCategory(c); },
+  }));
+
+  const publishDisabled = !content.trim() || uploading || saving || needsRules;
+
   if (loadingPost) return <Loading />;
 
   return (
-    <Screen>
-      <FadeInView>
-      <ScreenHeader title={isEdit ? "Modifier la publication" : "Nouvelle publication"} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      {/* Barre du haut minimaliste : ✕ à gauche, « Publier » compact à droite. */}
+      <View style={styles.topBar}>
+        <Pressable onPress={handleClose} hitSlop={8} style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Fermer">
+          <Ionicons name="close" size={26} color={colors.text} />
+        </Pressable>
+        <Pressable
+          onPress={() => { if (!publishDisabled) { hapticLight(); handlePublish(); } }}
+          disabled={publishDisabled}
+          style={({ pressed }) => [styles.publishBtn, publishDisabled ? styles.publishBtnDisabled : null, pressed && !publishDisabled && styles.publishBtnPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={isEdit ? "Enregistrer" : "Publier"}
+        >
+          {saving ? <ActivityIndicator color={colors.white} size="small" /> : <Text style={[styles.publishText, publishDisabled && styles.publishTextDisabled]}>{isEdit ? "Enregistrer" : "Publier"}</Text>}
+        </Pressable>
+      </View>
 
-        {needsRules ? (
-          <Card style={styles.rulesCard}>
-            <Text style={styles.rulesTitle}>Avant de publier</Text>
-            <Text style={styles.rulesIntro}>Merci de lire et d'accepter les règles de la communauté.</Text>
-            <CommunityRules />
-            <Button title="J'accepte les règles de la communauté" onPress={acceptRules} loading={accepting} />
-          </Card>
-        ) : null}
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={8}>
+        <ScrollView style={styles.flex} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <FadeInView fill={false}>
+            {needsRules ? (
+              <Card style={styles.rulesCard}>
+                <Text style={styles.rulesTitle}>Avant de publier</Text>
+                <Text style={styles.rulesIntro}>Merci de lire et d'accepter les règles de la communauté.</Text>
+                <CommunityRules />
+                <Button title="J'accepte les règles de la communauté" onPress={acceptRules} loading={accepting} />
+              </Card>
+            ) : null}
 
-        {draftRestored ? (
-          <View style={styles.draftRow}>
-            <Ionicons name="document-text-outline" size={14} color={colors.primary} />
-            <Text style={styles.draftText}>Brouillon restauré</Text>
-          </View>
-        ) : null}
-
-        <Input
-          label="Ton message"
-          value={content}
-          onChangeText={setContent}
-          placeholder="Partage ton expérience, pose une question…"
-          multiline
-          numberOfLines={6}
-          style={styles.textArea}
-        />
-
-        <Text style={styles.catLabel}>Catégorie</Text>
-        <View style={styles.chips}>
-          {COMMUNITY_CATEGORIES.map((c) => (
-            <Chip key={c} label={categoryLabel(c)} active={category === c} onPress={() => setCategory(c)} size="md" inactiveBackground="transparent" haptic />
-          ))}
-        </View>
-
-        {/* Photos optionnelles (jusqu'à 4) */}
-        <Text style={styles.catLabel}>Photos (facultatif, jusqu'à {MAX_IMAGES})</Text>
-        {images.length > 0 ? (
-          <View style={styles.thumbGrid}>
-            {images.map((url, i) => (
-              <View key={url} style={styles.thumbWrap}>
-                <AppImage source={url} style={styles.thumb} />
-                <Pressable onPress={() => removeImage(i)} hitSlop={6} style={styles.thumbRemove} accessibilityRole="button" accessibilityLabel="Retirer cette photo">
-                  <Ionicons name="close" size={14} color={colors.white} />
-                </Pressable>
+            {draftRestored ? (
+              <View style={styles.draftRow}>
+                <Ionicons name="document-text-outline" size={14} color={colors.primary} />
+                <Text style={styles.draftText}>Brouillon restauré</Text>
               </View>
-            ))}
-          </View>
-        ) : null}
-        {uploading ? (
-          <View style={styles.uploadRow}>
-            <ActivityIndicator color={colors.primary} />
-            <Text style={styles.uploadText}>Envoi des photos…</Text>
-          </View>
-        ) : null}
-        {images.length < MAX_IMAGES ? (
-          <View style={styles.photoActions}>
-            <Pressable onPress={() => { hapticLight(); pickImages(); }} disabled={uploading} style={({ pressed }) => [styles.photoBtn, uploading && styles.photoBtnDisabled, pressed && styles.photoBtnPressed]} accessibilityRole="button" accessibilityLabel="Ajouter des photos">
-              <Ionicons name="image" size={18} color={colors.primary} />
-              <Text style={styles.photoBtnText}>Ajouter des photos</Text>
+            ) : null}
+
+            {/* Sélecteur de catégorie discret (pastille → ActionSheet). */}
+            <Pressable onPress={() => { hapticLight(); setShowCatSheet(true); }} style={({ pressed }) => [styles.catPill, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`Catégorie : ${categoryLabel(category)}`}>
+              <Ionicons name="pricetag-outline" size={15} color={colors.primaryDark} />
+              <Text style={styles.catPillText}>{categoryLabel(category)}</Text>
+              <Ionicons name="chevron-down" size={15} color={colors.primaryDark} />
             </Pressable>
-          </View>
-        ) : null}
 
-        {/* L'anonymat est défini à la création (non modifiable ensuite). */}
-        {!isEdit ? (
-          <Card style={styles.anonRow}>
-            <View style={styles.anonIcon}>
-              <Ionicons name="eye-off-outline" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.anonText}>
-              <Text style={styles.anonTitle}>Publier anonymement</Text>
-              <Text style={styles.anonHint}>Ton nom sera masqué et remplacé par « Anonyme ».</Text>
-            </View>
-            <Switch
-              value={isAnonymous}
-              onValueChange={setIsAnonymous}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={colors.white}
+            {/* Zone de texte aérée et sans cadre. */}
+            <TextInput
+              value={content}
+              onChangeText={setContent}
+              placeholder="Partage ton expérience, pose une question…"
+              placeholderTextColor={colors.textMuted}
+              style={styles.textArea}
+              multiline
+              autoFocus={!needsRules}
+              textAlignVertical="top"
+              scrollEnabled={false}
             />
-          </Card>
-        ) : null}
 
-        <Button title="Aperçu" variant="outline" onPress={openPreview} disabled={uploading || needsRules || saving} />
-        <Button title={isEdit ? "Enregistrer" : "Publier"} onPress={handlePublish} loading={saving} disabled={uploading || needsRules} />
-        <Button title="Annuler" variant="outline" onPress={() => router.back()} />
-      </ScrollView>
-      </FadeInView>
+            {/* Aperçu des photos ajoutées. */}
+            {images.length > 0 ? (
+              <View style={styles.thumbGrid}>
+                {images.map((url, i) => (
+                  <View key={url} style={styles.thumbWrap}>
+                    <AppImage source={url} style={styles.thumb} />
+                    <Pressable onPress={() => removeImage(i)} hitSlop={6} style={styles.thumbRemove} accessibilityRole="button" accessibilityLabel="Retirer cette photo">
+                      <Ionicons name="close" size={14} color={colors.white} />
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {uploading ? (
+              <View style={styles.uploadRow}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={styles.uploadText}>Envoi des photos…</Text>
+              </View>
+            ) : null}
+          </FadeInView>
+        </ScrollView>
 
-      {/* Aperçu avant publication : rendu tel qu'il apparaîtra dans le fil. */}
+        {/* Barre d'outils en bas (au-dessus du clavier) : photo + anonyme + aperçu. */}
+        <View style={[styles.toolbar, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+          <Pressable
+            onPress={() => { hapticLight(); pickImages(); }}
+            disabled={uploading || images.length >= MAX_IMAGES}
+            style={({ pressed }) => [styles.toolBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Ajouter une photo"
+          >
+            <Ionicons name="image-outline" size={23} color={uploading || images.length >= MAX_IMAGES ? colors.textMuted : colors.primary} />
+            {images.length > 0 ? <Text style={styles.toolCount}>{images.length}/{MAX_IMAGES}</Text> : null}
+          </Pressable>
+
+          {!isEdit ? (
+            <Pressable
+              onPress={() => { hapticLight(); setIsAnonymous((v) => !v); }}
+              style={({ pressed }) => [styles.anonChip, isAnonymous && styles.anonChipActive, pressed && styles.pressed]}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: isAnonymous }}
+              accessibilityLabel="Publier anonymement"
+            >
+              <Ionicons name={isAnonymous ? "eye-off" : "eye-off-outline"} size={16} color={isAnonymous ? colors.white : colors.text} />
+              <Text style={[styles.anonChipText, isAnonymous && styles.anonChipTextActive]}>Anonyme</Text>
+            </Pressable>
+          ) : null}
+
+          <View style={styles.toolbarSpacer} />
+
+          <Pressable onPress={openPreview} hitSlop={8} style={({ pressed }) => [styles.previewLink, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Aperçu">
+            <Ionicons name="eye-outline" size={16} color={colors.textMuted} />
+            <Text style={styles.previewLinkText}>Aperçu</Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+
+      {/* Sélecteur de catégorie (sheet glissant). */}
+      <ActionSheet visible={showCatSheet} title="Choisir une catégorie" options={catOptions} onClose={() => setShowCatSheet(false)} />
+
+      {/* Aperçu avant publication (option secondaire) : rendu tel qu'il apparaîtra. */}
       <Modal visible={showPreview} transparent animationType="slide" onRequestClose={() => setShowPreview(false)}>
         <View style={styles.previewBackdrop}>
           <View style={styles.previewSheet}>
@@ -360,43 +413,78 @@ export default function NewPost() {
           </View>
         </View>
       </Modal>
-    </Screen>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.sm },
-  draftRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  safe: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
+  // Barre du haut
+  topBar: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  iconBtn: { padding: spacing.xs, marginLeft: -spacing.xs },
+  pressed: { opacity: 0.6 },
+  publishBtn: { backgroundColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, minWidth: 88, alignItems: "center" },
+  publishBtnDisabled: { backgroundColor: colors.border },
+  publishBtnPressed: { opacity: 0.85 },
+  publishText: { ...typography.caption, color: colors.white, fontWeight: "700" },
+  publishTextDisabled: { color: colors.textMuted },
+
+  // Corps
+  body: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl, gap: spacing.md, flexGrow: 1 },
+  draftRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginBottom: spacing.xs },
   draftText: { ...typography.caption, color: colors.primary, fontWeight: "600" },
   rulesCard: { gap: spacing.md, marginBottom: spacing.sm },
   rulesTitle: { ...typography.h3 },
   rulesIntro: { ...typography.caption, color: colors.textMuted, marginTop: -spacing.xs },
-  textArea: { height: 140, textAlignVertical: "top", paddingTop: spacing.sm },
-  catLabel: { ...typography.caption, color: colors.textMuted, fontWeight: "700", marginTop: spacing.xs },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginBottom: spacing.xs },
-  chip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { ...typography.caption, fontWeight: "700", color: colors.text },
-  chipTextActive: { color: colors.white },
-  thumbGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.xs },
-  thumbWrap: { width: "48%", aspectRatio: 1, position: "relative" },
-  thumb: { width: "100%", height: "100%", borderRadius: radius.md, backgroundColor: colors.surface },
-  thumbRemove: { position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" },
-  uploadRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs },
-  uploadText: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
-  photoActions: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.sm },
-  photoBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.primary },
-  photoBtnDisabled: { opacity: 0.5 },
-  photoBtnPressed: { opacity: 0.6, backgroundColor: colors.primaryLight },
-  photoBtnText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
-  anonRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.md },
-  anonIcon: {
-    width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.primaryLight,
-    alignItems: "center", justifyContent: "center",
+
+  // Pastille catégorie
+  catPill: {
+    flexDirection: "row", alignItems: "center", gap: spacing.xs, alignSelf: "flex-start",
+    backgroundColor: colors.primaryLight, borderRadius: radius.pill,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.xs,
   },
-  anonText: { flex: 1, gap: 2 },
-  anonTitle: { ...typography.name },
-  anonHint: { ...typography.caption, color: colors.textMuted },
+  catPillText: { ...typography.caption, color: colors.primaryDark, fontWeight: "700" },
+
+  // Zone de texte sans cadre
+  textArea: {
+    ...typography.body, color: colors.text, lineHeight: 24, minHeight: 160,
+    paddingVertical: spacing.xs, fontFamily: fonts.body,
+  },
+
+  // Vignettes photos
+  thumbGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  thumbWrap: { width: "31%", aspectRatio: 1, position: "relative" },
+  thumb: { width: "100%", height: "100%", borderRadius: radius.md, backgroundColor: colors.surface },
+  thumbRemove: { position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" },
+  uploadRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  uploadText: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
+
+  // Barre d'outils basse
+  toolbar: {
+    flexDirection: "row", alignItems: "center", gap: spacing.sm,
+    paddingHorizontal: spacing.md, paddingTop: spacing.sm,
+    borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card,
+  },
+  toolBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs, padding: spacing.xs },
+  toolCount: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
+  anonChip: {
+    flexDirection: "row", alignItems: "center", gap: spacing.xs,
+    paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: radius.pill,
+    borderWidth: 1.5, borderColor: colors.border,
+  },
+  anonChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  anonChipText: { ...typography.caption, color: colors.text, fontWeight: "700" },
+  anonChipTextActive: { color: colors.white },
+  toolbarSpacer: { flex: 1 },
+  previewLink: { flexDirection: "row", alignItems: "center", gap: spacing.xs, padding: spacing.xs },
+  previewLinkText: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
+
+  // Aperçu (modal)
   previewBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   previewSheet: {
     backgroundColor: colors.background, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg,
@@ -419,4 +507,3 @@ const styles = StyleSheet.create({
   previewActions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
   previewActionItem: { flex: 1 },
 });
-
