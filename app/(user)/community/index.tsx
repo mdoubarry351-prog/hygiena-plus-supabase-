@@ -403,6 +403,9 @@ const PostRow = memo(function PostRow({
 }) {
   const name = authorDisplayName(post.is_anonymous, post.author);
   const edited = wasEdited(post.created_at, post.updated_at);
+  // Contenu long : aperçu tronqué + « Voir plus / Voir moins » (inline, sans ouvrir le post).
+  const [expanded, setExpanded] = useState(false);
+  const isLong = post.content.length > 220 || (post.content.match(/\n/g)?.length ?? 0) >= 4;
 
   return (
     <FadeInView fill={false}>
@@ -428,7 +431,12 @@ const PostRow = memo(function PostRow({
           </Pressable>
         </View>
 
-        <Text style={styles.body} numberOfLines={5}>{post.content}</Text>
+        <Text style={styles.body} numberOfLines={expanded ? undefined : 5}>{post.content}</Text>
+        {isLong ? (
+          <Pressable onPress={() => { hapticLight(); setExpanded((v) => !v); }} hitSlop={6} accessibilityRole="button" accessibilityLabel={expanded ? "Voir moins" : "Voir plus"}>
+            <Text style={styles.seeMore}>{expanded ? "Voir moins" : "Voir plus"}</Text>
+          </Pressable>
+        ) : null}
 
         <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
@@ -507,6 +515,7 @@ const styles = StyleSheet.create({
   empty: { gap: spacing.sm, alignItems: "center" },
   emptyEmoji: { fontSize: 34 },
   muted: { color: colors.textMuted },
+  seeMore: { ...typography.caption, color: colors.primary, fontWeight: "700" },
   post: { gap: spacing.sm },
   postHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   avatar: {

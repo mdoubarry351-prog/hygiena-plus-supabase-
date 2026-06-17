@@ -64,6 +64,18 @@ export default function PostDetail() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+  // Fils de réponses repliés (par id du commentaire racine).
+  const [collapsedThreads, setCollapsedThreads] = useState<Set<string>>(new Set());
+
+  function toggleThread(rootId: string) {
+    hapticLight();
+    setCollapsedThreads((prev) => {
+      const next = new Set(prev);
+      if (next.has(rootId)) next.delete(rootId);
+      else next.add(rootId);
+      return next;
+    });
+  }
 
   const load = useCallback(async () => {
     try {
@@ -490,12 +502,24 @@ export default function PostDetail() {
               Aucun commentaire pour le moment.
             </Text>
           ) : (
-            topComments.map((top) => (
-              <View key={top.id} style={styles.thread}>
-                {renderComment(top, false)}
-                {(repliesByRoot.get(top.id) ?? []).map((r) => renderComment(r, true))}
-              </View>
-            ))
+            topComments.map((top) => {
+              const replies = repliesByRoot.get(top.id) ?? [];
+              const isCollapsed = collapsedThreads.has(top.id);
+              return (
+                <View key={top.id} style={styles.thread}>
+                  {renderComment(top, false)}
+                  {replies.length > 0 ? (
+                    <Pressable onPress={() => toggleThread(top.id)} hitSlop={6} style={styles.threadToggle} accessibilityRole="button" accessibilityLabel={isCollapsed ? "Afficher les réponses" : "Masquer les réponses"}>
+                      <Ionicons name={isCollapsed ? "chevron-down" : "chevron-up"} size={14} color={colors.primary} />
+                      <Text style={styles.threadToggleText}>
+                        {isCollapsed ? `Voir ${replies.length} réponse${replies.length > 1 ? "s" : ""}` : "Masquer les réponses"}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                  {!isCollapsed ? replies.map((r) => renderComment(r, true)) : null}
+                </View>
+              );
+            })
           )}
         </ScrollView>
 
@@ -572,6 +596,9 @@ const styles = StyleSheet.create({
   sectionTitle: { marginTop: spacing.sm },
   muted: { color: colors.textMuted },
   thread: { gap: spacing.md },
+  // Bascule repli/expansion d'un fil, alignée sur l'indentation des réponses.
+  threadToggle: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginLeft: spacing.xl },
+  threadToggleText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
   comment: { flexDirection: "row", gap: spacing.sm },
   replyComment: { marginLeft: spacing.xl, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.border },
   replyIndent: { marginLeft: spacing.xl },
