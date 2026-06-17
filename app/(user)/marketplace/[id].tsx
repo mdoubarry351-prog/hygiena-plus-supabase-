@@ -219,10 +219,10 @@ export default function ProductDetail() {
             </View>
             <View style={styles.buyBarBtns}>
               <View style={styles.buyBarBtn}>
-                <Button title="Ajouter au panier" variant="outline" onPress={handleAddToCart} />
+                <Button title="Ajouter" variant="outline" icon="cart-outline" onPress={handleAddToCart} />
               </View>
               <View style={styles.buyBarBtn}>
-                <Button title="Acheter maintenant" onPress={handleBuyNow} />
+                <Button title="Acheter" icon="flash-outline" onPress={handleBuyNow} />
               </View>
             </View>
           </>
