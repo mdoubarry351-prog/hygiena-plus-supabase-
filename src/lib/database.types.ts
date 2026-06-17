@@ -24,6 +24,8 @@ export type AppointmentStatus =
   | "completed";
 // Mode de consultation (colonne appointments.consultation_mode, défaut 'physical').
 export type ConsultationMode = "remote" | "physical";
+// Type de praticien (colonne doctors.practitioner_type, défaut 'gynecology').
+export type PractitionerType = "gynecology" | "therapy";
 export type DeliveryMode = "delivery" | "pickup";
 export type OrderStatus =
   | "pending"
@@ -165,6 +167,8 @@ export type Database = {
           id: string;
           user_id: string;
           specialty: string;
+          practitioner_type: PractitionerType;
+          intervention_areas: string | null;
           bio: string | null;
           license_number: string | null;
           license_document_url: string | null;
@@ -184,6 +188,8 @@ export type Database = {
           id?: string;
           user_id: string;
           specialty: string;
+          practitioner_type?: PractitionerType;
+          intervention_areas?: string | null;
           bio?: string | null;
           license_number?: string | null;
           license_document_url?: string | null;
@@ -203,6 +209,8 @@ export type Database = {
           id?: string;
           user_id?: string;
           specialty?: string;
+          practitioner_type?: PractitionerType;
+          intervention_areas?: string | null;
           bio?: string | null;
           license_number?: string | null;
           license_document_url?: string | null;

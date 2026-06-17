@@ -6,6 +6,7 @@ import type {
   Json,
   TablesInsert,
   ConsultationMode,
+  PractitionerType,
 } from "@/lib/database.types";
 
 // =====================================================
@@ -139,13 +140,15 @@ export const CONSULTATION_MODE_LABEL: Record<ConsultationMode, string> = {
 };
 
 export const appointmentsService = {
-  // Médecins validés uniquement, avec leur profil (nom, avatar), triés par
-  // spécialité pour une liste lisible.
-  async getDoctors(): Promise<DoctorWithProfile[]> {
+  // Praticiens validés (avec profil : nom, avatar, téléphone), filtrés par type
+  // de praticien (défaut : gynécologie — préserve l'existant). Triés par spécialité.
+  // practitioner_type et intervention_areas sont renvoyés via le select `*`.
+  async getDoctors(opts?: { practitionerType?: PractitionerType }): Promise<DoctorWithProfile[]> {
     const { data, error } = await supabase
       .from("doctors")
       .select("*, profile:profiles!doctors_user_id_fkey(full_name, avatar_url, phone)")
       .eq("is_validated", true)
+      .eq("practitioner_type", opts?.practitionerType ?? "gynecology")
       .order("specialty", { ascending: true });
     if (error) throw error;
     return (data ?? []) as DoctorWithProfile[];
