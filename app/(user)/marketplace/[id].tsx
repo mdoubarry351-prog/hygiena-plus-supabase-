@@ -10,6 +10,7 @@ import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { PostImages } from "@/components/PostImages";
+import { AppImage } from "@/components/AppImage";
 import { HeartButton } from "@/components/HeartButton";
 import { FadeInView } from "@/components/FadeInView";
 import { FadeZoomIn } from "@/components/FadeZoomIn";
@@ -33,6 +34,7 @@ export default function ProductDetail() {
   const [product, setProduct] = useState<MarketplaceProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [related, setRelated] = useState<MarketplaceProduct[]>([]);
 
   // Rafraîchit la note moyenne après dépôt/suppression d'un avis.
   async function reloadProduct() {
@@ -61,6 +63,22 @@ export default function ProductDetail() {
     return () => { mounted = false; };
   }, [id]);
 
+  // Produits liés (« Vous aimerez aussi ») : même catégorie, exclut le produit
+  // courant ; repli sur les mieux notés si pas de catégorie. Best-effort, non bloquant.
+  useEffect(() => {
+    if (!product) return;
+    let alive = true;
+    (async () => {
+      try {
+        const items = await marketplaceService.getProductsPage({ category: product.category ?? null, limit: 8, sort: "rating" });
+        if (alive) setRelated(items.filter((p) => p.id !== product.id).slice(0, 6));
+      } catch {
+        // silencieux
+      }
+    })();
+    return () => { alive = false; };
+  }, [product?.id, product?.category]);
+
   if (loading) return <Loading />;
   if (!product) return null;
 
@@ -84,7 +102,7 @@ export default function ProductDetail() {
           </Pressable>
         }
       />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <FadeZoomIn>
           {(product.image_urls?.length || product.image_url) ? (
             <PostImages imageUrls={product.image_urls} imageUrl={product.image_url} />
@@ -142,15 +160,34 @@ export default function ProductDetail() {
               </View>
             </View>
           )}
-
-          {outOfStock ? (
-            <Button title="Indisponible" disabled />
-          ) : (
-            <Button title={`Ajouter au panier · ${formatPrice(product.price * quantity)}`} onPress={handleAddToCart} />
-          )}
         </FadeInView>
 
-        <FadeInView fill={false} delay={STEP * 4}>
+        {related.length > 0 ? (
+          <FadeInView fill={false} delay={STEP * 4}>
+            <Text style={[typography.h3, styles.relTitle]}>Vous aimerez aussi</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.relRow}>
+              {related.map((p) => {
+                const img = p.image_urls?.[0] ?? p.image_url ?? null;
+                return (
+                  <Pressable key={p.id} onPress={() => { hapticLight(); router.push(`/(user)/marketplace/${p.id}`); }} style={({ pressed }) => [styles.relCard, pressed && styles.relCardPressed]} accessibilityRole="button" accessibilityLabel={p.name}>
+                    {img ? (
+                      <AppImage source={img} style={styles.relImg} contentFit="contain" />
+                    ) : (
+                      <View style={[styles.relImg, styles.relImgPlaceholder]}>
+                        <Ionicons name="bag-outline" size={26} color={colors.textMuted} />
+                      </View>
+                    )}
+                    <Text style={styles.relName} numberOfLines={2}>{p.name}</Text>
+                    <Text style={styles.relPrice}>{formatPrice(p.price)}</Text>
+                    {p.rating_count > 0 ? <StarRating value={p.rating_avg} count={p.rating_count} size={11} compact /> : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </FadeInView>
+        ) : null}
+
+        <FadeInView fill={false} delay={STEP * 5}>
           <ReviewsSection
             kind="product"
             targetId={product.id}
@@ -160,6 +197,21 @@ export default function ProductDetail() {
           />
         </FadeInView>
       </ScrollView>
+
+      {/* Barre d'achat sticky : prix + ajout panier toujours visibles. */}
+      <View style={styles.buyBar}>
+        <View style={styles.buyBarInfo}>
+          <Text style={styles.buyBarLabel}>Total</Text>
+          <Text style={styles.buyBarValue}>{formatPrice(product.price * quantity)}</Text>
+        </View>
+        <View style={styles.buyBarBtn}>
+          {outOfStock ? (
+            <Button title="Indisponible" disabled />
+          ) : (
+            <Button title="Ajouter au panier" onPress={handleAddToCart} />
+          )}
+        </View>
+      </View>
       </View>
     </Screen>
   );
@@ -167,7 +219,27 @@ export default function ProductDetail() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  scroll: { flex: 1 },
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+  // Produits liés (« Vous aimerez aussi »)
+  relTitle: { marginBottom: spacing.sm },
+  relRow: { gap: spacing.sm, paddingBottom: spacing.xs },
+  relCard: { width: 130, gap: spacing.xs },
+  relCardPressed: { opacity: 0.7 },
+  relImg: { width: 130, height: 130, borderRadius: radius.md, backgroundColor: colors.surface },
+  relImgPlaceholder: { alignItems: "center", justifyContent: "center" },
+  relName: { ...typography.caption, color: colors.text, fontWeight: "600" },
+  relPrice: { ...typography.body, color: colors.primary, fontWeight: "700" },
+  // Barre d'achat sticky
+  buyBar: {
+    flexDirection: "row", alignItems: "center", gap: spacing.md,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md,
+    borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card,
+  },
+  buyBarInfo: { gap: 0 },
+  buyBarLabel: { ...typography.caption, color: colors.textMuted },
+  buyBarValue: { ...typography.h3, color: colors.primary },
+  buyBarBtn: { flex: 1 },
   headBlock: { gap: spacing.xs },
   ctaBlock: { gap: spacing.md },
   image: { width: "100%", height: 300, borderRadius: radius.lg, backgroundColor: colors.surface },
