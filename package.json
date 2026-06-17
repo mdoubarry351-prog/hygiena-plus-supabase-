@@ -2,6 +2,14 @@
   "name": "hygiena-plus",
   "version": "1.0.0",
   "main": "expo-router/entry",
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "listUnknownPackages": false,
+        "exclude": ["react-native-background-timer"]
+      }
+    }
+  },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -45,6 +53,7 @@
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-background-timer": "^2.4.1",
+    "react-native-get-random-values": "~1.11.0",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
