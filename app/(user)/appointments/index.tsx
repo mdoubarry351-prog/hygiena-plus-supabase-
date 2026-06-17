@@ -1,11 +1,12 @@
-import { useState, useCallback } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Redirect, useRouter } from "expo-router";
+import { useState, useCallback, useRef } from "react";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { Redirect, useRouter, useLocalSearchParams } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
+import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -22,6 +23,7 @@ import { useDoctors } from "@/hooks/useDoctors";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { StarRating } from "@/components/StarRating";
 import { doctorDisplayName, hasAnyAvailability, type DoctorWithProfile } from "@/lib/appointments-service";
+import { practitionerTypeOf, PRACTITIONER_LABELS } from "@/lib/practitioner";
 import { hapticLight } from "@/lib/haptics";
 import { formatPrice } from "@/lib/marketplace-service";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
@@ -35,9 +37,22 @@ function norm(s: string): string {
 
 export default function AppointmentsHome() {
   const { role, profile } = useAuth();
-  const { doctors, loading, error, reload } = useDoctors();
+  // Type de praticien (depuis le hub) : défaut gynécologie → préserve l'existant.
+  const params = useLocalSearchParams<{ type?: string }>();
+  const ptype = practitionerTypeOf(params.type);
+  const L = PRACTITIONER_LABELS[ptype];
+  const isTherapy = ptype === "therapy";
+  const headerTitle = isTherapy ? "Trouver un·e thérapeute" : "Trouver une médecin";
+
+  const { doctors, loading, error, reload } = useDoctors(ptype);
   const { doctors_enabled, premium_enabled } = useAppSettings();
   const router = useRouter();
+
+  // Défilement vers la liste depuis les boutons de l'intro thérapie.
+  const scrollRef = useRef<ScrollView>(null);
+  const listY = useRef(0);
+  const onListLayout = (e: LayoutChangeEvent) => { listY.current = e.nativeEvent.layout.y; };
+  const scrollToList = () => scrollRef.current?.scrollTo({ y: Math.max(0, listY.current - 12), animated: true });
 
   // Contacter = messagerie premium (même règle que la fiche : Premium → chat, sinon page Premium).
   const contactDoctor = useCallback((d: DoctorWithProfile) => {
@@ -70,7 +85,7 @@ export default function AppointmentsHome() {
   if (error && doctors.length === 0) {
     return (
       <Screen>
-        <ScreenHeader title="Trouver une médecin" />
+        <ScreenHeader title={headerTitle} />
         <EmptyState
           icon="cloud-offline-outline"
           title="Connexion impossible"
@@ -86,7 +101,7 @@ export default function AppointmentsHome() {
   if (!doctors_enabled) {
     return (
       <Screen>
-        <ScreenHeader title="Trouver une médecin" />
+        <ScreenHeader title={headerTitle} />
         <EmptyState icon="medkit-outline" title="Service non disponible pour le moment" />
       </Screen>
     );
@@ -112,7 +127,7 @@ export default function AppointmentsHome() {
   return (
     <Screen>
       <ScreenHeader
-        title="Trouver une médecin"
+        title={headerTitle}
         right={
           <PressableScale onPress={() => router.push("/(user)/appointments/mine")} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Mes rendez-vous">
             <Ionicons name="calendar-outline" size={25} color={colors.text} />
@@ -121,6 +136,7 @@ export default function AppointmentsHome() {
       />
 
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
@@ -128,59 +144,93 @@ export default function AppointmentsHome() {
         {/* Données déjà chargées mais le rafraîchissement a échoué → hors-ligne. */}
         {error ? <OfflineBanner cachedAt={null} /> : null}
 
-        <TrustRow signals={["verified", "confidential"]} />
-
-        {doctors.length === 0 ? (
-          <EmptyState
-            icon="medkit-outline"
-            title="Aucun médecin disponible"
-            message="Reviens plus tard, de nouveaux praticiens arrivent bientôt."
-          />
+        {/* Thérapie : intro rassurante + confidentialité ; gynéco : signaux existants. */}
+        {isTherapy ? (
+          <TherapyIntro onBook={scrollToList} onDiscover={scrollToList} />
         ) : (
-          <>
-            <Input
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Rechercher (nom, spécialité, clinique)…"
-              autoCapitalize="none"
-              style={styles.searchInput}
-            />
-
-            <SegmentedControl
-              items={["all", ...specialties].map((s) => ({ key: s, label: s === "all" ? "Toutes" : s }))}
-              value={activeSpec}
-              onChange={setActiveSpec}
-            />
-
-            <View style={styles.toolbar}>
-              <Text style={styles.count}>{list.length} médecin{list.length > 1 ? "s" : ""}</Text>
-              <Pressable onPress={() => { hapticLight(); setSortBest((v) => !v); }} style={({ pressed }) => [styles.sortChip, sortBest && styles.sortChipActive, pressed && styles.chipPressed]} accessibilityRole="button" accessibilityLabel="Trier par mieux notés">
-                <Ionicons name="star" size={13} color={sortBest ? colors.white : colors.accent} />
-                <Text style={[styles.sortText, sortBest && styles.sortTextActive]}>Mieux notés</Text>
-              </Pressable>
-            </View>
-
-            {list.length === 0 ? (
-              <EmptyState icon="search-outline" title="Aucun médecin trouvé" message="Essaie un autre nom ou une autre spécialité." />
-            ) : (
-              list.map((d, i) => (
-                <FadeInView key={d.id} fill={false} delay={Math.min(i, 6) * STEP}>
-                  <DoctorRow
-                    doctor={d}
-                    onPress={() => router.push(`/(user)/appointments/${d.id}`)}
-                    onContact={() => contactDoctor(d)}
-                  />
-                </FadeInView>
-              ))
-            )}
-          </>
+          <TrustRow signals={["verified", "confidential"]} />
         )}
+
+        <View style={styles.listWrap} onLayout={onListLayout}>
+          {doctors.length === 0 ? (
+            <EmptyState
+              icon="medkit-outline"
+              title={`Aucun·e ${L.noun} disponible`}
+              message="Reviens plus tard, de nouveaux praticiens arrivent bientôt."
+            />
+          ) : (
+            <>
+              <Input
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Rechercher (nom, spécialité…)"
+                autoCapitalize="none"
+                style={styles.searchInput}
+              />
+
+              <SegmentedControl
+                items={["all", ...specialties].map((s) => ({ key: s, label: s === "all" ? "Toutes" : s }))}
+                value={activeSpec}
+                onChange={setActiveSpec}
+              />
+
+              <View style={styles.toolbar}>
+                <Text style={styles.count}>{list.length} {L.noun}{list.length > 1 ? "s" : ""}</Text>
+                <Pressable onPress={() => { hapticLight(); setSortBest((v) => !v); }} style={({ pressed }) => [styles.sortChip, sortBest && styles.sortChipActive, pressed && styles.chipPressed]} accessibilityRole="button" accessibilityLabel="Trier par mieux notés">
+                  <Ionicons name="star" size={13} color={sortBest ? colors.white : colors.accent} />
+                  <Text style={[styles.sortText, sortBest && styles.sortTextActive]}>Mieux notés</Text>
+                </Pressable>
+              </View>
+
+              {list.length === 0 ? (
+                <EmptyState icon="search-outline" title={`Aucun·e ${L.noun} trouvé·e`} message="Essaie un autre nom ou une autre spécialité." />
+              ) : (
+                list.map((d, i) => (
+                  <FadeInView key={d.id} fill={false} delay={Math.min(i, 6) * STEP}>
+                    <DoctorRow
+                      doctor={d}
+                      ctaLabel={L.bookCta}
+                      verifiedLabel={L.verifiedLabel}
+                      onPress={() => router.push(`/(user)/appointments/${d.id}`)}
+                      onContact={() => contactDoctor(d)}
+                    />
+                  </FadeInView>
+                ))
+              )}
+            </>
+          )}
+        </View>
       </ScrollView>
     </Screen>
   );
 }
 
-function DoctorRow({ doctor, onPress, onContact }: { doctor: DoctorWithProfile; onPress: () => void; onContact: () => void }) {
+// Intro thérapie : présentation rassurante + confidentialité + accès à la liste.
+function TherapyIntro({ onBook, onDiscover }: { onBook: () => void; onDiscover: () => void }) {
+  return (
+    <View style={styles.heroWrap}>
+      <Card style={styles.heroCard}>
+        <View style={styles.heroHead}>
+          <Text style={styles.heroEmoji}>🧠</Text>
+          <Text style={styles.heroTitle}>Thérapie & santé mentale</Text>
+        </View>
+        <Text style={styles.heroIntro}>
+          Un espace bienveillant pour prendre soin de ton bien-être mental. Échange avec un·e thérapeute vérifié·e, en ligne ou en présentiel, à ton rythme.
+        </Text>
+        <View style={styles.heroConfid}>
+          <Ionicons name="lock-closed" size={15} color={colors.primaryDark} />
+          <Text style={styles.heroConfidText}>Tes échanges et tes séances restent strictement confidentiels.</Text>
+        </View>
+      </Card>
+      <View style={styles.heroActions}>
+        <Button title="Réserver une séance" onPress={onBook} />
+        <Button title="Découvrir les thérapeutes" variant="outline" onPress={onDiscover} />
+      </View>
+    </View>
+  );
+}
+
+function DoctorRow({ doctor, onPress, onContact, ctaLabel, verifiedLabel }: { doctor: DoctorWithProfile; onPress: () => void; onContact: () => void; ctaLabel: string; verifiedLabel: string }) {
   const name = doctorDisplayName(doctor.profile);
   const available = hasAnyAvailability(doctor.availability);
   return (
@@ -196,7 +246,7 @@ function DoctorRow({ doctor, onPress, onContact }: { doctor: DoctorWithProfile; 
         <View style={styles.rowInfo}>
           <View style={styles.nameRow}>
             <Text style={styles.name} numberOfLines={1}>{name}</Text>
-            {doctor.is_validated ? <VerifiedDoctorBadge /> : null}
+            {doctor.is_validated ? <VerifiedDoctorBadge label={verifiedLabel} /> : null}
           </View>
           <Text style={styles.specialty} numberOfLines={1}>{doctor.specialty}</Text>
           {doctor.bio ? <Text style={styles.bio} numberOfLines={1}>{doctor.bio}</Text> : null}
@@ -217,9 +267,9 @@ function DoctorRow({ doctor, onPress, onContact }: { doctor: DoctorWithProfile; 
         </View>
       </View>
       <View style={styles.cardActions}>
-        <Pressable onPress={() => { hapticLight(); onPress(); }} style={({ pressed }) => [styles.cardBtn, styles.cardBtnPrimary, pressed && styles.cardBtnPressed]} accessibilityRole="button" accessibilityLabel={`Prendre rendez-vous avec ${name}`}>
+        <Pressable onPress={() => { hapticLight(); onPress(); }} style={({ pressed }) => [styles.cardBtn, styles.cardBtnPrimary, pressed && styles.cardBtnPressed]} accessibilityRole="button" accessibilityLabel={`${ctaLabel} avec ${name}`}>
           <Ionicons name="calendar" size={16} color={colors.white} />
-          <Text style={styles.cardBtnPrimaryText}>Prendre rendez-vous</Text>
+          <Text style={styles.cardBtnPrimaryText}>{ctaLabel}</Text>
         </Pressable>
         {DOCTOR_MESSAGING_ENABLED ? (
           <Pressable onPress={() => { hapticLight(); onContact(); }} style={({ pressed }) => [styles.cardBtn, styles.cardBtnOutline, pressed && styles.cardBtnPressed]} accessibilityRole="button" accessibilityLabel={`Contacter ${name}`}>
@@ -237,6 +287,17 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
   iconBtn: { padding: spacing.xs },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  listWrap: { gap: spacing.md },
+  // Intro thérapie
+  heroWrap: { gap: spacing.md },
+  heroCard: { gap: spacing.sm, backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  heroHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  heroEmoji: { fontSize: 26 },
+  heroTitle: { ...typography.h3, color: colors.primaryDark },
+  heroIntro: { ...typography.body, color: colors.primaryDark, lineHeight: 21 },
+  heroConfid: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginTop: spacing.xs },
+  heroConfidText: { ...typography.caption, color: colors.primaryDark, flex: 1, fontWeight: "600" },
+  heroActions: { gap: spacing.sm },
   verified: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   verifiedText: { ...typography.body, color: colors.primaryDark, fontFamily: fonts.bodySemiBold, fontWeight: "700" },
   searchInput: { marginBottom: 0 },

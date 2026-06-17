@@ -36,6 +36,7 @@ export default function UserLayout() {
 
           {/* Consultations retirées de la barre — accès via la carte « Consultations » de l'accueil.
               (La restriction médecin reste assurée par le garde in-screen + la carte masquée pour un doctor.) */}
+          <Tabs.Screen name="appointments/hub" options={{ href: null }} />
           <Tabs.Screen name="appointments/index" options={{ href: null }} />
 
           {/* Écrans accessibles mais cachés de la barre d'onglets */}

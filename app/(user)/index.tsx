@@ -159,7 +159,7 @@ export default function CycleHome() {
   // Cartes d'accès rapide (Consultations masquée pour un médecin).
   const quick: { emoji: string; title: string; sub: string; href: Href; module?: "marketplace" | "doctors" }[] = [
     { emoji: "🩸", title: "Mon cycle", sub: "Suivi menstruel", href: "/(user)/cycle/calendar" },
-    ...(!isDoctor ? [{ emoji: "🌼", title: "Consultations", sub: "Médecins vérifiées", href: "/(user)/appointments" as Href, module: "doctors" as const }] : []),
+    ...(!isDoctor ? [{ emoji: "🌼", title: "Consultations", sub: "Gynéco & thérapie", href: "/(user)/appointments/hub" as Href, module: "doctors" as const }] : []),
     { emoji: "🛍️", title: "Boutique", sub: "Produits santé", href: "/(user)/marketplace", module: "marketplace" },
     { emoji: "💬", title: "Forum", sub: "Communauté", href: "/(user)/community" },
     // « Conseils & infos » masqué de l'accueil (réversible via SHOW_ARTICLES).
