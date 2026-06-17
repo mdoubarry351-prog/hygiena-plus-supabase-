@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
@@ -14,7 +14,19 @@ import { useToast } from "@/providers/ToastProvider";
 import { cycleService, SYMPTOMS, FLOW_OPTIONS, MOOD_OPTIONS } from "@/lib/cycle-service";
 import { resyncCycleReminders } from "@/lib/reminders";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
+import { getDraft, setDraft, clearDraft, DRAFT_KEYS } from "@/lib/draft";
 import { colors, radius, spacing, typography } from "@/theme";
+
+// Brouillon local (création uniquement) : tous les champs saisis, hors mode édition.
+type CycleDraft = {
+  startDate: string;
+  endDate: string | null;
+  selectedSymptoms: string[];
+  flow: string | null;
+  mood: string | null;
+  pain: number | null;
+  notes: string;
+};
 
 // Parse une date SQL « AAAA-MM-JJ » en Date locale (midi → évite les décalages DST/fuseau).
 function parseISODate(iso: string): Date {
@@ -62,6 +74,9 @@ export default function LogCycle() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingCycle, setLoadingCycle] = useState(isEdit);
+  const [draftRestored, setDraftRestored] = useState(false);
+  // Vrai une fois la restauration du brouillon tentée (évite d'écraser au montage).
+  const hydrated = useRef(false);
 
   // Édition : charge la saisie existante et préremplit le formulaire.
   useEffect(() => {
@@ -87,6 +102,53 @@ export default function LogCycle() {
       }
     })();
   }, [isEdit, id]);
+
+  // Restauration du brouillon au montage — CRÉATION uniquement (jamais en édition).
+  useEffect(() => {
+    if (isEdit) { hydrated.current = true; return; }
+    let alive = true;
+    (async () => {
+      const d = await getDraft<CycleDraft>(DRAFT_KEYS.cycleLog);
+      if (alive && d) {
+        setStartDate(parseISODate(d.startDate));
+        setEndDate(d.endDate ? parseISODate(d.endDate) : null);
+        setSelectedSymptoms(d.selectedSymptoms ?? []);
+        setFlow(d.flow ?? null);
+        setMood(d.mood ?? null);
+        setPain(d.pain ?? null);
+        setNotes(d.notes ?? "");
+        setDraftRestored(true);
+      }
+      if (alive) hydrated.current = true;
+    })();
+    return () => { alive = false; };
+  }, [isEdit]);
+
+  // Sauvegarde locale auto (debounce léger). Si le formulaire est « vide »
+  // (valeurs par défaut), on efface le brouillon. Jamais en mode édition.
+  useEffect(() => {
+    if (isEdit || !hydrated.current) return;
+    const startISO = toISODate(startDate);
+    const meaningful =
+      !!endDate || selectedSymptoms.length > 0 || !!flow || !!mood || pain !== null ||
+      notes.trim().length > 0 || startISO !== toISODate(new Date());
+    const t = setTimeout(() => {
+      if (meaningful) {
+        setDraft<CycleDraft>(DRAFT_KEYS.cycleLog, {
+          startDate: startISO,
+          endDate: endDate ? toISODate(endDate) : null,
+          selectedSymptoms,
+          flow,
+          mood,
+          pain,
+          notes,
+        });
+      } else {
+        clearDraft(DRAFT_KEYS.cycleLog);
+      }
+    }, 600);
+    return () => clearTimeout(t);
+  }, [isEdit, startDate, endDate, selectedSymptoms, flow, mood, pain, notes]);
 
   function toggleSymptom(s: string) {
     setSelectedSymptoms((prev) =>
@@ -133,6 +195,7 @@ export default function LogCycle() {
         toast.success("Saisie modifiée.");
       } else {
         await cycleService.addCycle({ user_id: session.user.id, ...payload });
+        clearDraft(DRAFT_KEYS.cycleLog); // brouillon consommé
         toast.success("Tes règles ont été enregistrées.");
       }
       hapticSuccess();
@@ -160,6 +223,13 @@ export default function LogCycle() {
     <Screen>
       <ScreenHeader title={isEdit ? "Modifier la saisie" : "Enregistrer mes règles"} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+
+        {draftRestored ? (
+          <View style={styles.draftRow}>
+            <Ionicons name="document-text-outline" size={14} color={colors.primary} />
+            <Text style={styles.draftText}>Brouillon restauré</Text>
+          </View>
+        ) : null}
 
         {/* Dates via picker natif */}
         <Text style={[typography.h3, styles.sectionTitle]}>Dates</Text>
@@ -275,6 +345,8 @@ export default function LogCycle() {
 
 const styles = StyleSheet.create({
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.sm },
+  draftRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  draftText: { ...typography.caption, color: colors.primary, fontWeight: "600" },
   sectionTitle: { marginTop: spacing.md, marginBottom: spacing.xs },
   dateRow: {
     flexDirection: "row", alignItems: "center", gap: spacing.md,

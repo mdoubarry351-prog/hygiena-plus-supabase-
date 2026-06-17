@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -21,7 +21,12 @@ import { CommunityRules } from "@/components/CommunityRules";
 import { useToast } from "@/providers/ToastProvider";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { uploadCommunityImage } from "@/lib/storage";
+import { getDraft, setDraft, clearDraft, DRAFT_KEYS } from "@/lib/draft";
 import { colors, radius, spacing, typography } from "@/theme";
+
+// Brouillon local (création uniquement) : texte + catégorie. PAS les images
+// (les URIs/URLs ne sont pas pertinentes à persister comme brouillon).
+type PostDraft = { content: string; category: string };
 
 export default function NewPost() {
   const { session, profile, refreshProfile } = useAuth();
@@ -44,6 +49,9 @@ export default function NewPost() {
   const [saving, setSaving] = useState(false);
   const [loadingPost, setLoadingPost] = useState(isEdit);
   const [showPreview, setShowPreview] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  // Vrai une fois la restauration du brouillon tentée (évite d'écraser au montage).
+  const hydrated = useRef(false);
   // Spécialité de l'utilisatrice si elle est médecin VALIDÉE (badge dans l'aperçu).
   const [myDoctorSpecialty, setMyDoctorSpecialty] = useState<string | null>(null);
   const [isVerifiedDoctor, setIsVerifiedDoctor] = useState(false);
@@ -79,6 +87,33 @@ export default function NewPost() {
       }
     })();
   }, [isEdit, id]);
+
+  // Restauration du brouillon au montage — CRÉATION uniquement (jamais en édition,
+  // pour ne pas écraser le contenu d'une publication existante).
+  useEffect(() => {
+    if (isEdit) { hydrated.current = true; return; }
+    let alive = true;
+    (async () => {
+      const d = await getDraft<PostDraft>(DRAFT_KEYS.communityPost);
+      if (alive && d && d.content?.trim()) {
+        setContent(d.content);
+        if (d.category) setCategory(d.category);
+        setDraftRestored(true);
+      }
+      if (alive) hydrated.current = true;
+    })();
+    return () => { alive = false; };
+  }, [isEdit]);
+
+  // Sauvegarde locale auto (debounce léger). Texte vide → on efface le brouillon.
+  useEffect(() => {
+    if (isEdit || !hydrated.current) return;
+    const t = setTimeout(() => {
+      if (content.trim()) setDraft<PostDraft>(DRAFT_KEYS.communityPost, { content, category });
+      else clearDraft(DRAFT_KEYS.communityPost);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [isEdit, content, category]);
 
   // Sélection de PLUSIEURS photos (jusqu'à 4) + upload de chacune.
   async function pickImages() {
@@ -160,6 +195,7 @@ export default function NewPost() {
           category,
           imageUrls: images,
         });
+        clearDraft(DRAFT_KEYS.communityPost); // brouillon consommé
         hapticSuccess();
         toast.success("Ta publication a été partagée.");
         router.back();
@@ -200,6 +236,13 @@ export default function NewPost() {
             <CommunityRules />
             <Button title="J'accepte les règles de la communauté" onPress={acceptRules} loading={accepting} />
           </Card>
+        ) : null}
+
+        {draftRestored ? (
+          <View style={styles.draftRow}>
+            <Ionicons name="document-text-outline" size={14} color={colors.primary} />
+            <Text style={styles.draftText}>Brouillon restauré</Text>
+          </View>
         ) : null}
 
         <Input
@@ -323,6 +366,8 @@ export default function NewPost() {
 
 const styles = StyleSheet.create({
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.sm },
+  draftRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  draftText: { ...typography.caption, color: colors.primary, fontWeight: "600" },
   rulesCard: { gap: spacing.md, marginBottom: spacing.sm },
   rulesTitle: { ...typography.h3 },
   rulesIntro: { ...typography.caption, color: colors.textMuted, marginTop: -spacing.xs },
