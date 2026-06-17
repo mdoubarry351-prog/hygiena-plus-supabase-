@@ -104,7 +104,7 @@ export default function Receipt() {
           ) : null}
         </Card>
 
-        <AppointmentContact mode={mode} clinicName={appt.doctor?.clinic_name} doctorId={appt.doctor_id} doctorName={doctorName} noun={L.noun} />
+        <AppointmentContact mode={mode} clinicName={appt.doctor?.clinic_name} doctorId={appt.doctor_id} doctorName={doctorName} appointmentId={appt.id} appointmentAt={`${appt.appointment_date}T${appt.appointment_time}`} noun={L.noun} />
 
         <Text style={styles.note}>Paiement simulé — démonstration, aucun débit réel.</Text>
 

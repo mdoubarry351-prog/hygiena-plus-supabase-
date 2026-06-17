@@ -17,12 +17,16 @@ export function AppointmentContact({
   clinicName,
   doctorId,
   doctorName,
+  appointmentId,
+  appointmentAt,
   noun = "médecin",
 }: {
   mode: ConsultationMode;
   clinicName?: string | null;
   doctorId?: string | null;
   doctorName?: string | null;
+  appointmentId?: string | null;
+  appointmentAt?: string | null; // « YYYY-MM-DDTHH:MM:SS » (pour le gating d'appel)
   noun?: string;
 }) {
   const router = useRouter();
@@ -32,7 +36,10 @@ export function AppointmentContact({
   function openRoom() {
     if (!doctorId) return;
     hapticLight();
-    router.push({ pathname: "/(user)/appointments/chat", params: { doctorId, doctorName: doctorName ?? "" } });
+    router.push({
+      pathname: "/(user)/appointments/chat",
+      params: { doctorId, doctorName: doctorName ?? "", appointmentId: appointmentId ?? "", appointmentAt: appointmentAt ?? "" },
+    });
   }
 
   return (

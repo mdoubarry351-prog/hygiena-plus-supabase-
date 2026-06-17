@@ -9,13 +9,14 @@ import { ConsultationCall } from "@/components/ConsultationCall";
 import { useAuth } from "@/providers/AuthProvider";
 import { useCycles } from "@/hooks/useCycles";
 import { messagesService } from "@/lib/messages-service";
+import { appointmentAtMs } from "@/lib/call-service";
 import { buildCycleSummary } from "@/lib/cycle-service";
 import { hapticLight } from "@/lib/haptics";
 import { DOCTOR_MESSAGING_ENABLED } from "@/lib/app-config";
 import { colors, spacing } from "@/theme";
 
 export default function PatientChat() {
-  const { doctorId, doctorName } = useLocalSearchParams<{ doctorId: string; doctorName?: string }>();
+  const { doctorId, doctorName, appointmentId, appointmentAt } = useLocalSearchParams<{ doctorId: string; doctorName?: string; appointmentId?: string; appointmentAt?: string }>();
   const { session, role } = useAuth();
   const { cycles, prediction } = useCycles();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -81,7 +82,11 @@ export default function PatientChat() {
       subtitle="Salle de consultation"
       banner={
         <View style={styles.banner}>
-          <ConsultationCall />
+          <ConsultationCall
+            appointmentId={appointmentId}
+            appointmentAtMs={appointmentAtMs(appointmentAt)}
+            peerName={doctorName}
+          />
           <MedicalDisclaimer text="Ces échanges ne remplacent pas une consultation médicale. En cas d'urgence, rendez-vous aux urgences." />
         </View>
       }

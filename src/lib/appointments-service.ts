@@ -179,6 +179,31 @@ export const appointmentsService = {
     return (data ?? []) as AppointmentWithDoctor[];
   },
 
+  // RDV pertinent entre un médecin et une patiente, pour ouvrir la salle d'appel
+  // côté médecin (le plus proche de maintenant). RLS : un médecin lit ses RDV.
+  async findAppointmentForRoom(doctorId: string, patientId: string): Promise<{ id: string; appointment_date: string; appointment_time: string } | null> {
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("id, appointment_date, appointment_time")
+      .eq("doctor_id", doctorId)
+      .eq("patient_id", patientId)
+      .in("status", ["pending", "confirmed", "completed"])
+      .order("appointment_date", { ascending: false })
+      .order("appointment_time", { ascending: false })
+      .limit(20);
+    if (error || !data || data.length === 0) return null;
+    // Choisit le RDV dont l'horaire est le plus proche de l'instant présent.
+    const now = Date.now();
+    let best = data[0];
+    let bestDiff = Infinity;
+    for (const a of data) {
+      const ms = new Date(`${a.appointment_date}T${(a.appointment_time || "00:00").slice(0, 5)}:00`).getTime();
+      const diff = Number.isNaN(ms) ? Infinity : Math.abs(ms - now);
+      if (diff < bestDiff) { bestDiff = diff; best = a; }
+    }
+    return { id: best.id, appointment_date: best.appointment_date, appointment_time: best.appointment_time };
+  },
+
   // Crée un rendez-vous. Le statut est « pending » par défaut côté base.
   // Si `payment` est fourni (paiement simulé confirmé) : is_paid=true + reçu.
   async createAppointment(input: {

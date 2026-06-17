@@ -7,6 +7,8 @@ import { ConsultationCall } from "@/components/ConsultationCall";
 import { Loading } from "@/components/Loading";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import { messagesService } from "@/lib/messages-service";
+import { appointmentsService } from "@/lib/appointments-service";
+import { appointmentAtMs } from "@/lib/call-service";
 
 export default function DoctorChat() {
   const { patientId, patientName } = useLocalSearchParams<{ patientId: string; patientName?: string }>();
@@ -14,6 +16,9 @@ export default function DoctorChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  // RDV pertinent (pour le gating d'appel côté médecin).
+  const [apptId, setApptId] = useState<string | null>(null);
+  const [apptAtMs, setApptAtMs] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     if (!doctor || !patientId) return;
@@ -22,6 +27,10 @@ export default function DoctorChat() {
       setMessages(await messagesService.getThread(patientId, doctor.id));
       // Marque comme lus les messages reçus de la patiente (best-effort).
       messagesService.markThreadRead(doctor.id, patientId).catch(() => {});
+      // RDV pour l'appel (best-effort, n'empêche pas le chat).
+      appointmentsService.findAppointmentForRoom(doctor.id, patientId)
+        .then((a) => { setApptId(a?.id ?? null); setApptAtMs(a ? appointmentAtMs(a.appointment_date, a.appointment_time) : null); })
+        .catch(() => { setApptId(null); setApptAtMs(null); });
     } catch {
       setMessages([]);
     } finally {
@@ -50,7 +59,7 @@ export default function DoctorChat() {
     <ChatThread
       title={patientName || "Patiente"}
       subtitle="Salle de consultation"
-      banner={<ConsultationCall />}
+      banner={<ConsultationCall appointmentId={apptId} appointmentAtMs={apptAtMs} peerName={patientName} />}
       messages={messages}
       currentRole="doctor"
       loading={loading}

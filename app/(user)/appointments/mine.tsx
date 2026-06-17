@@ -198,6 +198,8 @@ export default function MyAppointments() {
                     clinicName={a.doctor?.clinic_name}
                     doctorId={a.doctor_id}
                     doctorName={name}
+                    appointmentId={a.id}
+                    appointmentAt={`${a.appointment_date}T${a.appointment_time}`}
                     noun={L.noun}
                   />
                 ) : null}
