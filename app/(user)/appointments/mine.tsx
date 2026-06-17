@@ -128,7 +128,14 @@ export default function MyAppointments() {
 
   return (
     <Screen>
-      <ScreenHeader title="Mes rendez-vous" />
+      <ScreenHeader
+        title="Mes rendez-vous"
+        right={
+          <Pressable onPress={() => { hapticLight(); router.push("/(user)/appointments/conversations"); }} hitSlop={10} style={styles.headerBtn} accessibilityRole="button" accessibilityLabel="Mes conversations">
+            <Ionicons name="chatbubbles-outline" size={24} color={colors.text} />
+          </Pressable>
+        }
+      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
@@ -230,6 +237,7 @@ export default function MyAppointments() {
 
 const styles = StyleSheet.create({
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+  headerBtn: { padding: spacing.xs },
   empty: { alignItems: "center", gap: spacing.sm },
   muted: { color: colors.textMuted, textAlign: "center" },
   receiptBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs, alignSelf: "flex-start", paddingTop: spacing.xs },

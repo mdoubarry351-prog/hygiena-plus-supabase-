@@ -25,6 +25,7 @@ export default function ConsultationsHub() {
   const router = useRouter();
 
   const goMine = useCallback(() => router.push("/(user)/appointments/mine"), [router]);
+  const goConversations = useCallback(() => router.push("/(user)/appointments/conversations"), [router]);
 
   if (role === "doctor") return <Redirect href="/(user)" />;
 
@@ -42,9 +43,14 @@ export default function ConsultationsHub() {
       <ScreenHeader
         title="Consultations"
         right={
-          <PressableScale onPress={goMine} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Mes rendez-vous">
-            <Ionicons name="calendar-outline" size={25} color={colors.text} />
-          </PressableScale>
+          <View style={styles.headerActions}>
+            <PressableScale onPress={goConversations} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Mes conversations">
+              <Ionicons name="chatbubbles-outline" size={24} color={colors.text} />
+            </PressableScale>
+            <PressableScale onPress={goMine} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Mes rendez-vous">
+              <Ionicons name="calendar-outline" size={25} color={colors.text} />
+            </PressableScale>
+          </View>
         }
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -84,6 +90,7 @@ export default function ConsultationsHub() {
 }
 
 const styles = StyleSheet.create({
+  headerActions: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   iconBtn: { padding: spacing.xs },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   intro: { ...typography.body, color: colors.textMuted },
