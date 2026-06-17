@@ -9,7 +9,7 @@ import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { StarRating } from "@/components/StarRating";
 import { ReviewsSection } from "@/components/ReviewsSection";
-import { PostImages } from "@/components/PostImages";
+import { ProductGallery } from "@/components/ProductGallery";
 import { AppImage } from "@/components/AppImage";
 import { HeartButton } from "@/components/HeartButton";
 import { FadeInView } from "@/components/FadeInView";
@@ -92,6 +92,15 @@ export default function ProductDetail() {
     toast.success(`${quantity} × ${product.name} ajouté au panier`);
   }
 
+  // « Acheter maintenant » : ajoute au panier (logique existante) puis va droit au
+  // checkout. Aucun nouveau flux de paiement — réutilise panier + checkout.
+  function handleBuyNow() {
+    if (!product || outOfStock) return;
+    addItem(product, quantity);
+    hapticLight();
+    router.push("/(user)/marketplace/checkout");
+  }
+
   return (
     <Screen>
       <View style={styles.fill}>
@@ -105,7 +114,7 @@ export default function ProductDetail() {
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <FadeZoomIn>
           {(product.image_urls?.length || product.image_url) ? (
-            <PostImages imageUrls={product.image_urls} imageUrl={product.image_url} />
+            <ProductGallery imageUrls={product.image_urls} imageUrl={product.image_url} />
           ) : (
             <View style={[styles.image, styles.imagePlaceholder]}>
               <Ionicons name="bag-outline" size={48} color={colors.textMuted} />
@@ -198,19 +207,26 @@ export default function ProductDetail() {
         </FadeInView>
       </ScrollView>
 
-      {/* Barre d'achat sticky : prix + ajout panier toujours visibles. */}
+      {/* Barre d'achat sticky : prix bien visible + ajout panier / achat direct. */}
       <View style={styles.buyBar}>
-        <View style={styles.buyBarInfo}>
-          <Text style={styles.buyBarLabel}>Total</Text>
-          <Text style={styles.buyBarValue}>{formatPrice(product.price * quantity)}</Text>
-        </View>
-        <View style={styles.buyBarBtn}>
-          {outOfStock ? (
-            <Button title="Indisponible" disabled />
-          ) : (
-            <Button title="Ajouter au panier" onPress={handleAddToCart} />
-          )}
-        </View>
+        {outOfStock ? (
+          <Button title="Indisponible" disabled />
+        ) : (
+          <>
+            <View style={styles.buyBarTop}>
+              <Text style={styles.buyBarLabel}>Total</Text>
+              <Text style={styles.buyBarValue}>{formatPrice(product.price * quantity)}</Text>
+            </View>
+            <View style={styles.buyBarBtns}>
+              <View style={styles.buyBarBtn}>
+                <Button title="Ajouter au panier" variant="outline" onPress={handleAddToCart} />
+              </View>
+              <View style={styles.buyBarBtn}>
+                <Button title="Acheter maintenant" onPress={handleBuyNow} />
+              </View>
+            </View>
+          </>
+        )}
       </View>
       </View>
     </Screen>
@@ -232,13 +248,14 @@ const styles = StyleSheet.create({
   relPrice: { ...typography.body, color: colors.primary, fontWeight: "700" },
   // Barre d'achat sticky
   buyBar: {
-    flexDirection: "row", alignItems: "center", gap: spacing.md,
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md,
     borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card,
   },
-  buyBarInfo: { gap: 0 },
+  buyBarTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  buyBarBtns: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   buyBarLabel: { ...typography.caption, color: colors.textMuted },
-  buyBarValue: { ...typography.h3, color: colors.primary },
+  buyBarValue: { ...typography.h2, color: colors.primary },
   buyBarBtn: { flex: 1 },
   headBlock: { gap: spacing.xs },
   ctaBlock: { gap: spacing.md },

@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type ListRenderItemInfo } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, useWindowDimensions, View, type ListRenderItemInfo } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,7 +23,7 @@ import { useCart } from "@/providers/CartProvider";
 import { hapticLight } from "@/lib/haptics";
 import { formatPrice, PRODUCT_CATEGORIES, type ProductSort } from "@/lib/marketplace-service";
 import type { MarketplaceProduct } from "@/lib/database.types";
-import { colors, fonts, radius, spacing, typography } from "@/theme";
+import { colors, fonts, layout, radius, shadows, spacing, typography } from "@/theme";
 
 // Options de tri (libellés courts pour les chips).
 const SORTS: { key: ProductSort; label: string }[] = [
@@ -48,8 +48,14 @@ export default function MarketplaceHome() {
   const { favIds, toggle } = useFavorites();
   const { count, addItem } = useCart();
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
   const isFiltering = !!search.trim() || activeCat !== "all";
+
+  // Grille 2 colonnes : largeur d'une carte = (contenu - gouttière) / 2.
+  // Contenu = min(écran, maxContentWidth tablette) moins le padding latéral du Screen.
+  const GUTTER = spacing.md;
+  const cardWidth = Math.floor((Math.min(width, layout.maxContentWidth) - spacing.lg * 2 - GUTTER) / 2);
 
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
@@ -73,15 +79,16 @@ export default function MarketplaceHome() {
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<MarketplaceProduct>) => (
-      <ProductRow
+      <ProductCard
         product={item}
+        width={cardWidth}
         isFav={favIds.has(item.id)}
         onToggleFav={onToggleFavProduct}
         onAdd={onAddProduct}
         onPress={onPressProduct}
       />
     ),
-    [favIds, onToggleFavProduct, onAddProduct, onPressProduct]
+    [favIds, cardWidth, onToggleFavProduct, onAddProduct, onPressProduct]
   );
 
   if (loading && products.length === 0) return <SkeletonList variant="product" />;
@@ -188,6 +195,8 @@ export default function MarketplaceHome() {
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         extraData={extra}
+        numColumns={2}
+        columnWrapperStyle={styles.column}
         ListHeaderComponent={listHeader}
         ListFooterComponent={listFooter}
         ListEmptyComponent={
@@ -212,8 +221,9 @@ export default function MarketplaceHome() {
   );
 }
 
-// Carte produit mémoïsée : ne se re-render que si ses props changent (perf liste).
-const ProductRow = memo(function ProductRow({ product, isFav, onToggleFav, onAdd, onPress }: { product: MarketplaceProduct; isFav: boolean; onToggleFav: (id: string) => void; onAdd: (product: MarketplaceProduct) => void; onPress: (id: string) => void }) {
+// Carte produit grille (marketplace) mémoïsée : image en haut, nom 2 lignes,
+// note compacte, prix en gras, badge « Rupture », ajout panier + favori en coin.
+const ProductCard = memo(function ProductCard({ product, width, isFav, onToggleFav, onAdd, onPress }: { product: MarketplaceProduct; width: number; isFav: boolean; onToggleFav: (id: string) => void; onAdd: (product: MarketplaceProduct) => void; onPress: (id: string) => void }) {
   const outOfStock = product.stock <= 0;
   const thumbUrl = product.image_urls?.[0] ?? product.image_url;
   const [justAdded, setJustAdded] = useState(false);
@@ -229,56 +239,77 @@ const ProductRow = memo(function ProductRow({ product, isFav, onToggleFav, onAdd
   }
 
   return (
-    <FadeInView fill={false}>
-    <Card onPress={() => onPress(product.id)} accessibilityLabel={product.name} style={styles.row}>
-        {thumbUrl ? (
-          <AppImage source={thumbUrl} style={styles.thumb} />
-        ) : (
-          <View style={[styles.thumb, styles.thumbPlaceholder]}>
-            <Ionicons name="bag-outline" size={28} color={colors.textMuted} />
-          </View>
-        )}
-        <View style={styles.rowInfo}>
-          <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
-          {product.rating_count > 0 ? (
-            <StarRating value={product.rating_avg} count={product.rating_count} size={13} compact />
-          ) : null}
-          {product.description ? (
-            <Text style={styles.desc} numberOfLines={2}>{product.description}</Text>
-          ) : null}
-          <View style={styles.rowFoot}>
-            <Text style={styles.price}>{formatPrice(product.price)}</Text>
-            {outOfStock && <Text style={styles.outOfStock}>Rupture</Text>}
-          </View>
-        </View>
-        <View style={styles.rowActions}>
-          <Pressable onPress={() => { hapticLight(); onToggleFav(product.id); }} hitSlop={10} style={({ pressed }) => [styles.favBtn, pressed && styles.btnPressed]} accessibilityRole="button" accessibilityLabel={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}>
-            <HeartButton active={isFav} size={22} activeColor={colors.danger} />
+    <FadeInView fill={false} style={[styles.cell, { width }]}>
+      <Card onPress={() => onPress(product.id)} accessibilityLabel={product.name} style={styles.card}>
+        <View style={styles.imageWrap}>
+          {thumbUrl ? (
+            <AppImage source={thumbUrl} style={styles.image} contentFit="cover" />
+          ) : (
+            <View style={[styles.image, styles.imagePlaceholder]}>
+              <Ionicons name="bag-outline" size={32} color={colors.textMuted} />
+            </View>
+          )}
+          {/* Favori discret en haut à droite. */}
+          <Pressable onPress={() => { hapticLight(); onToggleFav(product.id); }} hitSlop={8} style={({ pressed }) => [styles.heartCorner, pressed && styles.cornerPressed]} accessibilityRole="button" accessibilityLabel={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}>
+            <HeartButton active={isFav} size={18} activeColor={colors.danger} />
           </Pressable>
+          {outOfStock ? (
+            <View style={styles.ruptureBadge}><Text style={styles.ruptureText}>Rupture</Text></View>
+          ) : null}
+          {/* Ajout panier discret en bas à droite (micro-pop conservé). */}
           <Pressable
             onPress={quickAdd}
             disabled={outOfStock}
-            hitSlop={8}
-            style={({ pressed }) => [styles.addBtn, justAdded && styles.addBtnDone, outOfStock && styles.addBtnDisabled, pressed && !outOfStock && styles.btnPressed]}
+            hitSlop={6}
+            style={({ pressed }) => [styles.addCorner, justAdded && styles.addCornerDone, outOfStock && styles.addCornerDisabled, pressed && !outOfStock && styles.cornerPressed]}
             accessibilityRole="button"
             accessibilityLabel={`Ajouter ${product.name} au panier`}
           >
-            <BouncyIcon name={justAdded ? "checkmark" : "add"} size={20} color={colors.white} popKey={justAdded} />
+            <BouncyIcon name={justAdded ? "checkmark" : "add"} size={18} color={colors.white} popKey={justAdded} />
           </Pressable>
         </View>
-    </Card>
+        <View style={styles.cardBody}>
+          <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
+          <View style={styles.ratingRow}>
+            {product.rating_count > 0 ? (
+              <StarRating value={product.rating_avg} count={product.rating_count} size={12} compact />
+            ) : null}
+          </View>
+          <Text style={styles.price}>{formatPrice(product.price)}</Text>
+        </View>
+      </Card>
     </FadeInView>
   );
 });
 
-const THUMB = 96;
 const styles = StyleSheet.create({
-  favBtn: { padding: spacing.xs },
   btnPressed: { opacity: 0.6, transform: [{ scale: 0.92 }] },
-  rowActions: { alignItems: "center", justifyContent: "space-between", alignSelf: "stretch" },
-  addBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  addBtnDone: { backgroundColor: colors.success },
-  addBtnDisabled: { backgroundColor: colors.border },
+  // Grille
+  column: { justifyContent: "space-between", alignItems: "flex-start" },
+  cell: {},
+  card: { padding: 0, overflow: "hidden" },
+  imageWrap: { width: "100%", aspectRatio: 1, position: "relative", backgroundColor: colors.surface },
+  image: { width: "100%", height: "100%" },
+  imagePlaceholder: { alignItems: "center", justifyContent: "center" },
+  heartCorner: {
+    position: "absolute", top: 6, right: 6, width: 30, height: 30, borderRadius: 15,
+    backgroundColor: "rgba(255,255,255,0.9)", alignItems: "center", justifyContent: "center",
+  },
+  cornerPressed: { opacity: 0.7, transform: [{ scale: 0.92 }] },
+  ruptureBadge: {
+    position: "absolute", top: 6, left: 6, backgroundColor: colors.danger,
+    paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill,
+  },
+  ruptureText: { ...typography.caption, color: colors.white, fontWeight: "700", fontSize: 11 },
+  addCorner: {
+    position: "absolute", bottom: 6, right: 6, width: 34, height: 34, borderRadius: 17,
+    backgroundColor: colors.primary, alignItems: "center", justifyContent: "center",
+    ...shadows.sm,
+  },
+  addCornerDone: { backgroundColor: colors.success },
+  addCornerDisabled: { backgroundColor: colors.border },
+  cardBody: { padding: spacing.sm, gap: 4 },
+  ratingRow: { minHeight: 16, justifyContent: "center" },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
   actions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   iconBtn: { padding: spacing.xs },
@@ -289,41 +320,11 @@ const styles = StyleSheet.create({
   cartBadgeText: { color: colors.white, fontSize: 11, fontWeight: "700", fontFamily: fonts.bodyBold },
   searchRow: { paddingTop: spacing.sm },
   searchInput: { marginBottom: 0 },
-  // Barres de chips : ne s'étirent JAMAIS en hauteur (même fix que la communauté).
-  chipBar: { flexGrow: 0, flexShrink: 0, marginTop: spacing.sm },
-  chips: { gap: spacing.xs, alignItems: "center", paddingVertical: spacing.sm, paddingRight: spacing.md },
-  chip: {
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5,
-    borderColor: colors.border, backgroundColor: colors.surface,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 13, fontWeight: "700", color: colors.text },
-  chipTextActive: { color: colors.white },
-  sortChip: {
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5,
-    borderColor: colors.border, backgroundColor: colors.surface,
-  },
-  sortChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  sortChipText: { fontSize: 13, fontWeight: "700", color: colors.text },
-  sortChipTextActive: { color: colors.white },
-  count: { ...typography.caption, color: colors.textMuted },
-  content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  count: { ...typography.caption, color: colors.textMuted, marginTop: spacing.xs, marginBottom: spacing.sm },
   listContent: { paddingBottom: spacing.xxl, gap: spacing.md },
   footer: { alignItems: "center", paddingVertical: spacing.sm },
   loadMore: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.primary },
   loadMoreText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
-  empty: { gap: spacing.sm },
-  muted: { color: colors.textMuted },
-  row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  thumb: { width: THUMB, height: THUMB, borderRadius: radius.md, backgroundColor: colors.surface },
-  thumbPlaceholder: { alignItems: "center", justifyContent: "center" },
-  rowInfo: { flex: 1, gap: 2 },
-  name: { ...typography.name },
-  desc: { ...typography.caption, color: colors.textMuted },
-  rowFoot: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.xs },
-  price: { ...typography.body, fontWeight: "700", color: colors.primary },
-  outOfStock: {
-    ...typography.caption, color: colors.danger, fontWeight: "600",
-    backgroundColor: colors.primaryLight, paddingHorizontal: spacing.sm, paddingVertical: 1, borderRadius: radius.pill, overflow: "hidden",
-  },
+  name: { ...typography.name, fontSize: 14, lineHeight: 18, minHeight: 36 },
+  price: { ...typography.body, fontWeight: "700", fontSize: 16, color: colors.primary },
 });
