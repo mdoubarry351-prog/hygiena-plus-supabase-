@@ -26,12 +26,19 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Hygiena+ accède à vos photos pour définir votre photo de profil et ajouter des images à vos publications et produits.",
         "NSPhotoLibraryAddUsageDescription": "Hygiena+ enregistre dans votre galerie les photos que vous téléchargez.",
-        "NSFaceIDUsageDescription": "Hygiena+ utilise Face ID pour verrouiller et protéger l'accès à vos données de santé."
+        "NSFaceIDUsageDescription": "Hygiena+ utilise Face ID pour verrouiller et protéger l'accès à vos données de santé.",
+        "NSCameraUsageDescription": "Hygiena+ utilise la caméra pour vos consultations vidéo.",
+        "NSMicrophoneUsageDescription": "Hygiena+ utilise le micro pour vos consultations audio et vidéo."
       }
     },
     "android": {
       "package": "com.hygiena.plus",
       "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo/hygiena-icon-adaptive.png",
         "backgroundColor": "#D1FAE5"
@@ -68,7 +75,8 @@
           "isAccessMediaLocationEnabled": false
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "@config-plugins/react-native-webrtc"
     ],
     "experiments": {
       "typedRoutes": true

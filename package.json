@@ -11,6 +11,9 @@
     "typegen": "supabase gen types typescript --project-id YOUR_PROJECT_ID > src/lib/database.types.ts"
   },
   "dependencies": {
+    "@config-plugins/react-native-webrtc": "^13.0.0",
+    "@daily-co/react-native-daily-js": "^0.86.0",
+    "@daily-co/react-native-webrtc": "^124.0.6-daily.2",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/playfair-display": "^0.4.2",
     "@expo/metro-runtime": "~6.1.2",
@@ -41,6 +44,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-background-timer": "^2.4.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
