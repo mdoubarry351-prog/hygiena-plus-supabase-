@@ -86,8 +86,9 @@ export type DoctorProfile = Pick<Profile, "full_name" | "avatar_url" | "phone">;
 // Médecin enrichi avec le profil de la personne (nom, avatar, téléphone).
 export type DoctorWithProfile = Doctor & { profile: DoctorProfile | null };
 
-// Médecin réduit tel que joint sur un rendez-vous (spécialité + clinique + profil).
-export type AppointmentDoctor = Pick<Doctor, "specialty" | "clinic_name"> & {
+// Praticien réduit tel que joint sur un rendez-vous (spécialité + clinique +
+// type de praticien + profil) — le type permet d'adapter les libellés (reçu, historique).
+export type AppointmentDoctor = Pick<Doctor, "specialty" | "clinic_name" | "practitioner_type"> & {
   profile: DoctorProfile | null;
 };
 
@@ -96,8 +97,8 @@ export type AppointmentWithDoctor = Appointment & {
   doctor: AppointmentDoctor | null;
 };
 
-// Médecin joint pour le reçu (avec nom de clinique).
-export type ReceiptDoctor = Pick<Doctor, "specialty" | "clinic_name"> & {
+// Praticien joint pour le reçu (clinique + type de praticien).
+export type ReceiptDoctor = Pick<Doctor, "specialty" | "clinic_name" | "practitioner_type"> & {
   profile: DoctorProfile | null;
 };
 
@@ -170,7 +171,7 @@ export const appointmentsService = {
   async getAppointments(userId: string): Promise<AppointmentWithDoctor[]> {
     const { data, error } = await supabase
       .from("appointments")
-      .select("*, doctor:doctors(specialty, clinic_name, profile:profiles!doctors_user_id_fkey(full_name, avatar_url, phone))")
+      .select("*, doctor:doctors(specialty, clinic_name, practitioner_type, profile:profiles!doctors_user_id_fkey(full_name, avatar_url, phone))")
       .eq("patient_id", userId)
       .order("appointment_date", { ascending: false })
       .order("appointment_time", { ascending: false });
@@ -243,7 +244,7 @@ export const appointmentsService = {
   async getAppointmentReceipt(id: string): Promise<AppointmentReceipt | null> {
     const { data, error } = await supabase
       .from("appointments")
-      .select("*, doctor:doctors(specialty, clinic_name, profile:profiles!doctors_user_id_fkey(full_name, avatar_url, phone))")
+      .select("*, doctor:doctors(specialty, clinic_name, practitioner_type, profile:profiles!doctors_user_id_fkey(full_name, avatar_url, phone))")
       .eq("id", id)
       .single();
     if (error) throw error;

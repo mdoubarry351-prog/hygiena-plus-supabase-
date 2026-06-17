@@ -13,6 +13,7 @@ import { Loading } from "@/components/Loading";
 import { RescheduleModal } from "@/components/RescheduleModal";
 import { FadeInView } from "@/components/FadeInView";
 import { AppointmentContact } from "@/components/AppointmentContact";
+import { practitionerLabels } from "@/lib/practitioner";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/providers/AuthProvider";
 import { hapticLight, hapticWarning } from "@/lib/haptics";
@@ -22,7 +23,6 @@ import {
   doctorDisplayName,
   formatAppointmentDate,
   formatAppointmentTime,
-  CONSULTATION_MODE_LABEL,
   type AppointmentWithDoctor,
 } from "@/lib/appointments-service";
 import type { AppointmentStatus } from "@/lib/database.types";
@@ -146,6 +146,7 @@ export default function MyAppointments() {
         ) : (
           appointments.map((a, i) => {
             const name = doctorDisplayName(a.doctor?.profile ?? null);
+            const L = practitionerLabels(a.doctor?.practitioner_type);
             return (
               <FadeInView key={a.id} fill={false} delay={Math.min(i, 6) * 55}>
               <Card style={styles.apptCard}>
@@ -158,7 +159,7 @@ export default function MyAppointments() {
                   </View>
                   <View style={styles.headBadges}>
                     <Badge label={STATUS_LABELS[a.status]} color={STATUS_COLORS[a.status]} />
-                    <Badge label={CONSULTATION_MODE_LABEL[a.consultation_mode]} color={a.consultation_mode === "remote" ? colors.secondary : colors.primary} />
+                    <Badge label={L.modeLabel[a.consultation_mode]} color={a.consultation_mode === "remote" ? colors.secondary : colors.primary} />
                   </View>
                 </View>
                 <View style={styles.apptFoot}>
@@ -189,6 +190,7 @@ export default function MyAppointments() {
                     mode={a.consultation_mode}
                     phone={a.doctor?.profile?.phone}
                     clinicName={a.doctor?.clinic_name}
+                    noun={L.noun}
                   />
                 ) : null}
 

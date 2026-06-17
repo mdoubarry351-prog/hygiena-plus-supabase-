@@ -1,4 +1,4 @@
-import type { PractitionerType } from "@/lib/database.types";
+import type { PractitionerType, ConsultationMode } from "@/lib/database.types";
 
 // Libellés/présentation par type de praticien. Centralisés ici pour adapter les
 // écrans (hub, liste, fiche, réservation, reçu) sans dupliquer les chaînes ni
@@ -20,6 +20,8 @@ export type PractitionerLabels = {
   bookHeader: string;
   // Sous-titre du hub.
   hubSubtitle: string;
+  // Libellés du mode de consultation selon le type (remote / physical).
+  modeLabel: Record<ConsultationMode, string>;
 };
 
 const GYNECOLOGY: PractitionerLabels = {
@@ -33,6 +35,7 @@ const GYNECOLOGY: PractitionerLabels = {
   bookCta: "Prendre rendez-vous",
   bookHeader: "Prendre rendez-vous",
   hubSubtitle: "Médecins vérifiées, consultation en clinique ou à distance",
+  modeLabel: { remote: "À distance", physical: "En clinique" },
 };
 
 const THERAPY: PractitionerLabels = {
@@ -46,6 +49,7 @@ const THERAPY: PractitionerLabels = {
   bookCta: "Réserver une séance",
   bookHeader: "Réserver une séance",
   hubSubtitle: "Thérapeutes vérifié·es, séance en ligne ou en présentiel",
+  modeLabel: { remote: "En ligne", physical: "En présentiel" },
 };
 
 export const PRACTITIONER_LABELS: Record<PractitionerType, PractitionerLabels> = {
@@ -64,4 +68,9 @@ export function practitionerTypeOf(t: string | null | undefined): PractitionerTy
 // Raccourci : libellés à partir d'une valeur brute (colonne practitioner_type).
 export function practitionerLabels(t: string | null | undefined): PractitionerLabels {
   return PRACTITIONER_LABELS[practitionerTypeOf(t)];
+}
+
+// Libellé du mode de consultation adapté au type de praticien (reçu, historique).
+export function consultationModeLabel(mode: ConsultationMode, t: string | null | undefined): string {
+  return practitionerLabels(t).modeLabel[mode];
 }

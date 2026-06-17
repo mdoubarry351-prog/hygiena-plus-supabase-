@@ -29,7 +29,7 @@ function ContactBtn({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyp
  * - En clinique : lieu du rendez-vous (clinic_name), ou message neutre.
  * Réutilisé sur le reçu et la carte « Mes rendez-vous ». Tokens uniquement.
  */
-export function AppointmentContact({ mode, phone, clinicName }: { mode: ConsultationMode; phone?: string | null; clinicName?: string | null }) {
+export function AppointmentContact({ mode, phone, clinicName, noun = "médecin" }: { mode: ConsultationMode; phone?: string | null; clinicName?: string | null; noun?: string }) {
   const tel = phone?.trim() ?? "";
   const clinic = clinicName?.trim() ?? "";
 
@@ -38,7 +38,7 @@ export function AppointmentContact({ mode, phone, clinicName }: { mode: Consulta
       <View style={styles.box}>
         <View style={styles.head}>
           <Ionicons name="videocam-outline" size={18} color={colors.primaryDark} />
-          <Text style={styles.title}>Contacter votre médecin</Text>
+          <Text style={styles.title}>Contacter votre {noun}</Text>
         </View>
         {tel ? (
           <>

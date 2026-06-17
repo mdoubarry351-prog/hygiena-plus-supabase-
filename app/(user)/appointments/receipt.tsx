@@ -11,13 +11,13 @@ import { Loading } from "@/components/Loading";
 import { Divider } from "@/components/Divider";
 import { FadeInView } from "@/components/FadeInView";
 import { AppointmentContact } from "@/components/AppointmentContact";
+import { practitionerLabels } from "@/lib/practitioner";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   appointmentsService,
   doctorDisplayName,
   formatAppointmentDate,
   formatAppointmentTime,
-  CONSULTATION_MODE_LABEL,
   type AppointmentReceipt,
 } from "@/lib/appointments-service";
 import { formatPrice } from "@/lib/marketplace-service";
@@ -59,6 +59,8 @@ export default function Receipt() {
   const doctorName = doctorDisplayName(appt.doctor?.profile ?? null);
   const clinic = appt.doctor?.clinic_name?.trim() || "Clinique non renseignée";
   const mode = appt.consultation_mode;
+  const L = practitionerLabels(appt.doctor?.practitioner_type);
+  const modeLabel = L.modeLabel[mode];
   const modeColor = mode === "remote" ? colors.secondary : colors.primary;
 
   return (
@@ -72,7 +74,7 @@ export default function Receipt() {
           </Animated.View>
           <Text style={styles.paid}>Payé</Text>
           <Text style={styles.paidSub}>Ton paiement a bien été pris en compte</Text>
-          <Badge label={CONSULTATION_MODE_LABEL[mode]} color={modeColor} />
+          <Badge label={modeLabel} color={modeColor} />
         </View>
 
         <Card style={styles.ticket}>
@@ -81,8 +83,8 @@ export default function Receipt() {
 
           <Divider spacing={spacing.xs} />
 
-          <Row label="Gynécologue" value={doctorName} />
-          <Row label="Type" value={CONSULTATION_MODE_LABEL[mode]} />
+          <Row label={L.nounCap} value={doctorName} />
+          <Row label="Type" value={modeLabel} />
           {mode === "physical" ? <Row label="Clinique" value={clinic} /> : null}
           <Row label="Date" value={formatAppointmentDate(appt.appointment_date)} capitalize />
           <Row label="Heure" value={formatAppointmentTime(appt.appointment_time)} />
@@ -102,7 +104,7 @@ export default function Receipt() {
           ) : null}
         </Card>
 
-        <AppointmentContact mode={mode} phone={appt.doctor?.profile?.phone} clinicName={appt.doctor?.clinic_name} />
+        <AppointmentContact mode={mode} phone={appt.doctor?.profile?.phone} clinicName={appt.doctor?.clinic_name} noun={L.noun} />
 
         <Text style={styles.note}>Paiement simulé — démonstration, aucun débit réel.</Text>
 

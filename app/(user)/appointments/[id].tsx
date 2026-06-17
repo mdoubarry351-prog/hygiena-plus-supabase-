@@ -33,6 +33,7 @@ import {
 import type { ConsultationMode } from "@/lib/database.types";
 import { DOCTOR_MESSAGING_ENABLED } from "@/lib/app-config";
 import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
+import { practitionerLabels } from "@/lib/practitioner";
 import { formatPrice } from "@/lib/marketplace-service";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 import { resyncAppointmentReminders } from "@/lib/reminders";
@@ -185,6 +186,10 @@ export default function BookAppointment() {
   const name = doctorDisplayName(doctor.profile);
   const availabilityDefined = hasAnyAvailability(doctor.availability);
   const canBook = !!selectedDate && !!selectedTime;
+  // Libellés adaptés au type de praticien (gynécologie / thérapie).
+  const L = practitionerLabels(doctor.practitioner_type);
+  const isTherapy = doctor.practitioner_type === "therapy";
+  const interventions = doctor.intervention_areas?.trim();
 
   async function handleBook() {
     if (!appointments_enabled) return showServiceUnavailable();
@@ -266,7 +271,7 @@ export default function BookAppointment() {
   return (
     <Screen>
       <View style={styles.fill}>
-      <ScreenHeader title="Prendre rendez-vous" />
+      <ScreenHeader title={L.bookHeader} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* En-tête profil */}
         <FadeInView fill={false} delay={0}>
@@ -277,7 +282,7 @@ export default function BookAppointment() {
           <View style={styles.doctorInfo}>
             <View style={styles.nameRow}>
               <Text style={typography.h3} numberOfLines={1}>{name}</Text>
-              {doctor.is_validated ? <VerifiedDoctorBadge /> : null}
+              {doctor.is_validated ? <VerifiedDoctorBadge label={L.verifiedLabel} /> : null}
             </View>
             <Text style={styles.specialty}>{doctor.specialty}</Text>
             {doctor.clinic_name ? (
@@ -301,13 +306,23 @@ export default function BookAppointment() {
         </FadeInView>
 
         <FadeInView fill={false} delay={STEP} style={styles.group}>
-        <MedicalDisclaimer text="La consultation se fait en clinique ; la messagerie en ligne ne remplace pas un examen médical." />
+        <MedicalDisclaimer text={isTherapy
+          ? "Les séances se font en ligne ou en présentiel et ne remplacent pas une prise en charge médicale d'urgence."
+          : "La consultation se fait en clinique ou à distance ; elle ne remplace pas un examen médical."} />
 
         {/* À propos */}
         {doctor.bio ? (
           <Card style={styles.bioCard}>
             <Text style={typography.h3}>À propos</Text>
             <Text style={[typography.body, styles.muted]}>{doctor.bio}</Text>
+          </Card>
+        ) : null}
+
+        {/* Domaines d'intervention (thérapie surtout) */}
+        {interventions ? (
+          <Card style={styles.bioCard}>
+            <Text style={typography.h3}>Domaines d'intervention</Text>
+            <Text style={[typography.body, styles.muted]}>{interventions}</Text>
           </Card>
         ) : null}
 
@@ -348,14 +363,14 @@ export default function BookAppointment() {
           <ModeCard
             active={mode === "remote"}
             icon="chatbubbles-outline"
-            title="À distance"
+            title={L.modeLabel.remote}
             subtitle="Par WhatsApp ou appel"
             onPress={() => { hapticLight(); setMode("remote"); }}
           />
           <ModeCard
             active={mode === "physical"}
             icon="business-outline"
-            title="En clinique"
+            title={L.modeLabel.physical}
             subtitle={doctor.clinic_name?.trim() || "Sur place"}
             onPress={() => { hapticLight(); setMode("physical"); }}
           />
@@ -364,7 +379,7 @@ export default function BookAppointment() {
         {!availabilityDefined ? (
           <Card style={styles.noAvailCard}>
             <Ionicons name="calendar-outline" size={20} color={colors.textMuted} />
-            <Text style={styles.noAvailText}>Ce médecin n'a pas encore défini ses disponibilités.</Text>
+            <Text style={styles.noAvailText}>Ce·tte {L.noun} n'a pas encore défini ses disponibilités.</Text>
           </Card>
         ) : (
           <>
@@ -451,7 +466,7 @@ export default function BookAppointment() {
               </Text>
             </View>
             <Text style={styles.paySummary}>{formatAppointmentDate(selectedDate!)} à {selectedTime}</Text>
-            <Text style={styles.paySummary}>Consultation · {CONSULTATION_MODE_LABEL[mode]}</Text>
+            <Text style={styles.paySummary}>{isTherapy ? "Séance" : "Consultation"} · {L.modeLabel[mode]}</Text>
             <Text style={styles.payNote}>Paiement simulé — aucun débit réel.</Text>
           </Card>
         ) : (
