@@ -17,6 +17,7 @@ import type {
   OrderStatus,
   AppointmentStatus,
   ConsultationMode,
+  PractitionerType,
   DeliveryMode,
   Json,
   Tables,
@@ -125,6 +126,8 @@ export type CreateDoctorInput = {
   phone: string;
   email: string | null;
   specialty: string;
+  practitionerType: PractitionerType;
+  interventionAreas: string | null;
   yearsExperience: number;
   consultationFeeGNF: number;
   bio: string | null;
@@ -1000,6 +1003,14 @@ export const adminService = {
     const result = data as (CreateDoctorResult & { error?: string }) | null;
     if (!result || result.error) throw new Error(result?.error || "Création du médecin échouée");
     return result;
+  },
+
+  // Fixe le type de praticien + domaines d'intervention d'une fiche (par user_id).
+  // Filet de sécurité après createDoctor (l'admin peut écrire `doctors` : RLS is_admin).
+  async setDoctorType(userId: string, practitionerType: PractitionerType, interventionAreas: string | null): Promise<void> {
+    const patch: TablesUpdate<"doctors"> = { practitioner_type: practitionerType, intervention_areas: interventionAreas };
+    const { error } = await supabase.from("doctors").update(patch).eq("user_id", userId);
+    if (error) throw error;
   },
 
   // Promeut un compte EXISTANT en médecin : role='doctor' puis création de la fiche (validée).

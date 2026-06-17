@@ -15,7 +15,10 @@ import { StarRating } from "@/components/StarRating";
 import { AppImage } from "@/components/AppImage";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { PhoneInput } from "@/components/PhoneInput";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { onlyDigits, toE164, isValidGuineaLocal } from "@/lib/phone";
+import { practitionerTypeOf, PRACTITIONER_TYPES, PRACTITIONER_LABELS } from "@/lib/practitioner";
+import type { PractitionerType } from "@/lib/database.types";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, type DoctorRow, type DoctorActivity } from "@/lib/admin-service";
 import { uploadAvatar } from "@/lib/storage";
@@ -61,6 +64,10 @@ export default function AdminDoctors() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [fullName, setFullName] = useState("");
   const [specialty, setSpecialty] = useState("");
+  const [practitionerType, setPractitionerType] = useState<PractitionerType>("gynecology");
+  const [interventionAreas, setInterventionAreas] = useState("");
+  // Filtre de la liste par type de praticien.
+  const [typeFilter, setTypeFilter] = useState<"all" | PractitionerType>("all");
   const [yearsExp, setYearsExp] = useState("0");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -144,7 +151,9 @@ export default function AdminDoctors() {
     return (d.profile?.full_name ?? "").toLowerCase().includes(q) || d.specialty.toLowerCase().includes(q);
   }
   const q = search.trim().toLowerCase();
-  const visibleDoctors = doctors.filter((d) => matchesSearch(d, q));
+  const visibleDoctors = doctors
+    .filter((d) => typeFilter === "all" || practitionerTypeOf(d.practitioner_type) === typeFilter)
+    .filter((d) => matchesSearch(d, q));
 
   async function handleExport() {
     setExporting(true);
@@ -179,6 +188,7 @@ export default function AdminDoctors() {
     setAvatarUrl(null); setLocalAvatar(null); setAvatarUploading(false);
     setFullName(""); setSpecialty(""); setYearsExp("0"); setPhone(""); setEmail("");
     setFee(DEFAULT_FEE); setIsValidated(true); setBio("");
+    setPractitionerType("gynecology"); setInterventionAreas("");
   }
 
   async function pickAvatar() {
@@ -226,18 +236,26 @@ export default function AdminDoctors() {
 
     setSaving(true);
     try {
+      const interv = interventionAreas.trim() || null;
       const res = await adminService.createDoctor({
         firstName,
         lastName,
         phone: toE164(onlyDigits(phone)),
         email: email.trim() || null,
         specialty,
+        practitionerType,
+        interventionAreas: interv,
         yearsExperience: years,
         consultationFeeGNF: feeNum,
         bio: bio.trim() || null,
         avatarUrl,
         isValidated,
       });
+      // Filet de sécurité : garantit le type + domaines même si l'Edge Function
+      // ne les traite pas (l'admin peut écrire `doctors`). Best-effort.
+      if (res.user_id) {
+        await adminService.setDoctorType(res.user_id, practitionerType, interv).catch(() => {});
+      }
       const lines = [
         "Identifiants de connexion à communiquer au médecin :",
         `Téléphone : ${res.phone ?? toE164(onlyDigits(phone))}`,
@@ -347,6 +365,14 @@ export default function AdminDoctors() {
             autoCapitalize="none"
             style={styles.searchInput}
           />
+          <SegmentedControl
+            items={[
+              { key: "all", label: "Tous" },
+              ...PRACTITIONER_TYPES.map((t) => ({ key: t, label: PRACTITIONER_LABELS[t].shortTitle })),
+            ]}
+            value={typeFilter}
+            onChange={(k) => setTypeFilter(k as "all" | PractitionerType)}
+          />
         </View>
       ) : null}
       <ScrollView
@@ -386,6 +412,19 @@ export default function AdminDoctors() {
             {/* Nom complet */}
             <Input label="Nom complet *" value={fullName} onChangeText={setFullName} placeholder="Ex. Aïssata Diallo" autoCapitalize="words" />
 
+            {/* Type de praticien (gynécologie / thérapie) → practitioner_type */}
+            <Text style={styles.fieldLabel}>Type de praticien *</Text>
+            <View style={styles.chips}>
+              {PRACTITIONER_TYPES.map((t) => {
+                const active = practitionerType === t;
+                return (
+                  <Pressable key={t} onPress={() => setPractitionerType(t)} style={[styles.chip, active && styles.chipActive]}>
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{PRACTITIONER_LABELS[t].emoji} {PRACTITIONER_LABELS[t].shortTitle}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
             {/* Spécialité (select) */}
             <Text style={styles.fieldLabel}>Spécialité *</Text>
             <View style={styles.chips}>
@@ -398,6 +437,9 @@ export default function AdminDoctors() {
                 );
               })}
             </View>
+
+            {/* Domaines d'intervention (surtout thérapie) → intervention_areas */}
+            <Input label="Domaines d'intervention (optionnel)" value={interventionAreas} onChangeText={setInterventionAreas} placeholder="Ex. anxiété, stress, deuil, couple…" multiline numberOfLines={2} style={styles.textArea} />
 
             {/* Années d'expérience */}
             <Input label="Années d'expérience" value={yearsExp} onChangeText={setYearsExp} placeholder="0" keyboardType="numeric" />
@@ -450,7 +492,7 @@ export default function AdminDoctors() {
               <Pressable onPress={() => setExpandedId(open ? null : d.id)} style={styles.head} accessibilityRole="button" accessibilityLabel={open ? "Masquer l'activité" : "Voir l'activité"}>
                 <View style={styles.info}>
                   <Text style={styles.name}>{d.profile?.full_name ?? "Médecin"}</Text>
-                  <Text style={styles.specialty}>{d.specialty}</Text>
+                  <Text style={styles.specialty}>{PRACTITIONER_LABELS[practitionerTypeOf(d.practitioner_type)].shortTitle} · {d.specialty}</Text>
                   <Text style={styles.meta}>{d.profile?.email ?? "—"}</Text>
                 </View>
                 <Badge label={d.is_validated ? "Validé" : "En attente"} color={d.is_validated ? colors.success : colors.accent} />
