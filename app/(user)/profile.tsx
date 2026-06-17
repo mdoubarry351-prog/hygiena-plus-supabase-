@@ -1,4 +1,4 @@
-import { Alert, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -7,29 +7,13 @@ import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { Avatar } from "@/components/Avatar";
 import { FadeInView } from "@/components/FadeInView";
+import { MenuRow } from "@/components/MenuRow";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { useAuth } from "@/providers/AuthProvider";
-import { APP_DOWNLOAD_URL, PREMIUM_ENABLED } from "@/lib/app-config";
+import { PREMIUM_ENABLED } from "@/lib/app-config";
 import { colors, fonts, radius, shadows, spacing, typography } from "@/theme";
 
 const STEP = 55; // pas de l'apparition échelonnée (cohérent Vagues 1-5)
-
-// Ligne de menu réutilisable : pastille d'icône + libellé/sous-libellé + chevron.
-// Card onPress → effet de pression (scale + ombre) + haptique léger.
-function MenuRow({ icon, title, sub, onPress, tint = colors.primary }: { icon: keyof typeof Ionicons.glyphMap; title: string; sub: string; onPress: () => void; tint?: string }) {
-  return (
-    <Card onPress={onPress} haptic accessibilityLabel={title} style={styles.proCard}>
-      <View style={styles.proIcon}>
-        <Ionicons name={icon} size={22} color={tint} />
-      </View>
-      <View style={styles.proText}>
-        <Text style={styles.proTitle}>{title}</Text>
-        <Text style={styles.proSub}>{sub}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-    </Card>
-  );
-}
 
 export default function Profile() {
   const { profile, role, signOut } = useAuth();
@@ -52,16 +36,6 @@ export default function Profile() {
         },
       },
     ]);
-  }
-
-  async function inviteFriend() {
-    try {
-      await Share.share({
-        message: `Découvre Hygiena+, l'app de santé féminine 🌸. Télécharge-la ici : ${APP_DOWNLOAD_URL}`,
-      });
-    } catch {
-      // partage annulé : rien à faire
-    }
   }
 
   const fullName =
@@ -139,19 +113,12 @@ export default function Profile() {
           ) : null}
           <MenuRow icon="person-outline" title="Modifier mes informations" sub="Nom, téléphone, email, mot de passe" onPress={() => router.push("/(user)/account")} />
           <MenuRow icon="heart-circle-outline" title="Informations de santé" sub="Âge, mesures, groupe sanguin, allergies — privé" onPress={() => router.push("/(user)/health")} />
-          <MenuRow icon="notifications-outline" title="Préférences de notifications" sub="Choisir les notifications à recevoir" onPress={() => router.push("/(user)/notification-settings")} />
-          <MenuRow icon="lock-closed-outline" title="Verrouillage & confidentialité" sub="Code PIN, biométrie" onPress={() => router.push("/(user)/lock")} />
-          <MenuRow icon="person-remove-outline" title="Comptes bloqués" sub="Gérer les personnes bloquées" onPress={() => router.push("/(user)/blocked")} />
-          <MenuRow icon="share-social-outline" title="Inviter un ami" sub="Partage le lien de téléchargement de l'app" onPress={inviteFriend} />
+          <MenuRow icon="settings-outline" title="Réglages" sub="Notifications, verrouillage, comptes bloqués" onPress={() => router.push("/(user)/settings")} />
+          <MenuRow icon="help-circle-outline" title="Aide & à propos" sub="FAQ, confidentialité, conditions, inviter un ami" onPress={() => router.push("/(user)/about")} />
         </FadeInView>
 
-        {/* Aide & informations */}
+        {/* Déconnexion & zone de danger */}
         <FadeInView fill={false} delay={STEP * 3} style={styles.group}>
-          <Text style={[typography.h3, styles.sectionTitle]}>Aide & informations</Text>
-          <MenuRow icon="help-circle-outline" title="Aide & FAQ" sub="Questions fréquentes, nous contacter" onPress={() => router.push("/(user)/help")} />
-          <MenuRow icon="shield-checkmark-outline" title="Politique de confidentialité" sub="Tes données et tes droits" onPress={() => router.push("/(user)/privacy")} />
-          <MenuRow icon="document-text-outline" title="Conditions d'utilisation" sub="Règles d'usage de l'application" onPress={() => router.push("/(user)/terms")} />
-
           <Button title="Se déconnecter" variant="outline" onPress={handleSignOut} />
           <DeleteAccountButton />
         </FadeInView>
@@ -200,14 +167,5 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     fontWeight: "700",
   },
-  formCard: { gap: spacing.sm },
   sectionTitle: { marginTop: spacing.sm },
-  proCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  proIcon: {
-    width: 44, height: 44, borderRadius: radius.pill, backgroundColor: colors.surface,
-    alignItems: "center", justifyContent: "center",
-  },
-  proText: { flex: 1, gap: 2 },
-  proTitle: { ...typography.name },
-  proSub: { ...typography.caption, color: colors.textMuted },
 });
