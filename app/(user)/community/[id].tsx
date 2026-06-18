@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -7,10 +8,11 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Switch,
   Text,
+  TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,7 +20,6 @@ import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
-import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { ActionSheet, type ActionSheetOption } from "@/components/ActionSheet";
 import { useAuth } from "@/providers/AuthProvider";
@@ -45,7 +46,8 @@ import { colors, fonts, radius, spacing, typography } from "@/theme";
 export default function PostDetail() {
   const { id, focus } = useLocalSearchParams<{ id: string; focus?: string }>();
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
+  const insets = useSafeAreaInsets();
   const { savedIds, toggle: toggleSave } = useBookmarks();
   const scrollRef = useRef<ScrollView>(null);
   const didFocusScroll = useRef(false);
@@ -159,6 +161,11 @@ export default function PostDetail() {
   }
 
   const meId = session?.user?.id;
+  // Nom affiché : « Membre Hygiena+ » si anonyme (cohérent avec la carte de post),
+  // sinon le nom réel. L'anonymat reste strict (on ne lit pas l'auteur si anonyme).
+  const displayName = (c: { is_anonymous: boolean; author: { full_name: string | null } | null }) =>
+    c.is_anonymous ? "Membre Hygiena+" : authorDisplayName(false, c.author);
+  const myFirstName = profile?.first_name?.trim() || profile?.full_name?.trim().split(" ")[0] || "";
 
   // Partage natif de la publication + lien de téléchargement de l'app.
   async function sharePost() {
@@ -348,44 +355,25 @@ export default function PostDetail() {
   function renderComment(c: CommunityCommentWithAuthor, isReply: boolean) {
     // Mise en avant des médecins vérifiés (impossible si l'auteur poste anonymement).
     const highlighted = !c.is_anonymous && c.isVerifiedDoctor;
+    const tint = c.is_anonymous ? anonTint(c.id) : { bg: colors.primaryLight, fg: colors.primary };
+    const mine = c.user_id === meId;
+    const isEditing = editingCommentId === c.id;
     return (
-      <View
-        key={c.id}
-        style={[
-          styles.comment,
-          isReply && (highlighted ? styles.replyIndent : styles.replyComment),
-          highlighted && styles.doctorComment,
-        ]}
-      >
-        <View style={[styles.commentAvatar, isReply && styles.replyAvatar, highlighted && styles.doctorAvatar]}>
-          <Ionicons name={c.is_anonymous ? "person-outline" : "person"} size={isReply ? 13 : 15} color={colors.primary} />
+      <View key={c.id} style={[styles.commentRow, isReply && styles.replyRow]}>
+        {/* Avatar rond (teinté si anonyme, cohérent avec la carte de post). */}
+        <View style={[styles.cAvatar, isReply && styles.cAvatarReply, { backgroundColor: tint.bg }]}>
+          <Ionicons name="person" size={isReply ? 13 : 15} color={tint.fg} />
         </View>
-        <View style={styles.commentBody}>
+
+        <View style={styles.cMain}>
           {highlighted ? (
             <View style={styles.doctorBanner}>
-              <Ionicons name="medkit" size={13} color={colors.primaryDark} />
+              <Ionicons name="medkit" size={12} color={colors.primaryDark} />
               <Text style={styles.doctorBannerText}>Réponse de médecin vérifié</Text>
             </View>
           ) : null}
-          <View style={styles.commentHead}>
-            <View style={styles.authorRow}>
-              <Text style={styles.commentAuthor}>{authorDisplayName(c.is_anonymous, c.author)}</Text>
-              {!c.is_anonymous && c.isVerifiedDoctor ? <VerifiedDoctorBadge specialty={c.doctorSpecialty} /> : null}
-            </View>
-            <View style={styles.commentRight}>
-              <Text style={styles.commentTime}>{formatRelativeTime(c.created_at)}{wasEdited(c.created_at, c.updated_at) ? " · modifié" : ""}</Text>
-              {c.user_id === meId ? (
-                <Pressable onPress={() => commentMenu(c)} hitSlop={8} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de mon commentaire">
-                  <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
-                </Pressable>
-              ) : (
-                <Pressable onPress={() => commentOtherMenu(c)} hitSlop={8} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options du commentaire">
-                  <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
-                </Pressable>
-              )}
-            </View>
-          </View>
-          {editingCommentId === c.id ? (
+
+          {isEditing ? (
             <View style={styles.editBox}>
               <Input
                 value={editText}
@@ -405,15 +393,31 @@ export default function PostDetail() {
             </View>
           ) : (
             <>
-              <Text style={styles.commentText}>{c.content}</Text>
-              <View style={styles.commentActions}>
-                <Pressable onPress={() => handleCommentLike(c)} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel={c.likedByMe ? "Je n'aime plus" : "J'aime"}>
-                  <HeartButton active={c.likedByMe} size={16} />
-                  <Text style={[styles.commentActionText, c.likedByMe && styles.likeCountActive]}>{c.likes_count}</Text>
+              {/* Bulle (s'ajuste au contenu) + menu ⋯ juste à côté. */}
+              <View style={styles.bubbleRow}>
+                <View style={[styles.bubble, isReply && styles.bubbleReply, highlighted && styles.bubbleDoctor]}>
+                  <View style={styles.bubbleAuthorRow}>
+                    <Text style={styles.bubbleAuthor}>{displayName(c)}</Text>
+                    {!c.is_anonymous && c.isVerifiedDoctor ? <VerifiedDoctorBadge specialty={c.doctorSpecialty} /> : null}
+                  </View>
+                  <Text style={styles.bubbleText}>{c.content}</Text>
+                </View>
+                <Pressable onPress={() => (mine ? commentMenu(c) : commentOtherMenu(c))} hitSlop={8} style={styles.cMenu} accessibilityRole="button" accessibilityLabel={mine ? "Options de mon commentaire" : "Options du commentaire"}>
+                  <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
                 </Pressable>
-                <Pressable onPress={() => { hapticLight(); setReplyTo(c); }} hitSlop={8} style={styles.commentAction} accessibilityRole="button" accessibilityLabel="Répondre">
-                  <Ionicons name="return-down-forward-outline" size={15} color={colors.textMuted} />
-                  <Text style={styles.commentActionText}>Répondre</Text>
+              </View>
+
+              {/* Meta sous la bulle : heure · Répondre · J'aime (compteur). */}
+              <View style={styles.metaRow}>
+                <Text style={styles.metaTime}>{formatRelativeTime(c.created_at)}{wasEdited(c.created_at, c.updated_at) ? " · modifié" : ""}</Text>
+                <Text style={styles.metaDot}>·</Text>
+                <Pressable onPress={() => { hapticLight(); setReplyTo(c); }} hitSlop={8} accessibilityRole="button" accessibilityLabel="Répondre">
+                  <Text style={styles.metaAction}>Répondre</Text>
+                </Pressable>
+                <Text style={styles.metaDot}>·</Text>
+                <Pressable onPress={() => handleCommentLike(c)} hitSlop={8} style={styles.metaLike} accessibilityRole="button" accessibilityLabel={c.likedByMe ? "Je n'aime plus" : "J'aime"}>
+                  <HeartButton active={c.likedByMe} size={15} />
+                  <Text style={[styles.metaAction, c.likedByMe && styles.metaLikeActive]}>{c.likes_count > 0 ? c.likes_count : "J'aime"}</Text>
                 </Pressable>
               </View>
             </>
@@ -523,38 +527,51 @@ export default function PostDetail() {
           )}
         </ScrollView>
 
-        <View style={styles.composer}>
+        <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
           {replyTo ? (
             <View style={styles.replyBanner}>
               <Ionicons name="return-down-forward-outline" size={14} color={colors.primary} />
               <Text style={styles.replyBannerText} numberOfLines={1}>
-                En réponse à {authorDisplayName(replyTo.is_anonymous, replyTo.author)}
+                Réponse à {displayName(replyTo)}
               </Text>
               <Pressable onPress={() => setReplyTo(null)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Annuler la réponse">
                 <Ionicons name="close" size={16} color={colors.textMuted} />
               </Pressable>
             </View>
           ) : null}
-          <Input
-            value={comment}
-            onChangeText={setComment}
-            placeholder={replyTo ? "Ta réponse…" : "Écrire un commentaire…"}
-            multiline
-            style={styles.composerInput}
-          />
-          <View style={styles.composerRow}>
-            <View style={styles.anonToggle}>
-              <Switch
-                value={isAnonymous}
-                onValueChange={setIsAnonymous}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.white}
+          <View style={styles.composerBar}>
+            <View style={styles.composerAvatar}>
+              <Ionicons name="person" size={16} color={colors.primary} />
+            </View>
+            <View style={styles.composerPill}>
+              <TextInput
+                value={comment}
+                onChangeText={setComment}
+                placeholder={replyTo ? "Ta réponse…" : myFirstName ? `Commenter en tant que ${myFirstName}…` : "Commenter…"}
+                placeholderTextColor={colors.textMuted}
+                style={styles.composerInput}
+                multiline
               />
-              <Text style={styles.anonLabel}>Anonyme</Text>
+              <Pressable
+                onPress={() => { hapticLight(); setIsAnonymous((v) => !v); }}
+                hitSlop={8}
+                style={styles.anonBtn}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: isAnonymous }}
+                accessibilityLabel="Commenter anonymement"
+              >
+                <Ionicons name={isAnonymous ? "eye-off" : "eye-off-outline"} size={18} color={isAnonymous ? colors.primary : colors.textMuted} />
+              </Pressable>
             </View>
-            <View style={styles.sendBtn}>
-              <Button title="Envoyer" onPress={handleSend} loading={sending} />
-            </View>
+            <Pressable
+              onPress={handleSend}
+              disabled={sending || !comment.trim()}
+              style={({ pressed }) => [styles.sendCircle, (sending || !comment.trim()) && styles.sendCircleDisabled, pressed && styles.footPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Envoyer"
+            >
+              {sending ? <ActivityIndicator color={colors.white} size="small" /> : <Ionicons name="send" size={18} color={colors.white} />}
+            </Pressable>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -582,11 +599,9 @@ const styles = StyleSheet.create({
   headInfo: { flex: 1 },
   authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
   blockBtn: { padding: spacing.xs },
-  commentRight: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   author: { ...typography.name },
   time: { ...typography.caption, color: colors.textMuted },
   body: { ...typography.body, color: colors.text, lineHeight: 22 },
-  postImage: { width: "100%", height: 200, borderRadius: radius.md, backgroundColor: colors.surface, marginTop: spacing.sm },
   postFoot: { flexDirection: "row", alignItems: "center", marginTop: spacing.xs },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   footPressed: { opacity: 0.5 },
@@ -599,27 +614,31 @@ const styles = StyleSheet.create({
   // Bascule repli/expansion d'un fil, alignée sur l'indentation des réponses.
   threadToggle: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginLeft: spacing.xl },
   threadToggleText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
-  comment: { flexDirection: "row", gap: spacing.sm },
-  replyComment: { marginLeft: spacing.xl, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.border },
-  replyIndent: { marginLeft: spacing.xl },
-  // Mise en avant médecin vérifié : encart vert clair sobre + bordure verte.
-  doctorComment: { backgroundColor: colors.primaryLight, borderWidth: 1.5, borderColor: colors.primary, borderRadius: radius.md, padding: spacing.sm },
-  doctorAvatar: { backgroundColor: colors.white },
+  // ---- Commentaires « bulles » (inspiration Facebook, identité Hygiena+) ----
+  commentRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
+  // Réponse : indentée + ligne de fil discrète à gauche.
+  replyRow: { marginLeft: spacing.lg, paddingLeft: spacing.sm, borderLeftWidth: 1.5, borderLeftColor: colors.border },
+  cAvatar: { width: 36, height: 36, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
+  cAvatarReply: { width: 30, height: 30 },
+  cMain: { flex: 1, gap: 2 },
   doctorBanner: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginBottom: 2 },
   doctorBannerText: { ...typography.caption, color: colors.primaryDark, fontWeight: "700" },
-  commentAvatar: {
-    width: 30, height: 30, borderRadius: radius.pill, backgroundColor: colors.primaryLight,
-    alignItems: "center", justifyContent: "center",
-  },
-  replyAvatar: { width: 26, height: 26 },
-  commentBody: { flex: 1, gap: 2 },
-  commentHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  commentAuthor: { ...typography.caption, color: colors.text, fontFamily: fonts.bodyBold, fontWeight: "700" },
-  commentTime: { ...typography.caption, color: colors.textMuted },
-  commentText: { ...typography.body, color: colors.text, lineHeight: 20 },
-  commentActions: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },
-  commentAction: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  commentActionText: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
+  bubbleRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.xs },
+  // Bulle : fond gris clair tokenisé, coins arrondis, largeur = contenu (pas pleine largeur).
+  bubble: { flexShrink: 1, backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  bubbleReply: { paddingVertical: spacing.xs },
+  bubbleDoctor: { backgroundColor: colors.primaryLight, borderWidth: 1.5, borderColor: colors.primary },
+  bubbleAuthorRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap", marginBottom: 1 },
+  bubbleAuthor: { ...typography.caption, color: colors.text, fontFamily: fonts.bodyBold, fontWeight: "700" },
+  bubbleText: { ...typography.body, color: colors.text, lineHeight: 20 },
+  cMenu: { paddingTop: spacing.sm, paddingHorizontal: spacing.xs },
+  // Meta sous la bulle : heure · Répondre · J'aime (compteur).
+  metaRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginLeft: spacing.sm, marginTop: 2 },
+  metaTime: { ...typography.caption, color: colors.textMuted },
+  metaDot: { ...typography.caption, color: colors.textMuted },
+  metaAction: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
+  metaLike: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  metaLikeActive: { color: colors.primary },
   editBox: { gap: spacing.xs, marginTop: spacing.xs },
   editInput: { minHeight: 40, height: undefined, textAlignVertical: "top", paddingTop: spacing.sm, marginBottom: 0 },
   editActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.md, alignItems: "center" },
@@ -629,13 +648,42 @@ const styles = StyleSheet.create({
   editSaveText: { ...typography.caption, color: colors.white, fontWeight: "700" },
   replyBanner: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.primaryLight, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   replyBannerText: { ...typography.caption, color: colors.primaryDark, fontWeight: "600", flex: 1 },
+  // ---- Barre de commentaire fixe (sticky, au-dessus du clavier) ----
   composer: {
-    borderTopWidth: 1, borderTopColor: colors.border,
-    paddingTop: spacing.sm, paddingBottom: spacing.sm, gap: spacing.sm,
+    borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card,
+    paddingHorizontal: spacing.md, paddingTop: spacing.sm, gap: spacing.xs,
   },
-  composerInput: { minHeight: 44, height: undefined, textAlignVertical: "top", paddingTop: spacing.sm, marginBottom: 0 },
-  composerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
-  anonToggle: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  anonLabel: { ...typography.caption, color: colors.text },
-  sendBtn: { flex: 1, maxWidth: 160 },
+  composerBar: { flexDirection: "row", alignItems: "flex-end", gap: spacing.sm },
+  composerAvatar: {
+    width: 34, height: 34, borderRadius: radius.pill, backgroundColor: colors.primaryLight,
+    alignItems: "center", justifyContent: "center", marginBottom: 4,
+  },
+  composerPill: {
+    flex: 1, flexDirection: "row", alignItems: "flex-end",
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    paddingLeft: spacing.md, paddingRight: spacing.xs, minHeight: 42,
+  },
+  composerInput: { flex: 1, ...typography.body, color: colors.text, paddingVertical: spacing.sm, maxHeight: 120 },
+  anonBtn: { padding: spacing.xs, alignSelf: "center" },
+  sendCircle: {
+    width: 42, height: 42, borderRadius: radius.pill, backgroundColor: colors.primary,
+    alignItems: "center", justifyContent: "center",
+  },
+  sendCircleDisabled: { backgroundColor: colors.border },
 });
+
+// Teintes douces (tokens) pour l'avatar des commentaires anonymes — cohérent
+// avec la carte de publication. Dérivé de l'id, SANS révéler d'identité.
+const ANON_TINTS: { bg: string; fg: string }[] = [
+  { bg: colors.primaryLight, fg: colors.primaryDark },
+  { bg: colors.infoSoft, fg: colors.secondary },
+  { bg: colors.warningSoft, fg: colors.warning },
+  { bg: colors.successSoft, fg: colors.success },
+  { bg: colors.dangerSoft, fg: colors.danger },
+  { bg: colors.neutralSoft, fg: colors.textMuted },
+];
+function anonTint(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return ANON_TINTS[h % ANON_TINTS.length];
+}
