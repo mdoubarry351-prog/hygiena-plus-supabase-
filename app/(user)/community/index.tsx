@@ -28,7 +28,7 @@ import {
   type CommunityPostWithAuthor,
   type DoctorSearchResult,
 } from "@/lib/community-service";
-import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
+import { VerifiedDoctorBadge } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
 import { HeartButton } from "@/components/HeartButton";
 import { BouncyIcon } from "@/components/BouncyIcon";
@@ -201,9 +201,10 @@ export default function CommunityHome() {
         onPress={onPressPost}
         onOpenComments={onOpenCommentsPost}
         onLike={onLikePost}
+        onShare={sharePost}
       />
     ),
-    [likedIds, savedIds, onSavePost, openPostMenu, onPressPost, onOpenCommentsPost, onLikePost]
+    [likedIds, savedIds, onSavePost, openPostMenu, onPressPost, onOpenCommentsPost, onLikePost, sharePost]
   );
 
   // Service désactivé par l'admin : état neutre (n'empêche pas les autres onglets).
@@ -381,6 +382,23 @@ export default function CommunityHome() {
   );
 }
 
+// Teintes douces (tokens) pour l'avatar des publications anonymes : un peu de
+// variété visuelle « façon Reddit », dérivée de l'id du post — SANS jamais
+// révéler d'identité (l'anonymat reste strict, on ne lit pas l'auteur).
+const ANON_TINTS: { bg: string; fg: string }[] = [
+  { bg: colors.primaryLight, fg: colors.primaryDark },
+  { bg: colors.infoSoft, fg: colors.secondary },
+  { bg: colors.warningSoft, fg: colors.warning },
+  { bg: colors.successSoft, fg: colors.success },
+  { bg: colors.dangerSoft, fg: colors.danger },
+  { bg: colors.neutralSoft, fg: colors.textMuted },
+];
+function anonTint(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return ANON_TINTS[h % ANON_TINTS.length];
+}
+
 // Carte de post mémoïsée : ne se re-render que si ses props changent (perf liste).
 const PostRow = memo(function PostRow({
   post,
@@ -391,6 +409,7 @@ const PostRow = memo(function PostRow({
   onPress,
   onOpenComments,
   onLike,
+  onShare,
 }: {
   post: CommunityPostWithAuthor;
   liked: boolean;
@@ -400,8 +419,12 @@ const PostRow = memo(function PostRow({
   onPress: (id: string) => void;
   onOpenComments: (id: string) => void;
   onLike: (id: string) => void;
+  onShare: (post: CommunityPostWithAuthor) => void;
 }) {
-  const name = authorDisplayName(post.is_anonymous, post.author);
+  const isAnon = post.is_anonymous;
+  // Anonyme : libellé intentionnel + avatar teinté. Sinon : nom réel (logique inchangée).
+  const name = isAnon ? "Membre Hygiena+" : authorDisplayName(false, post.author);
+  const tint = isAnon ? anonTint(post.id) : { bg: colors.primaryLight, fg: colors.primary };
   const edited = wasEdited(post.created_at, post.updated_at);
   // Contenu long : aperçu tronqué + « Voir plus / Voir moins » (inline, sans ouvrir le post).
   const [expanded, setExpanded] = useState(false);
@@ -410,27 +433,31 @@ const PostRow = memo(function PostRow({
   return (
     <FadeInView fill={false}>
     <Card onPress={() => onPress(post.id)} accessibilityLabel="Ouvrir la publication" style={styles.post}>
+        {/* En-tête : avatar + (nom gras / temps · chip catégorie) + menu ⋯ */}
         <View style={styles.postHead}>
-          <View style={styles.avatar}>
-            <Ionicons
-              name={post.is_anonymous ? "person-outline" : "person"}
-              size={18}
-              color={colors.primary}
-            />
+          <View style={[styles.avatar, { backgroundColor: tint.bg }]}>
+            <Ionicons name="person" size={18} color={tint.fg} />
           </View>
           <View style={styles.headInfo}>
             <View style={styles.authorRow}>
-              <Text style={styles.author}>{name}</Text>
-              {!post.is_anonymous && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge specialty={post.author.doctorSpecialty} /> : null}
+              <Text style={styles.author} numberOfLines={1}>{name}</Text>
+              {!isAnon && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge specialty={post.author.doctorSpecialty} /> : null}
             </View>
-            <Text style={styles.time}>{formatRelativeTime(post.created_at)}{edited ? " · modifié" : ""}</Text>
+            <View style={styles.metaRow}>
+              <Text style={styles.time}>{formatRelativeTime(post.created_at)}{edited ? " · modifié" : ""}</Text>
+              {post.category ? (
+                <View style={styles.catChip}>
+                  <Text style={styles.catChipText}>{categoryLabel(post.category)}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
-          <CategoryTag category={post.category} />
-          <Pressable onPress={() => onMenu(post)} hitSlop={10} style={styles.blockBtn} accessibilityRole="button" accessibilityLabel="Options de la publication">
+          <Pressable onPress={() => onMenu(post)} hitSlop={10} style={styles.menuBtn} accessibilityRole="button" accessibilityLabel="Options de la publication">
             <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
           </Pressable>
         </View>
 
+        {/* Contenu */}
         <Text style={styles.body} numberOfLines={expanded ? undefined : 5}>{post.content}</Text>
         {isLong ? (
           <Pressable onPress={() => { hapticLight(); setExpanded((v) => !v); }} hitSlop={6} accessibilityRole="button" accessibilityLabel={expanded ? "Voir moins" : "Voir plus"}>
@@ -440,25 +467,26 @@ const PostRow = memo(function PostRow({
 
         <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
+        {/* Barre d'engagement en pilules : like + commenter à gauche, partage + signet à droite. */}
         <View style={styles.postFoot}>
-          <Pressable onPress={() => { hapticLight(); onLike(post.id); }} hitSlop={8} style={({ pressed }) => [styles.likeBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={liked ? "Je n'aime plus cette publication" : "J'aime cette publication"}>
-            <HeartButton active={liked} size={20} />
-            <Text style={[styles.likeCount, liked && styles.likeCountActive]}>
-              {post.likes_count}
-            </Text>
-          </Pressable>
-          <Pressable onPress={() => onOpenComments(post.id)} hitSlop={8} style={({ pressed }) => [styles.likeBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
-            <Ionicons name="chatbubble-outline" size={20} color={colors.textMuted} />
-            <Text style={styles.likeCount}>{post.comments_count}</Text>
-          </Pressable>
-          <Pressable onPress={() => { hapticLight(); onToggleSave(post.id); }} hitSlop={8} style={({ pressed }) => [styles.bookmarkBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
-            <BouncyIcon
-              name={saved ? "bookmark" : "bookmark-outline"}
-              size={20}
-              color={saved ? colors.primary : colors.textMuted}
-              popKey={saved}
-            />
-          </Pressable>
+          <View style={styles.footLeft}>
+            <Pressable onPress={() => { hapticLight(); onLike(post.id); }} hitSlop={6} style={({ pressed }) => [styles.pill, liked && styles.pillActive, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={liked ? "Je n'aime plus cette publication" : "J'aime cette publication"}>
+              <HeartButton active={liked} size={18} />
+              <Text style={[styles.pillCount, liked && styles.pillCountActive]}>{post.likes_count}</Text>
+            </Pressable>
+            <Pressable onPress={() => onOpenComments(post.id)} hitSlop={6} style={({ pressed }) => [styles.pill, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
+              <Ionicons name="chatbubble-outline" size={17} color={colors.textMuted} />
+              <Text style={styles.pillCount}>{post.comments_count}</Text>
+            </Pressable>
+          </View>
+          <View style={styles.footRight}>
+            <Pressable onPress={() => { hapticLight(); onShare(post); }} hitSlop={6} style={({ pressed }) => [styles.roundBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel="Partager la publication">
+              <Ionicons name="share-social-outline" size={18} color={colors.textMuted} />
+            </Pressable>
+            <Pressable onPress={() => { hapticLight(); onToggleSave(post.id); }} hitSlop={6} style={({ pressed }) => [styles.roundBtn, saved && styles.roundBtnActive, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
+              <BouncyIcon name={saved ? "bookmark" : "bookmark-outline"} size={18} color={saved ? colors.primary : colors.textMuted} popKey={saved} />
+            </Pressable>
+          </View>
         </View>
     </Card>
     </FadeInView>
@@ -500,7 +528,6 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
   topActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   iconBtn: { padding: spacing.xs },
-  bookmarkBtn: { marginLeft: "auto", padding: spacing.xs },
   newBtn: {
     flexDirection: "row", alignItems: "center", gap: spacing.xs,
     backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
@@ -519,14 +546,17 @@ const styles = StyleSheet.create({
   post: { gap: spacing.sm },
   postHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   avatar: {
-    width: 38, height: 38, borderRadius: radius.pill, backgroundColor: colors.primaryLight,
+    width: 40, height: 40, borderRadius: radius.pill,
     alignItems: "center", justifyContent: "center",
   },
-  headInfo: { flex: 1 },
+  headInfo: { flex: 1, gap: 2 },
   authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
-  blockBtn: { padding: spacing.xs },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
+  menuBtn: { padding: spacing.xs, alignSelf: "flex-start" },
   author: { ...typography.name },
   time: { ...typography.caption, color: colors.textMuted },
+  catChip: { backgroundColor: colors.primaryLight, paddingHorizontal: spacing.sm, paddingVertical: 1, borderRadius: radius.pill },
+  catChipText: { ...typography.caption, fontSize: 11, color: colors.primaryDark, fontWeight: "700" },
   // La ScrollView ne doit pas s'étirer verticalement (sinon les chips se déforment).
   searchRow: { paddingTop: spacing.sm },
   searchInput: { marginBottom: 0 },
@@ -564,12 +594,27 @@ const styles = StyleSheet.create({
   docNameRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
   docName: { ...typography.name },
   docSpec: { ...typography.caption, color: colors.primaryDark, fontWeight: "600" },
-  body: { ...typography.body, color: colors.text, lineHeight: 21 },
-  postImage: { width: "100%", height: 200, borderRadius: radius.md, backgroundColor: colors.surface },
-  postFoot: { flexDirection: "row", alignItems: "center", gap: spacing.lg, marginTop: spacing.xs },
-  likeBtn: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  likeCount: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
-  likeCountActive: { color: colors.primary },
-  commentHint: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  commentHintText: { ...typography.caption, color: colors.textMuted },
+  body: { ...typography.body, color: colors.text, lineHeight: 22 },
+  // Séparateur discret entre le contenu et les actions.
+  postFoot: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    marginTop: spacing.xs, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  footLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  footRight: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  // Pilules « like » / « commenter » : fond léger, arrondi plein.
+  pill: {
+    flexDirection: "row", alignItems: "center", gap: spacing.xs,
+    paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
+  pillActive: { backgroundColor: colors.primaryLight },
+  pillCount: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
+  pillCountActive: { color: colors.primary },
+  // Boutons ronds « partager » / « signet » à droite.
+  roundBtn: {
+    width: 38, height: 38, borderRadius: radius.pill, backgroundColor: colors.surface,
+    alignItems: "center", justifyContent: "center",
+  },
+  roundBtnActive: { backgroundColor: colors.primaryLight },
 });
