@@ -80,6 +80,12 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3157f361-c33a-4c57-8d52-9f3aab919f4f"
+      }
+    },
+    "owner": "mamadou2021"
   }
 }
