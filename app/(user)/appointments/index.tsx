@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 import { Redirect, useRouter, useLocalSearchParams } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,7 +22,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useDoctors } from "@/hooks/useDoctors";
 import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
 import { StarRating } from "@/components/StarRating";
-import { doctorDisplayName, hasAnyAvailability, type DoctorWithProfile } from "@/lib/appointments-service";
+import { appointmentsService, doctorDisplayName, hasAnyAvailability, type DoctorWithProfile } from "@/lib/appointments-service";
 import { practitionerTypeOf, PRACTITIONER_LABELS } from "@/lib/practitioner";
 import { hapticLight } from "@/lib/haptics";
 import { formatPrice } from "@/lib/marketplace-service";
@@ -36,7 +36,7 @@ function norm(s: string): string {
 }
 
 export default function AppointmentsHome() {
-  const { role, profile } = useAuth();
+  const { role, profile, session } = useAuth();
   // Type de praticien (depuis le hub) : défaut gynécologie → préserve l'existant.
   const params = useLocalSearchParams<{ type?: string }>();
   const ptype = practitionerTypeOf(params.type);
@@ -54,10 +54,32 @@ export default function AppointmentsHome() {
   const onListLayout = (e: LayoutChangeEvent) => { listY.current = e.nativeEvent.layout.y; };
   const scrollToList = () => scrollRef.current?.scrollTo({ y: Math.max(0, listY.current - 12), animated: true });
 
-  // Contacter = salle de consultation in-app (l'envoi est lié à un RDV via la RLS).
-  const contactDoctor = useCallback((d: DoctorWithProfile) => {
-    router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: d.id, doctorName: doctorDisplayName(d.profile) } });
-  }, [router]);
+  // Contacter = salle de consultation in-app. Messagerie liée à une consultation :
+  // on n'ouvre la salle que si un RDV existe avec ce praticien ; sinon on invite à
+  // réserver (au lieu d'ouvrir un chat dont l'envoi échouerait via la RLS).
+  const contactDoctor = useCallback(async (d: DoctorWithProfile) => {
+    if (!session?.user) return;
+    hapticLight();
+    const docName = doctorDisplayName(d.profile);
+    try {
+      const appt = await appointmentsService.findAppointmentForRoom(d.id, session.user.id);
+      if (appt) {
+        router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: d.id, doctorName: docName, appointmentId: appt.id, appointmentAt: `${appt.appointment_date}T${appt.appointment_time}:00` } });
+      } else {
+        Alert.alert(
+          "Réservez d'abord une consultation",
+          `Pour échanger avec ${docName}, réservez une consultation. La messagerie s'ouvre une fois le rendez-vous pris.`,
+          [
+            { text: "Plus tard", style: "cancel" },
+            { text: "Réserver", onPress: () => router.push(`/(user)/appointments/${d.id}`) },
+          ]
+        );
+      }
+    } catch {
+      // En cas de doute, on ouvre la salle (la RLS protège l'envoi + message clair).
+      router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: d.id, doctorName: docName } });
+    }
+  }, [router, session?.user]);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [activeSpec, setActiveSpec] = useState<string>("all");
@@ -267,7 +289,7 @@ function DoctorRow({ doctor, onPress, onContact, ctaLabel, verifiedLabel }: { do
           <Text style={styles.cardBtnPrimaryText}>{ctaLabel}</Text>
         </Pressable>
         {DOCTOR_MESSAGING_ENABLED ? (
-          <Pressable onPress={() => { hapticLight(); onContact(); }} style={({ pressed }) => [styles.cardBtn, styles.cardBtnOutline, pressed && styles.cardBtnPressed]} accessibilityRole="button" accessibilityLabel={`Contacter ${name}`}>
+          <Pressable onPress={onContact} style={({ pressed }) => [styles.cardBtn, styles.cardBtnOutline, pressed && styles.cardBtnPressed]} accessibilityRole="button" accessibilityLabel={`Contacter ${name}`}>
             <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.primary} />
             <Text style={styles.cardBtnOutlineText}>Contacter</Text>
           </Pressable>

@@ -224,14 +224,29 @@ export default function BookAppointment() {
     }
   }
 
-  // Messagerie premium : conseils en ligne (≠ consultation, qui passe par un RDV).
-  function handleMessage() {
+  // Messagerie liée à une consultation : on n'ouvre la salle que si un RDV existe
+  // avec ce praticien ; sinon on invite à réserver (le calendrier est juste en
+  // dessous) plutôt que d'ouvrir un chat dont l'envoi échouerait (RLS).
+  async function handleMessage() {
     // Téléconsultation désactivée par l'admin → message générique.
     if (!messaging_enabled) return showServiceUnavailable();
-    if (!doctor) return;
-    // Accès direct à la salle de consultation (l'envoi est lié à un RDV via la RLS).
+    if (!doctor || !session?.user) return;
     hapticLight();
-    router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: doctor.id, doctorName: name } });
+    try {
+      const appt = await appointmentsService.findAppointmentForRoom(doctor.id, session.user.id);
+      if (appt) {
+        router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: doctor.id, doctorName: name, appointmentId: appt.id, appointmentAt: `${appt.appointment_date}T${appt.appointment_time}:00` } });
+      } else {
+        Alert.alert(
+          "Réservez d'abord une consultation",
+          `La messagerie avec ${name} s'ouvre une fois votre consultation réservée. Choisissez une date ci-dessous pour réserver.`,
+          [{ text: "OK" }]
+        );
+      }
+    } catch {
+      // En cas de doute, on ouvre la salle (la RLS protège l'envoi + message clair).
+      router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: doctor.id, doctorName: name } });
+    }
   }
 
   // Paiement SIMULÉ : crée le RDV payé + reçu, puis ouvre le reçu.
@@ -343,7 +358,7 @@ export default function BookAppointment() {
 
         {DOCTOR_MESSAGING_ENABLED ? (
           <>
-            <Pressable onPress={() => { hapticLight(); handleMessage(); }} style={({ pressed }) => [styles.msgBtn, pressed && styles.msgBtnPressed]} accessibilityRole="button" accessibilityLabel={`Écrire à votre ${L.noun}`}>
+            <Pressable onPress={handleMessage} style={({ pressed }) => [styles.msgBtn, pressed && styles.msgBtnPressed]} accessibilityRole="button" accessibilityLabel={`Écrire à votre ${L.noun}`}>
               <Ionicons name="chatbubbles-outline" size={18} color={colors.primary} />
               <Text style={styles.msgBtnText}>Écrire à votre {L.noun}</Text>
             </Pressable>

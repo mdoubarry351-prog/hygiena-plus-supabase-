@@ -34,10 +34,15 @@ type Props = {
   sending?: boolean;
   onSend: (content: string) => void | Promise<void>;
   composerAction?: ReactNode; // action optionnelle à gauche du champ (ex. partager le cycle)
+  // Saisie verrouillée (ex. patiente sans rendez-vous avec ce praticien) : on
+  // remplace le champ par une note explicative + une action facultative (réserver).
+  locked?: boolean;
+  lockedNote?: string;
+  lockedAction?: ReactNode;
 };
 
 // Fil de discussion réutilisable (patient ↔ médecin) : bulles + champ de saisie.
-export function ChatThread({ title, subtitle, note, banner, messages, currentRole, loading, sending, onSend, composerAction }: Props) {
+export function ChatThread({ title, subtitle, note, banner, messages, currentRole, loading, sending, onSend, composerAction, locked, lockedNote, lockedAction }: Props) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<ScrollView>(null);
@@ -114,26 +119,34 @@ export function ChatThread({ title, subtitle, note, banner, messages, currentRol
           </ScrollView>
         )}
 
-        <View style={styles.composer}>
-          {composerAction ? <View style={styles.composerAction}>{composerAction}</View> : null}
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="Écrire un message…"
-            placeholderTextColor={colors.textMuted}
-            style={styles.input}
-            multiline
-          />
-          <Pressable
-            onPress={handleSend}
-            disabled={!draft.trim() || sending}
-            style={({ pressed }) => [styles.sendBtn, (!draft.trim() || sending) && styles.sendBtnDisabled, pressed && draft.trim() && !sending && styles.sendBtnPressed]}
-            accessibilityRole="button"
-            accessibilityLabel="Envoyer le message"
-          >
-            <Ionicons name="send" size={18} color={colors.white} />
-          </Pressable>
-        </View>
+        {locked ? (
+          <View style={styles.lockedBar}>
+            <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} />
+            <Text style={styles.lockedText}>{lockedNote ?? "Réservez une consultation pour écrire à ce praticien."}</Text>
+            {lockedAction}
+          </View>
+        ) : (
+          <View style={styles.composer}>
+            {composerAction ? <View style={styles.composerAction}>{composerAction}</View> : null}
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Écrire un message…"
+              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+              multiline
+            />
+            <Pressable
+              onPress={handleSend}
+              disabled={!draft.trim() || sending}
+              style={({ pressed }) => [styles.sendBtn, (!draft.trim() || sending) && styles.sendBtnDisabled, pressed && draft.trim() && !sending && styles.sendBtnPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Envoyer le message"
+            >
+              <Ionicons name="send" size={18} color={colors.white} />
+            </Pressable>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -166,6 +179,9 @@ const styles = StyleSheet.create({
   bubbleText: { ...typography.body, color: colors.text },
   bubbleTextMine: { color: colors.white },
   composer: { flexDirection: "row", alignItems: "flex-end", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card },
+  // Barre « saisie verrouillée » : note explicative + action (réserver).
+  lockedBar: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card },
+  lockedText: { ...typography.caption, color: colors.textMuted, flex: 1, lineHeight: 18 },
   composerAction: { alignSelf: "flex-end" },
   input: { flex: 1, maxHeight: 120, minHeight: 44, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm, fontSize: 15, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surface },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },

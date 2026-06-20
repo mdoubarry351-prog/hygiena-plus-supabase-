@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
-import { Alert, Pressable, StyleSheet, View } from "react-native";
-import { Redirect, useLocalSearchParams } from "expo-router";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { ChatThread, type ChatMessage } from "@/components/ChatThread";
@@ -9,19 +9,25 @@ import { ConsultationCall } from "@/components/ConsultationCall";
 import { useAuth } from "@/providers/AuthProvider";
 import { useCycles } from "@/hooks/useCycles";
 import { messagesService } from "@/lib/messages-service";
+import { appointmentsService } from "@/lib/appointments-service";
 import { appointmentAtMs } from "@/lib/call-service";
 import { buildCycleSummary } from "@/lib/cycle-service";
 import { hapticLight } from "@/lib/haptics";
 import { DOCTOR_MESSAGING_ENABLED } from "@/lib/app-config";
-import { colors, spacing } from "@/theme";
+import { colors, radius, spacing, typography } from "@/theme";
 
 export default function PatientChat() {
   const { doctorId, doctorName, appointmentId, appointmentAt } = useLocalSearchParams<{ doctorId: string; doctorName?: string; appointmentId?: string; appointmentAt?: string }>();
   const { session, role } = useAuth();
+  const router = useRouter();
   const { cycles, prediction } = useCycles();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  // RDV patiente↔praticien découvert (si on n'est pas venu·e depuis un RDV précis).
+  const [foundAppt, setFoundAppt] = useState<{ id: string; appointment_date: string; appointment_time: string } | null>(null);
+  // null = vérification en cours ; false = aucun RDV → saisie verrouillée (la RLS refuserait l'envoi).
+  const [canMessage, setCanMessage] = useState<boolean | null>(null);
 
   const load = useCallback(async () => {
     if (!session?.user || !doctorId) return;
@@ -30,12 +36,25 @@ export default function PatientChat() {
       setMessages(await messagesService.getThread(session.user.id, doctorId));
       // Marque comme lus les messages reçus du médecin (best-effort).
       messagesService.markThreadRead(doctorId, session.user.id).catch(() => {});
+      // Messagerie liée à une consultation : on n'autorise la saisie que s'il existe
+      // un RDV avec ce praticien (sinon la RLS refuse l'insert → on verrouille en amont).
+      if (appointmentId) {
+        setCanMessage(true); // on vient d'un RDV réel (reçu / « Mes rendez-vous »)
+      } else {
+        try {
+          const found = await appointmentsService.findAppointmentForRoom(doctorId, session.user.id);
+          setFoundAppt(found);
+          setCanMessage(!!found);
+        } catch {
+          setCanMessage(true); // en cas de doute on ne verrouille pas (la RLS protège quand même)
+        }
+      }
     } catch {
       setMessages([]);
     } finally {
       setLoading(false);
     }
-  }, [session?.user, doctorId]);
+  }, [session?.user, doctorId, appointmentId]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
@@ -76,6 +95,12 @@ export default function PatientChat() {
     ]);
   }
 
+  // Salle de consultation : appel calé sur le RDV reçu en paramètre, ou à défaut
+  // sur le RDV trouvé pour ce praticien (ouverture depuis la liste/fiche).
+  const effAppointmentId = appointmentId || foundAppt?.id || undefined;
+  const effAppointmentAt = appointmentAt || (foundAppt ? `${foundAppt.appointment_date}T${foundAppt.appointment_time}:00` : undefined);
+  const locked = canMessage === false;
+
   return (
     <ChatThread
       title={doctorName || "Praticien"}
@@ -83,8 +108,8 @@ export default function PatientChat() {
       banner={
         <View style={styles.banner}>
           <ConsultationCall
-            appointmentId={appointmentId}
-            appointmentAtMs={appointmentAtMs(appointmentAt)}
+            appointmentId={effAppointmentId}
+            appointmentAtMs={appointmentAtMs(effAppointmentAt)}
             peerName={doctorName}
           />
           <MedicalDisclaimer text="Ces échanges ne remplacent pas une consultation médicale. En cas d'urgence, rendez-vous aux urgences." />
@@ -95,6 +120,13 @@ export default function PatientChat() {
       loading={loading}
       sending={sending}
       onSend={handleSend}
+      locked={locked}
+      lockedNote="Réserve une consultation avec ce praticien pour pouvoir lui écrire."
+      lockedAction={
+        <Pressable onPress={() => { hapticLight(); router.push(`/(user)/appointments/${doctorId}`); }} style={({ pressed }) => [styles.reserveBtn, pressed && styles.reserveBtnPressed]} accessibilityRole="button" accessibilityLabel="Réserver une consultation">
+          <Text style={styles.reserveText}>Réserver</Text>
+        </Pressable>
+      }
       composerAction={
         <Pressable onPress={() => { hapticLight(); shareCycle(); }} disabled={sending} style={({ pressed }) => [styles.shareBtn, pressed && styles.shareBtnPressed]} accessibilityRole="button" accessibilityLabel="Partager mon suivi de cycle">
           <Ionicons name="pulse-outline" size={20} color={colors.primary} />
@@ -108,4 +140,7 @@ const styles = StyleSheet.create({
   banner: { gap: spacing.sm },
   shareBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: colors.primary, alignItems: "center", justifyContent: "center" },
   shareBtnPressed: { opacity: 0.6, backgroundColor: colors.primaryLight },
+  reserveBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.pill, backgroundColor: colors.primary },
+  reserveBtnPressed: { opacity: 0.85 },
+  reserveText: { ...typography.caption, color: colors.white, fontWeight: "700" },
 });
