@@ -21,13 +21,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.hygiena.plus",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Hygiena+ accède à vos photos pour définir votre photo de profil et ajouter des images à vos publications et produits.",
         "NSPhotoLibraryAddUsageDescription": "Hygiena+ enregistre dans votre galerie les photos que vous téléchargez.",
         "NSFaceIDUsageDescription": "Hygiena+ utilise Face ID pour verrouiller et protéger l'accès à vos données de santé.",
-        "NSCameraUsageDescription": "Hygiena+ utilise la caméra pour vos consultations vidéo.",
+        "NSCameraUsageDescription": "Hygiena+ utilise la caméra pour vos consultations vidéo avec les professionnels de santé.",
         "NSMicrophoneUsageDescription": "Hygiena+ utilise le micro pour vos consultations audio et vidéo."
       }
     },
@@ -52,7 +52,7 @@
         "expo-image-picker",
         {
           "photosPermission": "Hygiena+ accède à vos photos pour définir votre photo de profil et ajouter des images à vos publications et produits.",
-          "cameraPermission": false
+          "cameraPermission": "Hygiena+ utilise la caméra pour vos consultations vidéo avec les professionnels de santé."
         }
       ],
       [
