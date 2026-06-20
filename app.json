@@ -9,7 +9,7 @@
     "newArchEnabled": true,
     "icon": "./assets/logo/hygiena-icon-ios.png",
     "splash": {
-      "image": "./assets/logo/hygiena-icon-1024.png",
+      "image": "./assets/logo/hygiena-icon-drop.png",
       "resizeMode": "contain",
       "backgroundColor": "#D1FAE5"
     },
