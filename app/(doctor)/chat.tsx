@@ -19,6 +19,8 @@ export default function DoctorChat() {
   // RDV pertinent (pour le gating d'appel côté médecin).
   const [apptId, setApptId] = useState<string | null>(null);
   const [apptAtMs, setApptAtMs] = useState<number | null>(null);
+  // Mode du RDV : l'appel n'a de sens qu'en consultation à distance.
+  const [apptMode, setApptMode] = useState<"remote" | "physical" | null>(null);
 
   const load = useCallback(async () => {
     if (!doctor || !patientId) return;
@@ -29,8 +31,8 @@ export default function DoctorChat() {
       messagesService.markThreadRead(doctor.id, patientId).catch(() => {});
       // RDV pour l'appel (best-effort, n'empêche pas le chat).
       appointmentsService.findAppointmentForRoom(doctor.id, patientId)
-        .then((a) => { setApptId(a?.id ?? null); setApptAtMs(a ? appointmentAtMs(a.appointment_date, a.appointment_time) : null); })
-        .catch(() => { setApptId(null); setApptAtMs(null); });
+        .then((a) => { setApptId(a?.id ?? null); setApptAtMs(a ? appointmentAtMs(a.appointment_date, a.appointment_time) : null); setApptMode(a?.consultation_mode ?? null); })
+        .catch(() => { setApptId(null); setApptAtMs(null); setApptMode(null); });
     } catch {
       setMessages([]);
     } finally {
@@ -59,7 +61,7 @@ export default function DoctorChat() {
     <ChatThread
       title={patientName || "Patiente"}
       subtitle="Salle de consultation"
-      banner={<ConsultationCall appointmentId={apptId} appointmentAtMs={apptAtMs} peerName={patientName} />}
+      banner={apptMode === "remote" ? <ConsultationCall appointmentId={apptId} appointmentAtMs={apptAtMs} peerName={patientName} /> : undefined}
       messages={messages}
       currentRole="doctor"
       loading={loading}

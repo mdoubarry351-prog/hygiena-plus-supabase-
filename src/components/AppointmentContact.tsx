@@ -38,7 +38,7 @@ export function AppointmentContact({
     hapticLight();
     router.push({
       pathname: "/(user)/appointments/chat",
-      params: { doctorId, doctorName: doctorName ?? "", appointmentId: appointmentId ?? "", appointmentAt: appointmentAt ?? "" },
+      params: { doctorId, doctorName: doctorName ?? "", appointmentId: appointmentId ?? "", appointmentAt: appointmentAt ?? "", consultationMode: mode },
     });
   }
 

@@ -181,10 +181,10 @@ export const appointmentsService = {
 
   // RDV pertinent entre un médecin et une patiente, pour ouvrir la salle d'appel
   // côté médecin (le plus proche de maintenant). RLS : un médecin lit ses RDV.
-  async findAppointmentForRoom(doctorId: string, patientId: string): Promise<{ id: string; appointment_date: string; appointment_time: string } | null> {
+  async findAppointmentForRoom(doctorId: string, patientId: string): Promise<{ id: string; appointment_date: string; appointment_time: string; consultation_mode: ConsultationMode } | null> {
     const { data, error } = await supabase
       .from("appointments")
-      .select("id, appointment_date, appointment_time")
+      .select("id, appointment_date, appointment_time, consultation_mode")
       .eq("doctor_id", doctorId)
       .eq("patient_id", patientId)
       .in("status", ["pending", "confirmed", "completed"])
@@ -201,7 +201,7 @@ export const appointmentsService = {
       const diff = Number.isNaN(ms) ? Infinity : Math.abs(ms - now);
       if (diff < bestDiff) { bestDiff = diff; best = a; }
     }
-    return { id: best.id, appointment_date: best.appointment_date, appointment_time: best.appointment_time };
+    return { id: best.id, appointment_date: best.appointment_date, appointment_time: best.appointment_time, consultation_mode: best.consultation_mode };
   },
 
   // Crée un rendez-vous. Le statut est « pending » par défaut côté base.

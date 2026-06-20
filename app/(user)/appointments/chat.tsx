@@ -17,7 +17,7 @@ import { DOCTOR_MESSAGING_ENABLED } from "@/lib/app-config";
 import { colors, radius, spacing, typography } from "@/theme";
 
 export default function PatientChat() {
-  const { doctorId, doctorName, appointmentId, appointmentAt } = useLocalSearchParams<{ doctorId: string; doctorName?: string; appointmentId?: string; appointmentAt?: string }>();
+  const { doctorId, doctorName, appointmentId, appointmentAt, consultationMode } = useLocalSearchParams<{ doctorId: string; doctorName?: string; appointmentId?: string; appointmentAt?: string; consultationMode?: string }>();
   const { session, role } = useAuth();
   const router = useRouter();
   const { cycles, prediction } = useCycles();
@@ -25,7 +25,7 @@ export default function PatientChat() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   // RDV patiente↔praticien découvert (si on n'est pas venu·e depuis un RDV précis).
-  const [foundAppt, setFoundAppt] = useState<{ id: string; appointment_date: string; appointment_time: string } | null>(null);
+  const [foundAppt, setFoundAppt] = useState<{ id: string; appointment_date: string; appointment_time: string; consultation_mode: "remote" | "physical" } | null>(null);
   // null = vérification en cours ; false = aucun RDV → saisie verrouillée (la RLS refuserait l'envoi).
   const [canMessage, setCanMessage] = useState<boolean | null>(null);
 
@@ -100,6 +100,9 @@ export default function PatientChat() {
   const effAppointmentId = appointmentId || foundAppt?.id || undefined;
   const effAppointmentAt = appointmentAt || (foundAppt ? `${foundAppt.appointment_date}T${foundAppt.appointment_time}:00` : undefined);
   const locked = canMessage === false;
+  // L'appel audio/vidéo n'a de sens qu'en consultation à DISTANCE. Mode connu via
+  // le paramètre (RDV précis) ou le RDV découvert ; inconnu → pas d'appel.
+  const isRemote = (consultationMode ?? foundAppt?.consultation_mode) === "remote";
 
   return (
     <ChatThread
@@ -107,11 +110,13 @@ export default function PatientChat() {
       subtitle="Salle de consultation"
       banner={
         <View style={styles.banner}>
-          <ConsultationCall
-            appointmentId={effAppointmentId}
-            appointmentAtMs={appointmentAtMs(effAppointmentAt)}
-            peerName={doctorName}
-          />
+          {isRemote ? (
+            <ConsultationCall
+              appointmentId={effAppointmentId}
+              appointmentAtMs={appointmentAtMs(effAppointmentAt)}
+              peerName={doctorName}
+            />
+          ) : null}
           <MedicalDisclaimer text="Ces échanges ne remplacent pas une consultation médicale. En cas d'urgence, rendez-vous aux urgences." />
         </View>
       }

@@ -64,7 +64,7 @@ export default function AppointmentsHome() {
     try {
       const appt = await appointmentsService.findAppointmentForRoom(d.id, session.user.id);
       if (appt) {
-        router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: d.id, doctorName: docName, appointmentId: appt.id, appointmentAt: `${appt.appointment_date}T${appt.appointment_time}:00` } });
+        router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: d.id, doctorName: docName, appointmentId: appt.id, appointmentAt: `${appt.appointment_date}T${appt.appointment_time}:00`, consultationMode: appt.consultation_mode } });
       } else {
         Alert.alert(
           "Réservez d'abord une consultation",
