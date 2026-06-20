@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { appointmentAtMs, isWithinCallWindow } from "@/lib/call-service";
 import type {
   Doctor,
   Appointment,
@@ -192,16 +193,21 @@ export const appointmentsService = {
       .order("appointment_time", { ascending: false })
       .limit(20);
     if (error || !data || data.length === 0) return null;
-    // Choisit le RDV dont l'horaire est le plus proche de l'instant présent.
+    // Préfère un RDV dont la fenêtre [−1h, +1h] est ACTIVE maintenant (salle ouverte) ;
+    // à défaut, le RDV dont l'horaire est le plus proche de l'instant présent.
     const now = Date.now();
     let best = data[0];
     let bestDiff = Infinity;
+    let active: (typeof data)[number] | null = null;
+    let activeDiff = Infinity;
     for (const a of data) {
-      const ms = new Date(`${a.appointment_date}T${(a.appointment_time || "00:00").slice(0, 5)}:00`).getTime();
-      const diff = Number.isNaN(ms) ? Infinity : Math.abs(ms - now);
+      const ms = appointmentAtMs(a.appointment_date, a.appointment_time);
+      const diff = ms == null ? Infinity : Math.abs(ms - now);
       if (diff < bestDiff) { bestDiff = diff; best = a; }
+      if (ms != null && isWithinCallWindow(ms, now) && diff < activeDiff) { activeDiff = diff; active = a; }
     }
-    return { id: best.id, appointment_date: best.appointment_date, appointment_time: best.appointment_time, consultation_mode: best.consultation_mode };
+    const chosen = active ?? best;
+    return { id: chosen.id, appointment_date: chosen.appointment_date, appointment_time: chosen.appointment_time, consultation_mode: chosen.consultation_mode };
   },
 
   // Crée un rendez-vous. Le statut est « pending » par défaut côté base.

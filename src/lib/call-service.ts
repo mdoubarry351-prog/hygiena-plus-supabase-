@@ -4,8 +4,9 @@ import { supabase } from "@/lib/supabase";
 // Daily + jeton temporaire). Seul un participant du RDV obtient un jeton.
 export type ConsultationRoom = { roomUrl: string; token: string; isOwner: boolean };
 
-// Fenêtre d'appel autour de l'heure du RDV : de 5 min avant à 60 min après.
-const CALL_WINDOW_BEFORE_MS = 5 * 60 * 1000;
+// Fenêtre d'accès à la salle (chat ET appels) autour de l'heure du RDV :
+// de 1 h avant à 1 h après. Unifiée pour le chat et les appels.
+const CALL_WINDOW_BEFORE_MS = 60 * 60 * 1000;
 const CALL_WINDOW_AFTER_MS = 60 * 60 * 1000;
 
 // Parse une date/heure locale de RDV en timestamp (ms). Accepte « YYYY-MM-DD »
@@ -18,10 +19,23 @@ export function appointmentAtMs(dateISO: string | null | undefined, time?: strin
   return Number.isNaN(ms) ? null : ms;
 }
 
-// L'appel est-il accessible maintenant (dans la fenêtre du RDV) ?
+// La salle est-elle accessible maintenant (dans la fenêtre [RDV−1h, RDV+1h]) ?
 export function isWithinCallWindow(atMs: number | null, nowMs: number): boolean {
   if (atMs == null) return false;
   return nowMs >= atMs - CALL_WINDOW_BEFORE_MS && nowMs <= atMs + CALL_WINDOW_AFTER_MS;
+}
+
+// État de la fenêtre d'accès d'un RDV par rapport à maintenant :
+// - "active"   : maintenant ∈ [RDV−1h, RDV+1h] → salle déverrouillée
+// - "upcoming" : RDV à venir mais > 1h avant → s'ouvrira plus tard
+// - "closed"   : fenêtre passée (> 1h après le RDV)
+// - "none"     : aucun horaire de RDV connu
+export type RoomWindowState = "active" | "upcoming" | "closed" | "none";
+export function roomWindowState(atMs: number | null, nowMs: number): RoomWindowState {
+  if (atMs == null) return "none";
+  if (nowMs < atMs - CALL_WINDOW_BEFORE_MS) return "upcoming";
+  if (nowMs > atMs + CALL_WINDOW_AFTER_MS) return "closed";
+  return "active";
 }
 
 // Récupère la salle pour un rendez-vous donné (JWT user via supabase.functions).

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
@@ -9,8 +9,8 @@ import { ConsultationCall } from "@/components/ConsultationCall";
 import { useAuth } from "@/providers/AuthProvider";
 import { useCycles } from "@/hooks/useCycles";
 import { messagesService } from "@/lib/messages-service";
-import { appointmentsService } from "@/lib/appointments-service";
-import { appointmentAtMs } from "@/lib/call-service";
+import { appointmentsService, formatAppointmentDate } from "@/lib/appointments-service";
+import { appointmentAtMs, roomWindowState } from "@/lib/call-service";
 import { buildCycleSummary } from "@/lib/cycle-service";
 import { hapticLight } from "@/lib/haptics";
 import { DOCTOR_MESSAGING_ENABLED } from "@/lib/app-config";
@@ -26,8 +26,9 @@ export default function PatientChat() {
   const [sending, setSending] = useState(false);
   // RDV patiente↔praticien découvert (si on n'est pas venu·e depuis un RDV précis).
   const [foundAppt, setFoundAppt] = useState<{ id: string; appointment_date: string; appointment_time: string; consultation_mode: "remote" | "physical" } | null>(null);
-  // null = vérification en cours ; false = aucun RDV → saisie verrouillée (la RLS refuserait l'envoi).
-  const [canMessage, setCanMessage] = useState<boolean | null>(null);
+  // Horloge réévaluée périodiquement → ouverture/fermeture auto de la salle au
+  // passage de la fenêtre [RDV−1h, RDV+1h].
+  const [now, setNow] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     if (!session?.user || !doctorId) return;
@@ -36,17 +37,13 @@ export default function PatientChat() {
       setMessages(await messagesService.getThread(session.user.id, doctorId));
       // Marque comme lus les messages reçus du médecin (best-effort).
       messagesService.markThreadRead(doctorId, session.user.id).catch(() => {});
-      // Messagerie liée à une consultation : on n'autorise la saisie que s'il existe
-      // un RDV avec ce praticien (sinon la RLS refuse l'insert → on verrouille en amont).
-      if (appointmentId) {
-        setCanMessage(true); // on vient d'un RDV réel (reçu / « Mes rendez-vous »)
-      } else {
+      // Sans RDV précis en paramètre : on cherche le RDV pertinent (fenêtre active
+      // en priorité) pour déterminer l'horaire/mode de la salle.
+      if (!appointmentId) {
         try {
-          const found = await appointmentsService.findAppointmentForRoom(doctorId, session.user.id);
-          setFoundAppt(found);
-          setCanMessage(!!found);
+          setFoundAppt(await appointmentsService.findAppointmentForRoom(doctorId, session.user.id));
         } catch {
-          setCanMessage(true); // en cas de doute on ne verrouille pas (la RLS protège quand même)
+          setFoundAppt(null);
         }
       }
     } catch {
@@ -57,6 +54,12 @@ export default function PatientChat() {
   }, [session?.user, doctorId, appointmentId]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Réévalue la fenêtre toutes les 30 s (ouverture/fermeture automatique).
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, []);
 
   // Un médecin n'utilise pas la messagerie patient.
   if (role === "doctor") return <Redirect href="/(user)" />;
@@ -95,14 +98,25 @@ export default function PatientChat() {
     ]);
   }
 
-  // Salle de consultation : appel calé sur le RDV reçu en paramètre, ou à défaut
-  // sur le RDV trouvé pour ce praticien (ouverture depuis la liste/fiche).
+  // Salle de consultation : RDV reçu en paramètre, ou à défaut le RDV trouvé.
   const effAppointmentId = appointmentId || foundAppt?.id || undefined;
   const effAppointmentAt = appointmentAt || (foundAppt ? `${foundAppt.appointment_date}T${foundAppt.appointment_time}:00` : undefined);
-  const locked = canMessage === false;
-  // L'appel audio/vidéo n'a de sens qu'en consultation à DISTANCE. Mode connu via
-  // le paramètre (RDV précis) ou le RDV découvert ; inconnu → pas d'appel.
+  // Date/heure d'affichage du RDV (pour le message « s'ouvrira 1h avant… »).
+  const apptDate = appointmentId ? (appointmentAt?.slice(0, 10) ?? "") : (foundAppt?.appointment_date ?? "");
+  const apptTime = appointmentId ? (appointmentAt?.slice(11, 16) ?? "") : (foundAppt?.appointment_time?.slice(0, 5) ?? "");
+
+  // Accès borné dans le temps : la salle (chat + appels) n'est ouverte que dans
+  // la fenêtre [RDV−1h, RDV+1h]. État réévalué à chaque tick (`now`).
+  const windowState = roomWindowState(appointmentAtMs(effAppointmentAt), now);
+  const locked = windowState !== "active";
+  // L'appel n'a de sens qu'en consultation à DISTANCE ET fenêtre active (même gating).
   const isRemote = (consultationMode ?? foundAppt?.consultation_mode) === "remote";
+  const showCall = isRemote && windowState === "active";
+  // Message de verrouillage selon le cas (avant / après-terminé / pas de RDV).
+  const lockedNote =
+    windowState === "upcoming" && apptDate
+      ? `La consultation s'ouvrira 1h avant votre rendez-vous (le ${formatAppointmentDate(apptDate)} à ${apptTime}).`
+      : "Ce créneau de consultation est terminé. Prends un nouveau rendez-vous pour échanger avec ce médecin.";
 
   return (
     <ChatThread
@@ -110,7 +124,7 @@ export default function PatientChat() {
       subtitle="Salle de consultation"
       banner={
         <View style={styles.banner}>
-          {isRemote ? (
+          {showCall ? (
             <ConsultationCall
               appointmentId={effAppointmentId}
               appointmentAtMs={appointmentAtMs(effAppointmentAt)}
@@ -126,7 +140,7 @@ export default function PatientChat() {
       sending={sending}
       onSend={handleSend}
       locked={locked}
-      lockedNote="Réserve une consultation avec ce praticien pour pouvoir lui écrire."
+      lockedNote={lockedNote}
       lockedAction={
         <Pressable onPress={() => { hapticLight(); router.push(`/(user)/appointments/${doctorId}`); }} style={({ pressed }) => [styles.reserveBtn, pressed && styles.reserveBtnPressed]} accessibilityRole="button" accessibilityLabel="Réserver une consultation">
           <Text style={styles.reserveText}>Réserver</Text>

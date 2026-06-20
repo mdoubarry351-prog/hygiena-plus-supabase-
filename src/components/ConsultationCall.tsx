@@ -10,7 +10,7 @@ import { colors, radius, spacing, typography } from "@/theme";
  * Zone « Appel audio / vidéo » dans la salle de consultation.
  * Lance l'écran d'appel Daily (app/(user)/appointments/call) avec l'appointmentId
  * et le mode. GATING TEMPOREL : actif uniquement dans la fenêtre du RDV
- * (≈ 5 min avant → 1 h après) ; hors fenêtre ou sans RDV → désactivé avec
+ * (1 h avant → 1 h après) ; hors fenêtre ou sans RDV → désactivé avec
  * « Disponible à l'heure du rendez-vous ». Utilisé patiente ET médecin.
  */
 export function ConsultationCall({
