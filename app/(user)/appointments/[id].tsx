@@ -370,13 +370,13 @@ export default function BookAppointment() {
         </FadeInView>
 
         <FadeInView fill={false} delay={STEP * 2} style={styles.group}>
-        <Text style={[typography.h3, styles.sectionTitle]}>Type de consultation</Text>
+        <StepTitle n={1} title="Type de consultation" />
         <View style={styles.modeRow}>
           <ModeCard
             active={mode === "remote"}
             icon="chatbubbles-outline"
             title={L.modeLabel.remote}
-            subtitle="Par WhatsApp ou appel"
+            subtitle="Messagerie + appel audio/vidéo"
             onPress={() => { hapticLight(); setMode("remote"); }}
           />
           <ModeCard
@@ -395,7 +395,7 @@ export default function BookAppointment() {
           </Card>
         ) : (
           <>
-            <Text style={[typography.h3, styles.sectionTitle]}>Choisir une date</Text>
+            <StepTitle n={2} title="Choisir une date" />
             <Card style={styles.calCard}>
               <View style={styles.calHeader}>
                 <Pressable onPress={() => changeMonth(-1)} disabled={!canPrev} hitSlop={12} style={({ pressed }) => [styles.calNavBtn, pressed && canPrev && styles.navPressed]} accessibilityRole="button" accessibilityLabel="Mois précédent">
@@ -439,11 +439,17 @@ export default function BookAppointment() {
               <Text style={styles.calLegend}>Jours grisés : indisponibles · barrés : complets.</Text>
             </Card>
 
-            <Text style={[typography.h3, styles.sectionTitle]}>Choisir une heure</Text>
+            <StepTitle n={3} title="Choisir une heure" />
             {!selectedDate ? (
-              <Text style={styles.slotHint}>Choisis d'abord une date.</Text>
+              <View style={styles.slotEmpty}>
+                <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
+                <Text style={styles.slotHint}>Choisis d'abord une date ci-dessus.</Text>
+              </View>
             ) : selectedSlots.length === 0 ? (
-              <Text style={styles.slotHint}>Aucun créneau disponible ce jour. Essaie une autre date.</Text>
+              <View style={styles.slotEmpty}>
+                <Ionicons name="time-outline" size={16} color={colors.textMuted} />
+                <Text style={styles.slotHint}>Aucun créneau ce jour-là. Essaie une autre date.</Text>
+              </View>
             ) : (
               <View style={styles.timeGrid}>
                 {selectedSlots.map((t) => {
@@ -470,15 +476,24 @@ export default function BookAppointment() {
         />
 
         {canBook ? (
-          <Card style={styles.payCard}>
-            <View style={styles.payRow}>
-              <Text style={styles.payLabel}>Montant à payer</Text>
-              <Text style={styles.payAmount}>
-                {doctor.consultation_fee != null ? formatPrice(doctor.consultation_fee) : "Tarif sur place"}
-              </Text>
+          <Card style={styles.recapCard}>
+            <Text style={styles.recapTitle}>Récapitulatif</Text>
+            <View style={styles.recapDoctor}>
+              <Avatar uri={doctor.profile?.avatar_url} name={name} size={40} />
+              <View style={styles.recapDoctorInfo}>
+                <Text style={styles.recapDoctorName} numberOfLines={1}>{name}</Text>
+                <Text style={styles.recapDoctorSpec} numberOfLines={1}>{doctor.specialty}</Text>
+              </View>
             </View>
-            <Text style={styles.paySummary}>{formatAppointmentDate(selectedDate!)} à {selectedTime}</Text>
-            <Text style={styles.paySummary}>{isTherapy ? "Séance" : "Consultation"} · {L.modeLabel[mode]}</Text>
+            <View style={styles.recapLines}>
+              <RecapRow icon={mode === "remote" ? "chatbubbles-outline" : "business-outline"} label="Type" value={`${isTherapy ? "Séance" : "Consultation"} · ${L.modeLabel[mode]}`} />
+              <RecapRow icon="calendar-outline" label="Date" value={formatAppointmentDate(selectedDate!)} />
+              <RecapRow icon="time-outline" label="Heure" value={selectedTime!} />
+            </View>
+            <View style={styles.recapTotal}>
+              <Text style={styles.recapTotalLabel}>{doctor.consultation_fee != null ? "Montant à payer" : "Tarif"}</Text>
+              <Text style={styles.recapTotalValue}>{doctor.consultation_fee != null ? formatPrice(doctor.consultation_fee) : "Sur place"}</Text>
+            </View>
             <Text style={styles.payNote}>Paiement simulé — aucun débit réel.</Text>
           </Card>
         ) : (
@@ -510,6 +525,27 @@ export default function BookAppointment() {
       </ScrollView>
       </View>
     </Screen>
+  );
+}
+
+// En-tête d'étape numéroté (parcours de réservation lisible, façon Doctolib).
+function StepTitle({ n, title }: { n: number; title: string }) {
+  return (
+    <View style={styles.stepHead}>
+      <View style={styles.stepNum}><Text style={styles.stepNumText}>{n}</Text></View>
+      <Text style={typography.h3}>{title}</Text>
+    </View>
+  );
+}
+
+// Ligne du récapitulatif (icône + libellé + valeur).
+function RecapRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
+  return (
+    <View style={styles.recapRow}>
+      <Ionicons name={icon} size={16} color={colors.primaryDark} />
+      <Text style={styles.recapLabel}>{label}</Text>
+      <Text style={styles.recapValue} numberOfLines={1}>{value}</Text>
+    </View>
   );
 }
 
@@ -564,7 +600,6 @@ const styles = StyleSheet.create({
   availDay: { ...typography.body, fontWeight: "600", color: colors.text },
   availHours: { ...typography.body, color: colors.textMuted },
   muted: { color: colors.textMuted },
-  sectionTitle: { marginTop: spacing.sm },
   calCard: { gap: spacing.sm },
   calHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   calNavBtn: { padding: spacing.xs },
@@ -593,7 +628,12 @@ const styles = StyleSheet.create({
   dayNumber: { ...typography.h3 },
   dayMonth: { ...typography.caption, color: colors.textMuted, textTransform: "capitalize" },
   dayTextDisabled: { color: colors.textMuted },
-  slotHint: { ...typography.caption, color: colors.textMuted },
+  slotEmpty: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  slotHint: { ...typography.caption, color: colors.textMuted, flex: 1 },
+  // En-tête d'étape numéroté
+  stepHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
+  stepNum: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  stepNumText: { ...typography.caption, color: colors.primaryDark, fontWeight: "700" },
   noAvailCard: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   noAvailText: { ...typography.body, color: colors.textMuted, flex: 1 },
   timeGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
@@ -607,11 +647,20 @@ const styles = StyleSheet.create({
   chipTextActive: { color: colors.white },
   textArea: { height: 90, textAlignVertical: "top", paddingTop: spacing.sm },
   summary: { ...typography.body, fontWeight: "600", textTransform: "capitalize", textAlign: "center" },
-  payCard: { backgroundColor: colors.primaryLight, borderColor: colors.primary, gap: spacing.xs },
-  payRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  payLabel: { ...typography.body, color: colors.primaryDark },
-  payAmount: { ...typography.h3, color: colors.primaryDark },
-  paySummary: { ...typography.caption, color: colors.primaryDark, textTransform: "capitalize" },
+  // Récapitulatif (façon Doctolib) : praticien + lignes + total + note.
+  recapCard: { backgroundColor: colors.primaryLight, borderColor: colors.primary, gap: spacing.sm },
+  recapTitle: { ...typography.name, color: colors.primaryDark },
+  recapDoctor: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  recapDoctorInfo: { flex: 1 },
+  recapDoctorName: { ...typography.name, color: colors.text },
+  recapDoctorSpec: { ...typography.caption, color: colors.primaryDark, fontWeight: "600" },
+  recapLines: { gap: spacing.xs, borderTopWidth: 1, borderTopColor: colors.primary, paddingTop: spacing.sm },
+  recapRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  recapLabel: { ...typography.caption, color: colors.primaryDark, width: 52 },
+  recapValue: { ...typography.body, color: colors.text, fontWeight: "600", flex: 1, textTransform: "capitalize" },
+  recapTotal: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: colors.primary, paddingTop: spacing.sm },
+  recapTotalLabel: { ...typography.body, color: colors.primaryDark },
+  recapTotalValue: { ...typography.h3, color: colors.primaryDark },
   payNote: { ...typography.caption, color: colors.textMuted },
   msgBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, height: 48, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.primary },
   msgBtnPressed: { opacity: 0.6, backgroundColor: colors.primaryLight },
