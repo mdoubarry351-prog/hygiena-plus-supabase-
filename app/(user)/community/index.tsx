@@ -265,24 +265,26 @@ export default function CommunityHome() {
         </View>
       </View>
 
+      {/* Recherche slim + tri compact (bascule Récents ↔ Tendances) sur une ligne. */}
       <View style={styles.searchRow}>
-        <Input
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Rechercher une publication…"
-          autoCapitalize="none"
-          style={styles.searchInput}
-        />
-      </View>
-
-      <View style={styles.segment}>
-        <Pressable onPress={() => { hapticLight(); setSortMode("recent"); }} style={({ pressed }) => [styles.segBtn, sortMode === "recent" && styles.segBtnActive, pressed && styles.chipPressed]}>
-          <Ionicons name="time-outline" size={15} color={sortMode === "recent" ? colors.white : colors.textMuted} />
-          <Text style={[styles.segText, sortMode === "recent" && styles.segTextActive]}>Récents</Text>
-        </Pressable>
-        <Pressable onPress={() => { hapticLight(); setSortMode("trending"); }} style={({ pressed }) => [styles.segBtn, sortMode === "trending" && styles.segBtnActive, pressed && styles.chipPressed]}>
-          <Ionicons name="flame-outline" size={15} color={sortMode === "trending" ? colors.white : colors.accent} />
-          <Text style={[styles.segText, sortMode === "trending" && styles.segTextActive]}>Tendances</Text>
+        <View style={styles.searchFieldWrap}>
+          <Input
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Rechercher…"
+            autoCapitalize="none"
+            style={styles.searchInput}
+          />
+        </View>
+        <Pressable
+          onPress={() => { hapticLight(); setSortMode((m) => (m === "recent" ? "trending" : "recent")); }}
+          style={({ pressed }) => [styles.sortChip, pressed && styles.chipPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`Tri : ${sortMode === "trending" ? "Tendances" : "Récents"}. Toucher pour changer.`}
+        >
+          <Ionicons name={sortMode === "trending" ? "flame" : "time-outline"} size={15} color={sortMode === "trending" ? colors.accent : colors.primary} />
+          <Text style={styles.sortChipText}>{sortMode === "trending" ? "Tendances" : "Récents"}</Text>
+          <Ionicons name="swap-vertical" size={13} color={colors.textMuted} />
         </Pressable>
       </View>
 
@@ -312,9 +314,6 @@ export default function CommunityHome() {
         </View>
       ) : null}
 
-      {posts.length > 0 ? (
-        <Text style={styles.count}>{posts.length} publication{posts.length > 1 ? "s" : ""}</Text>
-      ) : null}
     </View>
   );
 
@@ -557,27 +556,26 @@ const styles = StyleSheet.create({
   time: { ...typography.caption, color: colors.textMuted },
   catChip: { backgroundColor: colors.primaryLight, paddingHorizontal: spacing.sm, paddingVertical: 1, borderRadius: radius.pill },
   catChipText: { ...typography.caption, fontSize: 11, color: colors.primaryDark, fontWeight: "700" },
-  // La ScrollView ne doit pas s'étirer verticalement (sinon les chips se déforment).
-  searchRow: { paddingTop: spacing.sm },
+  // Ligne recherche slim + tri compact.
+  searchRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingTop: spacing.sm },
+  searchFieldWrap: { flex: 1 },
   searchInput: { marginBottom: 0 },
-  segment: { flexDirection: "row", gap: spacing.xs, marginTop: spacing.xs },
-  segBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border },
-  segBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  segText: { fontSize: 13, fontWeight: "700", color: colors.text },
-  segTextActive: { color: colors.white },
-  count: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
+  // Tri compact (chip discret), bascule Récents ↔ Tendances.
+  sortChip: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, height: 44, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  sortChipText: { ...typography.caption, fontWeight: "700", color: colors.text },
   footer: { alignItems: "center", paddingVertical: spacing.md },
   loadMore: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.primary },
   loadMoreText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
+  // Rangée de catégories : chips fines (déclutter).
   filterBar: { flexGrow: 0, flexShrink: 0 },
   filterChips: { gap: spacing.xs, alignItems: "center", paddingVertical: spacing.sm },
   filterChip: {
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5,
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: radius.pill, borderWidth: 1,
     borderColor: colors.border, backgroundColor: colors.surface,
   },
   filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterChipText: { fontSize: 13, fontWeight: "700", color: colors.text },
-  filterChipTextActive: { color: colors.white },
+  filterChipText: { fontSize: 13, fontWeight: "600", color: colors.text },
+  filterChipTextActive: { color: colors.white, fontWeight: "700" },
   docSection: { marginTop: spacing.sm, gap: spacing.xs },
   docSectionTitle: { ...typography.caption, color: colors.textMuted, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 },
   docRow: {
