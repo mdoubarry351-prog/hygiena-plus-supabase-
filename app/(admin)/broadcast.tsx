@@ -7,6 +7,8 @@ import { Chip } from "@/components/Chip";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { AdminHeader } from "@/components/AdminHeader";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import { PREMIUM_ENABLED } from "@/lib/app-config";
@@ -28,6 +30,8 @@ const LARGE_THRESHOLD = 50;
 
 export default function AdminBroadcast() {
   const { session } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [audience, setAudience] = useState("all");
@@ -54,33 +58,29 @@ export default function AdminBroadcast() {
     }
   }
 
-  function confirmSend() {
+  async function confirmSend() {
     if (!session?.user) return;
     if (!title.trim()) { Alert.alert("Titre requis", "Saisissez un titre."); return; }
     if (!message.trim()) { Alert.alert("Message requis", "Saisissez un message."); return; }
 
-    const doSend = async () => {
-      setSending(true);
-      try {
-        const sent = await adminService.sendBroadcast(session.user.id, title.trim(), message.trim(), audience);
-        hapticSuccess();
-        setTitle("");
-        setMessage("");
-        setCount(null);
-        Alert.alert("Diffusion envoyée", `Notification envoyée à ${sent} personne${sent > 1 ? "s" : ""}.`);
-      } catch (e) {
-        Alert.alert("Erreur", e instanceof Error ? e.message : "Diffusion impossible.");
-      } finally {
-        setSending(false);
-      }
-    };
-
     const who = count !== null ? `${count} personne${count > 1 ? "s" : ""}` : `« ${audienceLabel} »`;
     const warn = count !== null && count > LARGE_THRESHOLD ? "\n\nC'est un envoi important." : "";
-    Alert.alert("Envoyer la notification ?", `Cette notification sera envoyée à ${who}.${warn}`, [
-      { text: "Annuler", style: "cancel" },
-      { text: "Envoyer", onPress: doSend },
-    ]);
+    const ok = await confirm({ title: "Envoyer la notification ?", message: `Cette notification sera envoyée à ${who}.${warn}`, confirmLabel: "Envoyer" });
+    if (!ok) return;
+
+    setSending(true);
+    try {
+      const sent = await adminService.sendBroadcast(session.user.id, title.trim(), message.trim(), audience);
+      hapticSuccess();
+      setTitle("");
+      setMessage("");
+      setCount(null);
+      toast.success(`Notification envoyée à ${sent} personne${sent > 1 ? "s" : ""}.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Diffusion impossible.");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
