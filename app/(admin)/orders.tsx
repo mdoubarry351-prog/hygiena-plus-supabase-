@@ -14,26 +14,15 @@ import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import { exportCsv } from "@/lib/csv-export";
 import { formatPrice, type OrderItem } from "@/lib/marketplace-service";
+import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from "@/lib/order-display";
+import { orderStepInfo } from "@/components/OrderTimeline";
+import { ActionSheet, type ActionSheetOption } from "@/components/ActionSheet";
 import type { MarketplaceOrder, OrderStatus } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: "En attente",
-  confirmed: "Confirmée",
-  preparing: "En préparation",
-  delivering: "En livraison",
-  completed: "Terminée",
-  cancelled: "Annulée",
-};
-const STATUS_COLORS: Record<OrderStatus, string> = {
-  pending: colors.accent,
-  confirmed: colors.secondary,
-  preparing: colors.secondary,
-  delivering: colors.primary,
-  completed: colors.success,
-  cancelled: colors.danger,
-};
-const STATUSES = Object.keys(STATUS_LABELS) as OrderStatus[];
+// Libellés/tons partagés avec la vue patiente (plus de duplication).
+// Ordre de progression des statuts (pour le sélecteur admin).
+const STATUSES: OrderStatus[] = ["pending", "confirmed", "preparing", "delivering", "completed", "cancelled"];
 
 function itemCount(items: MarketplaceOrder["items"]): number {
   if (!Array.isArray(items)) return 0;
@@ -50,6 +39,7 @@ export default function AdminOrders() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | OrderStatus>("all");
   const [exporting, setExporting] = useState(false);
+  const [sheet, setSheet] = useState<{ title: string; options: ActionSheetOption[] } | null>(null);
   const offsetRef = useRef(0);
   const filtersRef = useRef<{ search: string; status: "all" | OrderStatus }>({ search: "", status: "all" });
   const PAGE = 20;
@@ -114,7 +104,7 @@ export default function AdminOrders() {
         cliente: o.phone,
         articles: String(itemCount(o.items)),
         montant: formatPrice(o.total_amount),
-        statut: STATUS_LABELS[o.status],
+        statut: ORDER_STATUS_LABELS[o.status],
         date: new Date(o.created_at).toLocaleDateString("fr-FR"),
       }));
       await exportCsv("commandes", rows, [
@@ -132,25 +122,26 @@ export default function AdminOrders() {
     }
   }
 
+  // Sélecteur de statut tokenisé (ActionSheet) — logique de mise à jour inchangée
+  // (optimiste + rollback). Libellés/icônes adaptés au mode de la commande.
   function changeStatus(order: MarketplaceOrder) {
     if (!session?.user) return;
-    Alert.alert("Changer le statut", `Commande du ${new Date(order.created_at).toLocaleDateString("fr-FR")}`,
-      [
-        ...STATUSES.filter((s) => s !== order.status).map((s) => ({
-          text: STATUS_LABELS[s],
-          onPress: async () => {
-            setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: s } : o)));
-            try {
-              await adminService.updateOrderStatus(session.user.id, order.id, s);
-            } catch (e) {
-              Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
-              await load();
-            }
-          },
-        })),
-        { text: "Annuler", style: "cancel" as const },
-      ]
-    );
+    const uid = session.user.id;
+    const options: ActionSheetOption[] = STATUSES.filter((s) => s !== order.status).map((s) => ({
+      label: s === "cancelled" ? "Annuler la commande" : orderStepInfo(s, order.delivery_mode).label,
+      icon: orderStepInfo(s, order.delivery_mode).icon,
+      destructive: s === "cancelled",
+      onPress: async () => {
+        setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: s } : o)));
+        try {
+          await adminService.updateOrderStatus(uid, order.id, s);
+        } catch (e) {
+          Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+          await load();
+        }
+      },
+    }));
+    setSheet({ title: `Commande #${order.id.slice(0, 8).toUpperCase()}`, options });
   }
 
   if (loading && orders.length === 0) return <Loading />;
@@ -172,7 +163,7 @@ export default function AdminOrders() {
             const active = status === s;
             return (
               <Pressable key={s} onPress={() => setStatus(s)} style={[styles.statusChip, active && styles.statusChipActive]}>
-                <Text style={[styles.statusChipText, active && styles.statusChipTextActive]}>{s === "all" ? "Toutes" : STATUS_LABELS[s]}</Text>
+                <Text style={[styles.statusChipText, active && styles.statusChipTextActive]}>{s === "all" ? "Toutes" : ORDER_STATUS_LABELS[s]}</Text>
               </Pressable>
             );
           })}
@@ -191,18 +182,29 @@ export default function AdminOrders() {
           <>
             {orders.map((o) => {
               const count = itemCount(o.items);
+              const shortId = o.id.slice(0, 8).toUpperCase();
+              const cancelled = o.status === "cancelled";
+              const step = orderStepInfo(o.status, o.delivery_mode);
               return (
                 <Card key={o.id} style={styles.card}>
                   <View style={styles.head}>
-                    <Text style={styles.date}>{new Date(o.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</Text>
-                    <Badge label={STATUS_LABELS[o.status]} color={STATUS_COLORS[o.status]} />
+                    <View style={styles.headLeft}>
+                      <Text style={styles.orderId}>#{shortId}</Text>
+                      <Text style={styles.date}>{new Date(o.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</Text>
+                    </View>
+                    <Badge label={ORDER_STATUS_LABELS[o.status]} tone={ORDER_STATUS_TONE[o.status]} soft />
+                  </View>
+                  {/* État courant (mode-adapté) */}
+                  <View style={styles.statusLine}>
+                    <Ionicons name={step.icon} size={15} color={cancelled ? colors.danger : colors.primary} />
+                    <Text style={[styles.statusText, cancelled && styles.statusCancelled]} numberOfLines={1}>{step.label}</Text>
                   </View>
                   <Text style={styles.meta}>{o.phone} · {o.delivery_mode === "delivery" ? "Livraison" : "Retrait"}{o.neighborhood ? ` · ${o.neighborhood}` : ""}</Text>
                   <View style={styles.foot}>
                     <Text style={styles.count}>{count} article{count > 1 ? "s" : ""} · {formatPrice(o.total_amount)}</Text>
-                    <Pressable onPress={() => changeStatus(o)} style={styles.statusBtn}>
+                    <Pressable onPress={() => changeStatus(o)} style={styles.statusBtn} accessibilityRole="button" accessibilityLabel="Changer le statut">
                       <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
-                      <Text style={styles.statusBtnText}>Statut</Text>
+                      <Text style={styles.statusBtnText}>Changer le statut</Text>
                     </Pressable>
                   </View>
                 </Card>
@@ -212,6 +214,13 @@ export default function AdminOrders() {
           </>
         )}
       </ScrollView>
+
+      <ActionSheet
+        visible={!!sheet}
+        title={sheet?.title}
+        options={sheet?.options ?? []}
+        onClose={() => setSheet(null)}
+      />
     </Screen>
   );
 }
@@ -228,9 +237,13 @@ const styles = StyleSheet.create({
   empty: { alignItems: "center" },
   muted: { color: colors.textMuted },
   card: { gap: spacing.sm },
-  head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
-  date: { ...typography.body, fontWeight: "600", flex: 1 },
-  badge: { ...typography.caption, color: colors.white, fontWeight: "700", paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, overflow: "hidden" },
+  head: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
+  headLeft: { flex: 1, gap: 2 },
+  orderId: { ...typography.name },
+  date: { ...typography.caption, color: colors.textMuted },
+  statusLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  statusText: { ...typography.caption, color: colors.primaryDark, fontWeight: "700", flex: 1 },
+  statusCancelled: { color: colors.danger },
   meta: { ...typography.caption, color: colors.textMuted },
   foot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },
   count: { ...typography.body, color: colors.text, flex: 1 },
