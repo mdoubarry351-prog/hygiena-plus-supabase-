@@ -4,7 +4,6 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
-import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -244,8 +243,9 @@ export default function CommunityHome() {
   }
 
   // En-tête du fil (barre + recherche + tri + chips + compteur) — défile avec la liste.
+  // Padding latéral porté ici car l'écran est full-bleed (posts edge-to-edge).
   const listHeader = (
-    <View>
+    <View style={styles.headerPad}>
       {/* Données déjà chargées mais le rafraîchissement a échoué → hors-ligne. */}
       {error ? <OfflineBanner cachedAt={null} /> : null}
 
@@ -331,12 +331,13 @@ export default function CommunityHome() {
   ) : null;
 
   return (
-    <Screen>
+    <Screen padded={false}>
       <FlatList
         data={posts}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         extraData={extra}
+        ItemSeparatorComponent={FeedSeparator}
         ListHeaderComponent={listHeader}
         ListFooterComponent={listFooter}
         ListEmptyComponent={
@@ -432,25 +433,19 @@ const PostRow = memo(function PostRow({
 
   return (
     <FadeInView fill={false}>
-    <Card onPress={() => onPress(post.id)} accessibilityLabel="Ouvrir la publication" style={styles.post}>
-        {/* En-tête : avatar + (nom gras / temps · chip catégorie) + menu ⋯ */}
+    <Pressable onPress={() => { hapticLight(); onPress(post.id); }} style={({ pressed }) => [styles.post, pressed && styles.postPressed]} accessibilityRole="button" accessibilityLabel="Ouvrir la publication">
+        {/* En-tête compact (1 ligne) : avatar + nom + ✓ + · temps + · catégorie + ⋯ */}
         <View style={styles.postHead}>
           <View style={[styles.avatar, { backgroundColor: tint.bg }]}>
-            <Ionicons name="person" size={18} color={tint.fg} />
+            <Ionicons name="person" size={15} color={tint.fg} />
           </View>
-          <View style={styles.headInfo}>
-            <View style={styles.authorRow}>
-              <Text style={styles.author} numberOfLines={1}>{name}</Text>
-              {!isAnon && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge specialty={post.author.doctorSpecialty} /> : null}
-            </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.time}>{formatRelativeTime(post.created_at)}{edited ? " · modifié" : ""}</Text>
-              {post.category ? (
-                <View style={styles.catChip}>
-                  <Text style={styles.catChipText}>{categoryLabel(post.category)}</Text>
-                </View>
-              ) : null}
-            </View>
+          <View style={styles.headLine}>
+            <Text style={styles.author} numberOfLines={1}>{name}</Text>
+            {!isAnon && post.author?.isVerifiedDoctor ? (
+              <Ionicons name="checkmark-circle" size={14} color={colors.primaryDark} style={styles.verified} accessibilityLabel="Médecin vérifié" />
+            ) : null}
+            <Text style={styles.time} numberOfLines={1}> · {formatRelativeTime(post.created_at)}{edited ? " · modifié" : ""}</Text>
+            {post.category ? <Text style={styles.catText} numberOfLines={1}> · {categoryLabel(post.category)}</Text> : null}
           </View>
           <Pressable onPress={() => onMenu(post)} hitSlop={10} style={styles.menuBtn} accessibilityRole="button" accessibilityLabel="Options de la publication">
             <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
@@ -488,10 +483,13 @@ const PostRow = memo(function PostRow({
             </Pressable>
           </View>
         </View>
-    </Card>
+    </Pressable>
     </FadeInView>
   );
 });
+
+// Séparateur fin entre les posts (flux continu type Reddit), pleine largeur.
+const FeedSeparator = () => <View style={styles.separator} />;
 
 // Ligne « médecin » des résultats de recherche : avatar + nom + spécialité +
 // badge vérifié ; appui → fiche du médecin (/(user)/appointments/{id}).
@@ -538,25 +536,27 @@ const styles = StyleSheet.create({
   chipPressed: { opacity: 0.7 },
   footPressed: { opacity: 0.5 },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  listContent: { paddingBottom: spacing.xxl, gap: spacing.md },
+  // Fil edge-to-edge : pas de gouttière latérale ni de gap (séparateurs entre posts).
+  listContent: { paddingBottom: spacing.xxl },
+  headerPad: { paddingHorizontal: spacing.lg },
+  // Séparateur fin pleine largeur entre les posts (flux continu).
+  separator: { height: 1, backgroundColor: colors.border },
   empty: { gap: spacing.sm, alignItems: "center" },
   emptyEmoji: { fontSize: 34 },
   muted: { color: colors.textMuted },
   seeMore: { ...typography.caption, color: colors.primary, fontWeight: "700" },
-  post: { gap: spacing.sm },
+  // Post pleine largeur : padding interne, fond plein, AUCUN radius/ombre/bordure de carte.
+  post: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.sm, backgroundColor: colors.background },
+  postPressed: { backgroundColor: colors.surface },
   postHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  avatar: {
-    width: 40, height: 40, borderRadius: radius.pill,
-    alignItems: "center", justifyContent: "center",
-  },
-  headInfo: { flex: 1, gap: 2 },
-  authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexWrap: "wrap" },
-  menuBtn: { padding: spacing.xs, alignSelf: "flex-start" },
-  author: { ...typography.name },
-  time: { ...typography.caption, color: colors.textMuted },
-  catChip: { backgroundColor: colors.primaryLight, paddingHorizontal: spacing.sm, paddingVertical: 1, borderRadius: radius.pill },
-  catChipText: { ...typography.caption, fontSize: 11, color: colors.primaryDark, fontWeight: "700" },
+  avatar: { width: 32, height: 32, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
+  // En-tête compact sur une seule ligne (nom · temps · catégorie).
+  headLine: { flex: 1, flexDirection: "row", alignItems: "center" },
+  menuBtn: { padding: spacing.xs },
+  author: { ...typography.name, fontSize: 14, flexShrink: 1 },
+  verified: { marginLeft: 2 },
+  time: { ...typography.caption, color: colors.textMuted, flexShrink: 0 },
+  catText: { ...typography.caption, color: colors.primaryDark, fontWeight: "600", flexShrink: 1 },
   // La ScrollView ne doit pas s'étirer verticalement (sinon les chips se déforment).
   searchRow: { paddingTop: spacing.sm },
   searchInput: { marginBottom: 0 },
@@ -595,10 +595,10 @@ const styles = StyleSheet.create({
   docName: { ...typography.name },
   docSpec: { ...typography.caption, color: colors.primaryDark, fontWeight: "600" },
   body: { ...typography.body, color: colors.text, lineHeight: 22 },
-  // Séparateur discret entre le contenu et les actions.
+  // Barre d'actions : pas de séparateur interne (les posts sont séparés par FeedSeparator).
   postFoot: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    marginTop: spacing.xs, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border,
+    marginTop: spacing.xs,
   },
   footLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   footRight: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
