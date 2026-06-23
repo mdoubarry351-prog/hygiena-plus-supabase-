@@ -9,13 +9,13 @@ import { Card } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonList } from "@/components/Skeleton";
-import { OrderTimeline } from "@/components/OrderTimeline";
+import { orderStepInfo } from "@/components/OrderTimeline";
 import { FadeInView } from "@/components/FadeInView";
 import { useAuth } from "@/providers/AuthProvider";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
-import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS, orderItemCount, formatOrderDate } from "@/lib/order-display";
+import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE, orderItemCount, formatOrderDate } from "@/lib/order-display";
 import type { MarketplaceOrder } from "@/lib/database.types";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, spacing, typography } from "@/theme";
 
 const STEP = 55; // pas de l'apparition échelonnée
 
@@ -68,22 +68,24 @@ export default function Orders() {
         ) : (
           orders.map((o, i) => {
             const count = orderItemCount(o.items);
+            const shortId = o.id.slice(0, 8).toUpperCase();
+            const cancelled = o.status === "cancelled";
+            const step = orderStepInfo(o.status, o.delivery_mode);
             return (
               <FadeInView key={o.id} fill={false} delay={Math.min(i, 6) * STEP}>
-              <Card onPress={() => router.push({ pathname: "/(user)/marketplace/order", params: { id: o.id } })} haptic accessibilityLabel="Voir la commande" style={styles.orderCard}>
+              <Card onPress={() => router.push({ pathname: "/(user)/marketplace/order", params: { id: o.id } })} haptic accessibilityLabel={`Commande ${shortId}`} style={styles.orderCard}>
                   <View style={styles.orderHead}>
-                    <Text style={styles.date}>{formatOrderDate(o.created_at)}</Text>
-                    <Badge label={ORDER_STATUS_LABELS[o.status]} color={ORDER_STATUS_COLORS[o.status]} />
-                  </View>
-                  <OrderTimeline status={o.status} />
-                  {o.payment_method ? (
-                    <View style={styles.payRow}>
-                      <Ionicons name={o.is_paid ? "checkmark-circle" : "cash-outline"} size={14} color={o.is_paid ? colors.success : colors.textMuted} />
-                      <Text style={styles.payText}>
-                        {PAYMENT_LABELS[o.payment_method] ?? o.payment_method} · {o.is_paid ? "Payé" : "À la livraison"}
-                      </Text>
+                    <View style={styles.headLeft}>
+                      <Text style={styles.orderId}>#{shortId}</Text>
+                      <Text style={styles.date}>{formatOrderDate(o.created_at)}</Text>
                     </View>
-                  ) : null}
+                    <Badge label={ORDER_STATUS_LABELS[o.status]} tone={ORDER_STATUS_TONE[o.status]} soft />
+                  </View>
+                  {/* Ligne d'état courant compacte (le suivi détaillé est sur la fiche). */}
+                  <View style={styles.statusLine}>
+                    <Ionicons name={step.icon} size={15} color={cancelled ? colors.danger : colors.primary} />
+                    <Text style={[styles.statusText, cancelled && styles.statusCancelled]} numberOfLines={1}>{step.label}</Text>
+                  </View>
                   <View style={styles.orderFoot}>
                     <Text style={styles.count}>{count} article{count > 1 ? "s" : ""}</Text>
                     <Text style={styles.total}>{formatPrice(o.total_amount)}</Text>
@@ -103,33 +105,18 @@ const styles = StyleSheet.create({
   empty: { alignItems: "center", gap: spacing.sm },
   muted: { color: colors.textMuted, textAlign: "center" },
   orderCard: { gap: spacing.sm },
-  orderHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
-  date: { ...typography.body, fontWeight: "600", flex: 1 },
-  badge: {
-    ...typography.caption, color: colors.white, fontWeight: "700",
-    paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, overflow: "hidden",
-  },
+  orderHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
+  headLeft: { flex: 1, gap: 2 },
+  orderId: { ...typography.name },
+  date: { ...typography.caption, color: colors.textMuted },
+  // Ligne d'état courant
+  statusLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  statusText: { ...typography.caption, color: colors.primaryDark, fontWeight: "700", flex: 1 },
+  statusCancelled: { color: colors.danger },
   orderFoot: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm,
   },
   count: { ...typography.body, color: colors.textMuted },
   total: { ...typography.h3, color: colors.primary },
-  payRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  payText: { ...typography.caption, color: colors.textMuted },
-  // Timeline / stepper
-  timeline: { gap: spacing.xs },
-  stepper: { flexDirection: "row", alignItems: "center" },
-  segment: { flexDirection: "row", alignItems: "center" },
-  segmentGrow: { flex: 1 },
-  line: { flex: 1, height: 2, marginHorizontal: 4, borderRadius: 1 },
-  lineDone: { backgroundColor: colors.primary },
-  lineTodo: { backgroundColor: colors.border },
-  node: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.border, alignItems: "center", justifyContent: "center" },
-  nodeReached: { backgroundColor: colors.primary },
-  nodeCurrent: { width: 26, height: 26, borderRadius: 13, borderWidth: 3, borderColor: colors.primaryLight },
-  currentLabel: { ...typography.caption, color: colors.textMuted },
-  currentLabelStrong: { color: colors.primaryDark, fontWeight: "700" },
-  cancelledRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.dangerSoft, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md },
-  cancelledText: { ...typography.caption, color: colors.danger, fontWeight: "700" },
 });

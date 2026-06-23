@@ -1,65 +1,113 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { OrderStatus } from "@/lib/database.types";
+import type { OrderStatus, DeliveryMode } from "@/lib/database.types";
+import { formatOrderDateShort } from "@/lib/order-display";
 import { colors, radius, spacing, typography } from "@/theme";
 
-// Étapes de progression (cancelled exclu — état distinct).
-const STEPS: { key: OrderStatus; label: string }[] = [
-  { key: "pending", label: "En attente" },
-  { key: "confirmed", label: "Confirmée" },
-  { key: "preparing", label: "En préparation" },
-  { key: "delivering", label: "Expédiée" },
-  { key: "completed", label: "Livrée" },
-];
+type StepDef = { key: OrderStatus; label: string; icon: keyof typeof Ionicons.glyphMap };
 
-// Suivi visuel étape par étape (stepper horizontal). Annulée = état distinct.
-export function OrderTimeline({ status }: { status: OrderStatus }) {
+// Étapes du suivi (cancelled exclu — état distinct). Libellés des 2 dernières
+// étapes adaptés au mode : livraison (« Expédiée »/« Livrée ») vs retrait
+// (« Prête pour retrait »/« Retirée »).
+function orderSteps(mode: DeliveryMode): StepDef[] {
+  const pickup = mode === "pickup";
+  return [
+    { key: "pending", label: "En attente de confirmation", icon: "receipt-outline" },
+    { key: "confirmed", label: "Confirmée", icon: "checkmark-circle-outline" },
+    { key: "preparing", label: "En préparation", icon: "cube-outline" },
+    { key: "delivering", label: pickup ? "Prête pour retrait" : "Expédiée", icon: pickup ? "storefront-outline" : "bicycle-outline" },
+    { key: "completed", label: pickup ? "Retirée" : "Livrée", icon: pickup ? "bag-check-outline" : "checkmark-done-outline" },
+  ];
+}
+
+// Libellé + icône de l'étape courante (pour la ligne compacte de la liste).
+export function orderStepInfo(status: OrderStatus, mode: DeliveryMode): { label: string; icon: keyof typeof Ionicons.glyphMap } {
+  if (status === "cancelled") return { label: "Commande annulée", icon: "close-circle-outline" };
+  const steps = orderSteps(mode);
+  return steps.find((s) => s.key === status) ?? steps[0];
+}
+
+// Suivi de commande façon « order tracking » : stepper VERTICAL. Étape courante
+// mise en valeur (pastille primary pleine), étapes passées cochées, futures grisées.
+export function OrderTimeline({
+  status,
+  deliveryMode = "delivery",
+  createdAt,
+  updatedAt,
+}: {
+  status: OrderStatus;
+  deliveryMode?: DeliveryMode;
+  createdAt?: string;
+  updatedAt?: string;
+}) {
+  // Annulée = état dédié (hors stepper).
   if (status === "cancelled") {
     return (
-      <View style={styles.cancelledRow}>
-        <Ionicons name="close-circle" size={18} color={colors.danger} />
-        <Text style={styles.cancelledText}>Commande annulée</Text>
+      <View style={styles.cancelled}>
+        <Ionicons name="close-circle" size={20} color={colors.danger} />
+        <View style={styles.cancelledBody}>
+          <Text style={styles.cancelledTitle}>Commande annulée</Text>
+          {updatedAt ? <Text style={styles.cancelledDate}>Le {formatOrderDateShort(updatedAt)}</Text> : null}
+        </View>
       </View>
     );
   }
-  const currentIndex = STEPS.findIndex((s) => s.key === status);
+
+  const steps = orderSteps(deliveryMode);
+  const currentIndex = steps.findIndex((s) => s.key === status);
+
   return (
-    <View style={styles.timeline}>
-      <View style={styles.stepper}>
-        {STEPS.map((s, i) => {
-          const reached = i <= currentIndex;
-          const done = i < currentIndex;
-          const current = i === currentIndex;
-          return (
-            <View key={s.key} style={[styles.segment, i > 0 && styles.segmentGrow]}>
-              {i > 0 ? <View style={[styles.line, i <= currentIndex ? styles.lineDone : styles.lineTodo]} /> : null}
-              <View style={[styles.node, reached && styles.nodeReached, current && styles.nodeCurrent]}>
-                {done ? <Ionicons name="checkmark" size={12} color={colors.white} /> : null}
+    <View style={styles.list}>
+      {steps.map((s, i) => {
+        const done = i < currentIndex;
+        const current = i === currentIndex;
+        const future = i > currentIndex;
+        const isLast = i === steps.length - 1;
+        // Date connue : étape 1 (création) + étape courante (dernier changement).
+        const date = i === 0 ? createdAt : current ? updatedAt : undefined;
+        return (
+          <View key={s.key} style={styles.row}>
+            <View style={styles.rail}>
+              <View style={[styles.node, done && styles.nodeDone, current && styles.nodeCurrent, future && styles.nodeFuture]}>
+                {done ? (
+                  <Ionicons name="checkmark" size={13} color={colors.white} />
+                ) : (
+                  <Ionicons name={s.icon} size={13} color={current ? colors.white : colors.textMuted} />
+                )}
               </View>
+              {!isLast ? <View style={[styles.connector, i < currentIndex ? styles.connectorDone : styles.connectorTodo]} /> : null}
             </View>
-          );
-        })}
-      </View>
-      <Text style={styles.currentLabel}>
-        Étape actuelle : <Text style={styles.currentLabelStrong}>{STEPS[currentIndex]?.label ?? "—"}</Text>
-      </Text>
+            <View style={[styles.body, !isLast && styles.bodyGap]}>
+              <Text style={[styles.label, current && styles.labelCurrent, future && styles.labelFuture]}>{s.label}</Text>
+              {date ? <Text style={styles.date}>{formatOrderDateShort(date)}</Text> : null}
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  timeline: { gap: spacing.xs },
-  stepper: { flexDirection: "row", alignItems: "center" },
-  segment: { flexDirection: "row", alignItems: "center" },
-  segmentGrow: { flex: 1 },
-  line: { flex: 1, height: 2, marginHorizontal: 4, borderRadius: 1 },
-  lineDone: { backgroundColor: colors.primary },
-  lineTodo: { backgroundColor: colors.border },
-  node: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.border, alignItems: "center", justifyContent: "center" },
-  nodeReached: { backgroundColor: colors.primary },
-  nodeCurrent: { width: 26, height: 26, borderRadius: 13, borderWidth: 3, borderColor: colors.primaryLight },
-  currentLabel: { ...typography.caption, color: colors.textMuted },
-  currentLabelStrong: { color: colors.primaryDark, fontWeight: "700" },
-  cancelledRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.dangerSoft, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md },
-  cancelledText: { ...typography.caption, color: colors.danger, fontWeight: "700" },
+  list: { gap: 0 },
+  row: { flexDirection: "row", alignItems: "stretch", gap: spacing.sm },
+  rail: { width: 28, alignItems: "center" },
+  node: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  nodeDone: { backgroundColor: colors.primary, borderColor: colors.primary },
+  nodeCurrent: { backgroundColor: colors.primary, borderColor: colors.primaryLight, borderWidth: 3 },
+  nodeFuture: { backgroundColor: colors.surface, borderColor: colors.border },
+  connector: { flex: 1, width: 2, marginVertical: 2, borderRadius: 1, minHeight: 14 },
+  connectorDone: { backgroundColor: colors.primary },
+  connectorTodo: { backgroundColor: colors.border },
+  body: { flex: 1, paddingTop: 4 },
+  bodyGap: { paddingBottom: spacing.md },
+  label: { ...typography.body, color: colors.text, fontWeight: "600" },
+  labelCurrent: { color: colors.primaryDark, fontWeight: "700" },
+  labelFuture: { color: colors.textMuted, fontWeight: "400" },
+  date: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
+  // Annulée
+  cancelled: { flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.dangerSoft, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md },
+  cancelledBody: { flex: 1, gap: 1 },
+  cancelledTitle: { ...typography.name, color: colors.danger },
+  cancelledDate: { ...typography.caption, color: colors.danger },
 });

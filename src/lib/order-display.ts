@@ -1,5 +1,6 @@
 import type { MarketplaceOrder, OrderStatus } from "@/lib/database.types";
 import type { OrderItem } from "@/lib/marketplace-service";
+import type { BadgeTone } from "@/components/Badge";
 import { colors } from "@/theme";
 
 // Libellés et couleurs des statuts de commande (partagés liste/détail).
@@ -19,6 +20,17 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   delivering: colors.primary,
   completed: colors.success,
   cancelled: colors.danger,
+};
+
+// Tons de badge tokenisés par statut (Badge `tone` + variante `soft`) :
+// en attente=warning, confirmée/préparation=info, expédiée=primary, livrée=success, annulée=danger.
+export const ORDER_STATUS_TONE: Record<OrderStatus, BadgeTone> = {
+  pending: "warning",
+  confirmed: "info",
+  preparing: "info",
+  delivering: "primary",
+  completed: "success",
+  cancelled: "danger",
 };
 
 export const PAYMENT_LABELS: Record<string, string> = {
@@ -47,6 +59,16 @@ export function formatOrderDate(iso: string): string {
     day: "numeric",
     month: "long",
     year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// Date compacte pour les étapes du suivi (ex. « 12 juin · 14:30 »).
+export function formatOrderDateShort(iso: string): string {
+  return new Date(iso).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "short",
     hour: "2-digit",
     minute: "2-digit",
   });

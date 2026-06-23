@@ -15,7 +15,7 @@ import { FadeInView } from "@/components/FadeInView";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
 import {
   ORDER_STATUS_LABELS,
-  ORDER_STATUS_COLORS,
+  ORDER_STATUS_TONE,
   PAYMENT_LABELS,
   orderItems,
   orderSubtotal,
@@ -23,7 +23,7 @@ import {
 } from "@/lib/order-display";
 import { hapticWarning } from "@/lib/haptics";
 import type { MarketplaceOrder } from "@/lib/database.types";
-import { colors, radius, spacing, typography } from "@/theme";
+import { colors, spacing, typography } from "@/theme";
 
 const STEP = 55; // pas de l'apparition échelonnée
 
@@ -126,9 +126,11 @@ export default function OrderDetail() {
               <Text style={styles.orderId}>Commande #{shortId}</Text>
               <Text style={styles.date}>{formatOrderDate(order.created_at)}</Text>
             </View>
-            <Badge label={ORDER_STATUS_LABELS[order.status]} color={ORDER_STATUS_COLORS[order.status]} />
+            <Badge label={ORDER_STATUS_LABELS[order.status]} tone={ORDER_STATUS_TONE[order.status]} soft />
           </View>
-          <OrderTimeline status={order.status} />
+          <View style={styles.timelineWrap}>
+            <OrderTimeline status={order.status} deliveryMode={order.delivery_mode} createdAt={order.created_at} updatedAt={order.updated_at} />
+          </View>
         </Card>
         </FadeInView>
 
@@ -203,7 +205,8 @@ const styles = StyleSheet.create({
   shopName: { ...typography.h3, color: colors.primaryDark },
   orderId: { ...typography.caption, color: colors.text, fontWeight: "700" },
   date: { ...typography.caption, color: colors.textMuted },
-  badge: { ...typography.caption, color: colors.white, fontWeight: "700", paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, overflow: "hidden" },
+  // Espace au-dessus du suivi vertical (séparation avec l'en-tête reçu).
+  timelineWrap: { marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
   itemRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.md },
   itemName: { ...typography.body, color: colors.text, flex: 1 },
   itemPrice: { ...typography.body, fontWeight: "600" },
