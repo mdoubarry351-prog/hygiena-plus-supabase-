@@ -21,3 +21,8 @@ export const DOCTOR_MESSAGING_ENABLED = true;
 // « Accès rapide » de l'accueil. La bibliothèque et l'admin Articles restent
 // intacts : repasser à `true` réaffiche le point d'entrée depuis l'accueil.
 export const SHOW_ARTICLES = false;
+
+// Point d'entrée « Suivi de grossesse » (carte dans l'écran Cycle). L'écran
+// `app/(user)/pregnancy.tsx` (route href:null) et la table `pregnancies` restent
+// intacts : repasser à `true` réaffiche l'accès, sans aucune perte de données.
+export const SHOW_PREGNANCY = false;
