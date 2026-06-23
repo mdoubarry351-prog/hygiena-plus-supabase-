@@ -16,6 +16,8 @@ import { AppImage } from "@/components/AppImage";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { PhoneInput } from "@/components/PhoneInput";
 import { SegmentedControl } from "@/components/SegmentedControl";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { onlyDigits, toE164, isValidGuineaLocal } from "@/lib/phone";
 import { practitionerTypeOf, PRACTITIONER_TYPES, PRACTITIONER_LABELS } from "@/lib/practitioner";
 import type { PractitionerType } from "@/lib/database.types";
@@ -42,6 +44,8 @@ const DEFAULT_FEE = "75000";
 
 export default function AdminDoctors() {
   const { session } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [doctors, setDoctors] = useState<DoctorRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -274,75 +278,58 @@ export default function AdminDoctors() {
     }
   }
 
-  function demote(d: DoctorRow) {
+  async function demote(d: DoctorRow) {
     if (!session?.user) return;
-    Alert.alert(
-      "Retirer le statut médecin ?",
-      `${d.profile?.full_name ?? "Ce médecin"} redeviendra un utilisateur simple et sa fiche médecin sera supprimée. Le compte est conservé.`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Retirer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await adminService.demoteDoctor(session.user.id, { id: d.id, user_id: d.user_id });
-              setDoctors((prev) => prev.filter((x) => x.id !== d.id));
-              Alert.alert("Statut retiré", "Le compte est redevenu utilisateur simple.");
-            } catch (e) {
-              Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
-            }
-          },
-        },
-      ]
-    );
+    const ok = await confirm({
+      title: "Retirer le statut médecin ?",
+      message: `${d.profile?.full_name ?? "Ce médecin"} redeviendra un utilisateur simple et sa fiche médecin sera supprimée. Le compte est conservé.`,
+      confirmLabel: "Retirer",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await adminService.demoteDoctor(session.user.id, { id: d.id, user_id: d.user_id });
+      setDoctors((prev) => prev.filter((x) => x.id !== d.id));
+      toast.success("Le compte est redevenu utilisateur simple.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action échouée");
+    }
   }
 
-  function deleteDoctor(d: DoctorRow) {
+  async function deleteDoctor(d: DoctorRow) {
     if (!session?.user) return;
-    Alert.alert(
-      "Supprimer définitivement ?",
-      `Le compte de ${d.profile?.full_name ?? "ce médecin"} et toutes ses données seront supprimés. Cette action est IRRÉVERSIBLE.`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await adminService.deleteDoctorAccount(session.user.id, d.user_id);
-              setDoctors((prev) => prev.filter((x) => x.id !== d.id));
-              Alert.alert("Supprimé", "Le compte médecin a été supprimé définitivement.");
-            } catch (e) {
-              Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-            }
-          },
-        },
-      ]
-    );
+    const ok = await confirm({
+      title: "Supprimer définitivement ?",
+      message: `Le compte de ${d.profile?.full_name ?? "ce médecin"} et toutes ses données seront supprimés. Cette action est IRRÉVERSIBLE.`,
+      confirmLabel: "Supprimer",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await adminService.deleteDoctorAccount(session.user.id, d.user_id);
+      setDoctors((prev) => prev.filter((x) => x.id !== d.id));
+      toast.success("Le compte médecin a été supprimé définitivement.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Suppression échouée");
+    }
   }
 
-  function setValidation(d: DoctorRow, validate: boolean) {
+  async function setValidation(d: DoctorRow, validate: boolean) {
     if (!session?.user) return;
-    Alert.alert(
-      validate ? "Valider ce médecin ?" : "Refuser ce médecin ?",
-      validate ? "Sa fiche deviendra visible par les patientes." : "Sa fiche ne sera plus visible.",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: validate ? "Valider" : "Refuser",
-          style: validate ? "default" : "destructive",
-          onPress: async () => {
-            try {
-              await adminService.setDoctorValidation(session.user.id, d.id, validate);
-              setDoctors((prev) => prev.map((x) => (x.id === d.id ? { ...x, is_validated: validate } : x)));
-            } catch (e) {
-              Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
-            }
-          },
-        },
-      ]
-    );
+    const ok = await confirm({
+      title: validate ? "Valider ce médecin ?" : "Révoquer ce médecin ?",
+      message: validate ? "Sa fiche deviendra visible par les patientes." : "Sa fiche ne sera plus visible.",
+      confirmLabel: validate ? "Valider" : "Révoquer",
+      danger: !validate,
+    });
+    if (!ok) return;
+    try {
+      await adminService.setDoctorValidation(session.user.id, d.id, validate);
+      setDoctors((prev) => prev.map((x) => (x.id === d.id ? { ...x, is_validated: validate } : x)));
+      toast.success(validate ? "Médecin validé." : "Validation révoquée.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action échouée");
+    }
   }
 
   if (loading && doctors.length === 0) return <Loading />;
@@ -352,6 +339,8 @@ export default function AdminDoctors() {
     return fee.trim() && Number.isFinite(n) && n >= 0 ? formatPrice(n) : null;
   })();
   const avatarPreview = localAvatar ?? avatarUrl;
+  // Essentiel requis pour activer « Créer » (nom + spécialité + téléphone valide).
+  const canCreate = fullName.trim().length > 0 && !!specialty && isValidGuineaLocal(phone) && !avatarUploading;
 
   return (
     <Screen>
@@ -409,10 +398,15 @@ export default function AdminDoctors() {
               </Pressable>
             </View>
 
-            {/* Nom complet */}
+            {/* Section : Identité & contact */}
+            <Text style={styles.section}>Identité & contact</Text>
             <Input label="Nom complet *" value={fullName} onChangeText={setFullName} placeholder="Ex. Aïssata Diallo" autoCapitalize="words" />
+            <PhoneInput label="Téléphone (connexion) *" value={phone} onChangeText={(f) => setPhone(f)} />
+            <Text style={styles.note}>Identifiant de connexion du médecin. Pour une connexion immédiate, renseignez aussi un email (la connexion par SMS nécessite un fournisseur SMS).</Text>
+            <Input label="Email (optionnel)" value={email} onChangeText={setEmail} placeholder="medecin@exemple.com" keyboardType="email-address" autoCapitalize="none" />
 
-            {/* Type de praticien (gynécologie / thérapie) → practitioner_type */}
+            {/* Section : Profil professionnel */}
+            <Text style={styles.section}>Profil professionnel</Text>
             <Text style={styles.fieldLabel}>Type de praticien *</Text>
             <View style={styles.chips}>
               {PRACTITIONER_TYPES.map((t) => {
@@ -424,8 +418,6 @@ export default function AdminDoctors() {
                 );
               })}
             </View>
-
-            {/* Spécialité (select) */}
             <Text style={styles.fieldLabel}>Spécialité *</Text>
             <View style={styles.chips}>
               {SPECIALTIES.map((s) => {
@@ -437,26 +429,15 @@ export default function AdminDoctors() {
                 );
               })}
             </View>
-
-            {/* Domaines d'intervention (surtout thérapie) → intervention_areas */}
             <Input label="Domaines d'intervention (optionnel)" value={interventionAreas} onChangeText={setInterventionAreas} placeholder="Ex. anxiété, stress, deuil, couple…" multiline numberOfLines={2} style={styles.textArea} />
-
-            {/* Années d'expérience */}
             <Input label="Années d'expérience" value={yearsExp} onChangeText={setYearsExp} placeholder="0" keyboardType="numeric" />
+            <Input label="Présentation" value={bio} onChangeText={setBio} placeholder="Quelques phrases sur le médecin, son parcours, son approche…" multiline numberOfLines={4} style={styles.textArea} />
 
-            {/* Téléphone (connexion) */}
-            <PhoneInput label="Téléphone (connexion) *" value={phone} onChangeText={(f) => setPhone(f)} />
-            <Text style={styles.note}>Identifiant de connexion du médecin. Pour une connexion immédiate, renseignez aussi un email (la connexion par SMS nécessite un fournisseur SMS).</Text>
-
-            {/* Email (optionnel) */}
-            <Input label="Email (optionnel)" value={email} onChangeText={setEmail} placeholder="medecin@exemple.com" keyboardType="email-address" autoCapitalize="none" />
-
-            {/* Tarif */}
+            {/* Section : Tarif & statut */}
+            <Text style={styles.section}>Tarif & statut</Text>
             <Input label="Tarif consultation (GNF)" value={fee} onChangeText={setFee} placeholder="75000" keyboardType="numeric" />
             {feeHint ? <Text style={styles.hint}>{feeHint}</Text> : null}
-
-            {/* Statut (select) */}
-            <Text style={styles.fieldLabel}>Statut</Text>
+            <Text style={styles.fieldLabel}>Statut initial</Text>
             <View style={styles.statusRow}>
               <Pressable onPress={() => setIsValidated(true)} style={[styles.statusBtn, isValidated && styles.statusBtnActive]}>
                 <Ionicons name="shield-checkmark-outline" size={16} color={isValidated ? colors.white : colors.textMuted} />
@@ -468,10 +449,8 @@ export default function AdminDoctors() {
               </Pressable>
             </View>
 
-            {/* Présentation */}
-            <Input label="Présentation" value={bio} onChangeText={setBio} placeholder="Quelques phrases sur le médecin, son parcours, son approche…" multiline numberOfLines={4} style={styles.textArea} />
-
-            <Button title="Créer le médecin" onPress={submitCreate} loading={saving} disabled={avatarUploading} />
+            <Button title="Créer le médecin" onPress={submitCreate} loading={saving} disabled={!canCreate} />
+            {!canCreate && !saving ? <Text style={styles.requiredHint}>Renseigne le nom, la spécialité et un téléphone valide pour créer le médecin.</Text> : null}
           </Card>
         ) : (
           <Pressable onPress={() => setAdding(true)} style={styles.addToggle}>
@@ -495,7 +474,7 @@ export default function AdminDoctors() {
                   <Text style={styles.specialty}>{PRACTITIONER_LABELS[practitionerTypeOf(d.practitioner_type)].shortTitle} · {d.specialty}</Text>
                   <Text style={styles.meta}>{d.profile?.email ?? "—"}</Text>
                 </View>
-                <Badge label={d.is_validated ? "Validé" : "En attente"} color={d.is_validated ? colors.success : colors.accent} />
+                <Badge label={d.is_validated ? "Validé" : "En attente"} tone={d.is_validated ? "success" : "warning"} soft />
                 <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={colors.textMuted} />
               </Pressable>
               <View style={styles.metaRow}>
@@ -632,9 +611,6 @@ const styles = StyleSheet.create({
   meta: { ...typography.caption, color: colors.textMuted },
   metaRow: { flexDirection: "row", gap: spacing.lg },
   bio: { ...typography.caption, color: colors.text },
-  badge: { ...typography.caption, color: colors.white, fontWeight: "700", paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, overflow: "hidden" },
-  badgeOk: { backgroundColor: colors.success },
-  badgePending: { backgroundColor: colors.accent },
   actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
   btn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, height: 44, borderRadius: radius.md },
   btnOutline: { borderWidth: 1.5, borderColor: colors.danger },
@@ -648,6 +624,9 @@ const styles = StyleSheet.create({
   addHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   note: { ...typography.caption, color: colors.textMuted },
   hint: { ...typography.caption, color: colors.primaryDark, fontWeight: "700", marginTop: -spacing.xs },
+  requiredHint: { ...typography.caption, color: colors.textMuted, textAlign: "center" },
+  // En-tête de section du formulaire (back-office sobre).
+  section: { ...typography.caption, color: colors.primaryDark, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginTop: spacing.sm, marginBottom: -spacing.xs },
   fieldLabel: { ...typography.caption, color: colors.textMuted, fontWeight: "700", marginTop: spacing.xs },
   textArea: { height: 100, textAlignVertical: "top", paddingTop: spacing.sm },
   // Avatar
