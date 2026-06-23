@@ -1,22 +1,26 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Avatar } from "@/components/Avatar";
-import { Badge } from "@/components/Badge";
+import { Badge, type BadgeTone } from "@/components/Badge";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, type DoctorRow } from "@/lib/admin-service";
 import type { Profile, UserRole } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
 const ROLE_LABELS: Record<UserRole, string> = { user: "Utilisateur", doctor: "Médecin", admin: "Admin" };
+// Couleur (boutons sélecteurs) + ton de badge par rôle (badge tonal).
 const ROLE_COLORS: Record<UserRole, string> = { user: colors.secondary, doctor: colors.primary, admin: colors.danger };
+const ROLE_TONE: Record<UserRole, BadgeTone> = { user: "info", doctor: "primary", admin: "danger" };
 const ROLES: UserRole[] = ["user", "doctor", "admin"];
 
 // Onglets = filtre par rôle.
@@ -28,6 +32,8 @@ const TABS: { key: UserRole; label: string }[] = [
 
 export default function AdminAccounts() {
   const { session } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [doctorByUser, setDoctorByUser] = useState<Record<string, DoctorRow>>({});
   const [suspendedByUser, setSuspendedByUser] = useState<Record<string, string>>({});
@@ -90,127 +96,86 @@ export default function AdminAccounts() {
   const label = (p: Profile) => p.full_name ?? p.email ?? "ce compte";
 
   // ---------- Actions (réutilisent adminService) ----------
-  function changeRole(p: Profile, role: UserRole) {
+  // Confirmations destructives → ConfirmDialog ; retours → Toast (logique inchangée).
+  async function changeRole(p: Profile, role: UserRole) {
     if (!session?.user || role === p.role) return;
-    Alert.alert("Changer le rôle", `Définir ${label(p)} comme « ${ROLE_LABELS[role]} » ?`, [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Confirmer",
-        onPress: async () => {
-          try {
-            await adminService.updateUserRole(session.user.id, p.id, role);
-            await load();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
-          }
-        },
-      },
-    ]);
+    const ok = await confirm({ title: "Changer le rôle", message: `Définir ${label(p)} comme « ${ROLE_LABELS[role]} » ?`, confirmLabel: "Confirmer" });
+    if (!ok) return;
+    try {
+      await adminService.updateUserRole(session.user.id, p.id, role);
+      await load();
+      toast.success(`Rôle mis à jour : ${ROLE_LABELS[role]}.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Mise à jour échouée");
+    }
   }
 
-  function suspend(p: Profile) {
+  async function suspend(p: Profile) {
     if (!session?.user) return;
-    Alert.alert("Suspendre le compte ?", `${label(p)} ne pourra plus se connecter.`, [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Suspendre",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await adminService.suspendUser(session.user.id, p.id, null, null);
-            await load();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
-          }
-        },
-      },
-    ]);
+    const ok = await confirm({ title: "Suspendre le compte ?", message: `${label(p)} ne pourra plus se connecter.`, confirmLabel: "Suspendre", danger: true });
+    if (!ok) return;
+    try {
+      await adminService.suspendUser(session.user.id, p.id, null, null);
+      await load();
+      toast.success("Compte suspendu.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action échouée");
+    }
   }
 
-  function reactivate(p: Profile) {
+  async function reactivate(p: Profile) {
     const sid = suspendedByUser[p.id];
     if (!session?.user || !sid) return;
-    Alert.alert("Réactiver le compte ?", "La suspension sera levée.", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Réactiver",
-        onPress: async () => {
-          try {
-            await adminService.liftSuspension(session.user.id, sid, p.id);
-            await load();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
-          }
-        },
-      },
-    ]);
+    const ok = await confirm({ title: "Réactiver le compte ?", message: "La suspension sera levée.", confirmLabel: "Réactiver" });
+    if (!ok) return;
+    try {
+      await adminService.liftSuspension(session.user.id, sid, p.id);
+      await load();
+      toast.success("Suspension levée.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action échouée");
+    }
   }
 
-  function deleteAccount(p: Profile, isDoctor: boolean) {
+  async function deleteAccount(p: Profile, isDoctor: boolean) {
     if (!session?.user) return;
-    Alert.alert(
-      "Supprimer définitivement ?",
-      `Le compte de ${label(p)} et toutes ses données seront supprimés. Action IRRÉVERSIBLE.`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              if (isDoctor) await adminService.deleteDoctorAccount(session.user.id, p.id);
-              else await adminService.deleteUserAccount(session.user.id, p.id);
-              setExpandedId(null);
-              await load();
-            } catch (e) {
-              Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-            }
-          },
-        },
-      ]
-    );
+    const ok = await confirm({ title: "Supprimer définitivement ?", message: `Le compte de ${label(p)} et toutes ses données seront supprimés. Action IRRÉVERSIBLE.`, confirmLabel: "Supprimer", danger: true });
+    if (!ok) return;
+    try {
+      if (isDoctor) await adminService.deleteDoctorAccount(session.user.id, p.id);
+      else await adminService.deleteUserAccount(session.user.id, p.id);
+      setExpandedId(null);
+      await load();
+      toast.success("Compte supprimé définitivement.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Suppression échouée");
+    }
   }
 
-  function validateDoctor(d: DoctorRow, validate: boolean) {
+  async function validateDoctor(d: DoctorRow, validate: boolean) {
     if (!session?.user) return;
-    Alert.alert(
-      validate ? "Valider ce médecin ?" : "Révoquer ce médecin ?",
-      validate ? "Sa fiche deviendra visible." : "Sa fiche ne sera plus visible.",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: validate ? "Valider" : "Révoquer",
-          style: validate ? "default" : "destructive",
-          onPress: async () => {
-            try {
-              await adminService.setDoctorValidation(session.user.id, d.id, validate);
-              await load();
-            } catch (e) {
-              Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
-            }
-          },
-        },
-      ]
-    );
+    const ok = await confirm({ title: validate ? "Valider ce médecin ?" : "Révoquer ce médecin ?", message: validate ? "Sa fiche deviendra visible." : "Sa fiche ne sera plus visible.", confirmLabel: validate ? "Valider" : "Révoquer", danger: !validate });
+    if (!ok) return;
+    try {
+      await adminService.setDoctorValidation(session.user.id, d.id, validate);
+      await load();
+      toast.success(validate ? "Médecin validé." : "Validation révoquée.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action échouée");
+    }
   }
 
-  function demote(d: DoctorRow) {
+  async function demote(d: DoctorRow) {
     if (!session?.user) return;
-    Alert.alert("Retirer le statut médecin ?", "Le compte redeviendra un utilisateur simple (fiche supprimée).", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Retirer",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await adminService.demoteDoctor(session.user.id, { id: d.id, user_id: d.user_id });
-            await load();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
-          }
-        },
-      },
-    ]);
+    const ok = await confirm({ title: "Retirer le statut médecin ?", message: "Le compte redeviendra un utilisateur simple (fiche supprimée).", confirmLabel: "Retirer", danger: true });
+    if (!ok) return;
+    try {
+      await adminService.demoteDoctor(session.user.id, { id: d.id, user_id: d.user_id });
+      await load();
+      toast.success("Statut médecin retiré.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action échouée");
+    }
   }
 
   if (loading && profiles.length === 0) return <Loading />;
@@ -294,7 +259,7 @@ export default function AdminAccounts() {
                     <Text style={styles.contact} numberOfLines={1}>{p.phone ?? p.email ?? "—"}</Text>
                     {isSuspended ? <Text style={styles.suspendedTag}>● Suspendu</Text> : null}
                   </View>
-                  <Badge label={ROLE_LABELS[p.role]} color={ROLE_COLORS[p.role]} />
+                  <Badge label={ROLE_LABELS[p.role]} tone={ROLE_TONE[p.role]} soft />
                 </Card>
 
                 {open && (

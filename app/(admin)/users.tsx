@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Avatar } from "@/components/Avatar";
-import { Badge } from "@/components/Badge";
+import { Badge, type BadgeTone } from "@/components/Badge";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
@@ -23,6 +23,8 @@ import { colors, radius, spacing, typography } from "@/theme";
 
 const ROLE_LABELS: Record<UserRole, string> = { user: "Utilisateur", doctor: "Médecin", admin: "Admin" };
 const ROLE_COLORS: Record<UserRole, string> = { user: colors.secondary, doctor: colors.primary, admin: colors.danger };
+// Tons de badge par rôle (badge tonal ; ROLE_COLORS reste utilisé par les boutons).
+const ROLE_TONE: Record<UserRole, BadgeTone> = { user: "info", doctor: "primary", admin: "danger" };
 const ROLES: UserRole[] = ["user", "doctor", "admin"];
 
 export default function AdminUsers() {
@@ -199,23 +201,18 @@ export default function AdminUsers() {
     }
   }
 
-  function changeRole(user: Profile, role: UserRole) {
+  async function changeRole(user: Profile, role: UserRole) {
     if (!session?.user || role === user.role) return;
-    Alert.alert("Changer le rôle", `Définir ${user.full_name ?? user.email ?? "cet utilisateur"} comme « ${ROLE_LABELS[role]} » ?`, [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Confirmer",
-        onPress: async () => {
-          try {
-            await adminService.updateUserRole(session.user.id, user.id, role);
-            setSelected((s) => (s ? { ...s, role } : s));
-            setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role } : u)));
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
-          }
-        },
-      },
-    ]);
+    const ok = await confirm({ title: "Changer le rôle", message: `Définir ${user.full_name ?? user.email ?? "cet utilisateur"} comme « ${ROLE_LABELS[role]} » ?`, confirmLabel: "Confirmer" });
+    if (!ok) return;
+    try {
+      await adminService.updateUserRole(session.user.id, user.id, role);
+      setSelected((s) => (s ? { ...s, role } : s));
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role } : u)));
+      toast.success(`Rôle mis à jour : ${ROLE_LABELS[role]}.`);
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
+    }
   }
 
   return (
@@ -262,7 +259,7 @@ export default function AdminUsers() {
                       <Text style={styles.email} numberOfLines={1}>{u.email ?? "—"}</Text>
                       {isSuspended ? <Text style={styles.suspendedTag}>● Suspendu</Text> : null}
                     </View>
-                    <Badge label={ROLE_LABELS[u.role]} color={ROLE_COLORS[u.role]} />
+                    <Badge label={ROLE_LABELS[u.role]} tone={ROLE_TONE[u.role]} soft />
                   </Card>
                   {open && (
                     <Card style={styles.detail}>

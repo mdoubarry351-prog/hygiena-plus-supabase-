@@ -161,7 +161,7 @@ export default function AdminAdmins() {
                   <Text style={styles.email} numberOfLines={1}>{u.email ?? "—"}</Text>
                 </View>
                 {isSelf ? (
-                  <Badge label="Vous" color={colors.secondary} />
+                  <Badge label="Vous" tone="info" soft />
                 ) : (
                   <Pressable style={[styles.actionBtn, styles.demoteBtn]} onPress={() => demote(u)}>
                     <Ionicons name="remove-circle-outline" size={16} color={colors.danger} />

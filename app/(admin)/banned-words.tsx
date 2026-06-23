@@ -8,6 +8,8 @@ import { Button } from "@/components/Button";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import { hapticSuccess } from "@/lib/haptics";
@@ -24,6 +26,8 @@ const severityMeta = (s: number) => SEVERITIES.find((x) => x.value === s) ?? SEV
 
 export default function AdminBannedWords() {
   const { session } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [words, setWords] = useState<BannedWord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -79,31 +83,26 @@ export default function AdminBannedWords() {
     } catch (e) {
       // rollback en cas d'échec
       setWords((prev) => prev.map((x) => (x.id === word.id ? { ...x, is_active: word.is_active } : x)));
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+      toast.error(e instanceof Error ? e.message : "Action échouée");
     }
   }
 
-  function confirmDelete(word: BannedWord) {
+  async function confirmDelete(word: BannedWord) {
     if (!session?.user) return;
-    Alert.alert(
-      "Supprimer ce mot ?",
-      `« ${word.word} » ne bloquera plus les publications ni les commentaires.`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await adminService.deleteBannedWord(session.user.id, word.id);
-              setWords((prev) => prev.filter((x) => x.id !== word.id));
-            } catch (e) {
-              Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-            }
-          },
-        },
-      ]
-    );
+    const ok = await confirm({
+      title: "Supprimer ce mot ?",
+      message: `« ${word.word} » ne bloquera plus les publications ni les commentaires.`,
+      confirmLabel: "Supprimer",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await adminService.deleteBannedWord(session.user.id, word.id);
+      setWords((prev) => prev.filter((x) => x.id !== word.id));
+      toast.success("Mot supprimé.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Suppression échouée");
+    }
   }
 
   if (loading && words.length === 0) return <Loading />;

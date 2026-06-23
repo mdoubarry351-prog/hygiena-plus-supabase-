@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
-import { Badge } from "@/components/Badge";
+import { Badge, type BadgeTone } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
@@ -21,6 +21,13 @@ const STATUS_COLORS: Record<string, string> = {
   pending: colors.accent,
   resolved: colors.success,
   dismissed: colors.textMuted,
+};
+// Tons de badge par statut (le badge passe en tonal ; les couleurs ci-dessus
+// restent utilisées par les boutons de changement de statut).
+const STATUS_TONE: Record<ReportStatus, BadgeTone> = {
+  pending: "warning",
+  resolved: "success",
+  dismissed: "neutral",
 };
 
 export default function AdminReports() {
@@ -87,7 +94,7 @@ export default function AdminReports() {
                 <Pressable onPress={() => toggle(r)}>
                   <View style={styles.head}>
                     <Text style={styles.reason} numberOfLines={open ? undefined : 2}>{r.reason}</Text>
-                    <Badge label={STATUS_LABELS[r.status as ReportStatus] ?? r.status} color={STATUS_COLORS[r.status] ?? colors.textMuted} />
+                    <Badge label={STATUS_LABELS[r.status as ReportStatus] ?? r.status} tone={STATUS_TONE[r.status as ReportStatus] ?? "neutral"} soft />
                   </View>
                   <Text style={styles.meta}>
                     Par {r.reporter?.full_name ?? "—"}
