@@ -157,14 +157,16 @@ export default function CycleHome() {
       : { label: "faible", color: colors.accent };
 
   // Cartes d'accès rapide (Consultations masquée pour un médecin).
-  const quick: { emoji: string; title: string; sub: string; href: Href; module?: "marketplace" | "doctors" }[] = [
-    { emoji: "🩸", title: "Mon cycle", sub: "Suivi menstruel", href: "/(user)/cycle/calendar" },
-    ...(!isDoctor ? [{ emoji: "🌼", title: "Consultations", sub: "Gynéco & thérapie", href: "/(user)/appointments/hub" as Href, module: "doctors" as const }] : []),
-    { emoji: "🛍️", title: "Boutique", sub: "Produits santé", href: "/(user)/marketplace", module: "marketplace" },
-    { emoji: "💬", title: "Forum", sub: "Communauté", href: "/(user)/community" },
+  // Raccourcis « Mes espaces » — icônes au trait dans des pastilles pastel
+  // (design Coton doux : chaque espace a sa teinte propre, finis les emojis).
+  const quick: { icon: keyof typeof Ionicons.glyphMap; bg: string; fg: string; title: string; sub: string; href: Href; module?: "marketplace" | "doctors" }[] = [
+    { icon: "water", bg: colors.dangerSoft, fg: colors.danger, title: "Mon cycle", sub: "Suivi menstruel", href: "/(user)/cycle/calendar" },
+    ...(!isDoctor ? [{ icon: "pulse" as const, bg: colors.successSoft, fg: colors.secondary, title: "Consultations", sub: "Gynéco & thérapie", href: "/(user)/appointments/hub" as Href, module: "doctors" as const }] : []),
+    { icon: "bag-handle", bg: colors.warningSoft, fg: colors.accent, title: "Boutique", sub: "Produits santé", href: "/(user)/marketplace", module: "marketplace" },
+    { icon: "chatbubbles", bg: colors.primaryLight, fg: colors.primary, title: "Forum", sub: "Communauté", href: "/(user)/community" },
     // « Conseils & infos » masqué de l'accueil (réversible via SHOW_ARTICLES).
     // La bibliothèque /(user)/library et l'admin Articles restent accessibles.
-    ...(SHOW_ARTICLES ? [{ emoji: "📚", title: "Conseils & infos", sub: "Articles santé", href: "/(user)/library" as Href }] : []),
+    ...(SHOW_ARTICLES ? [{ icon: "book" as const, bg: colors.neutralSoft, fg: colors.textMuted, title: "Conseils & infos", sub: "Articles santé", href: "/(user)/library" as Href }] : []),
   ];
 
   // Bloque la navigation vers un module désactivé par l'admin (message au tap).
@@ -339,12 +341,12 @@ export default function CycleHome() {
 
         {/* 6 · Accès rapide */}
         <FadeInView fill={false} delay={STEP * 6}>
-          <Text style={[typography.h3, styles.sectionTitle]}>Accès rapide</Text>
+          <Text style={[typography.h3, styles.sectionTitle]}>Mes espaces</Text>
           <View style={styles.grid}>
             {quick.map((q) => (
               <View key={q.title} style={styles.quickWrap}>
                 <Card onPress={() => openQuick(q)} haptic accessibilityLabel={q.title} style={styles.quickCard}>
-                  <View style={styles.quickIcon}><Text style={styles.quickEmoji}>{q.emoji}</Text></View>
+                  <View style={[styles.quickIcon, { backgroundColor: q.bg }]}><Ionicons name={q.icon} size={21} color={q.fg} /></View>
                   <Text style={styles.quickTitle}>{q.title}</Text>
                   <Text style={styles.quickSub}>{q.sub}</Text>
                 </Card>
@@ -463,7 +465,6 @@ const styles = StyleSheet.create({
   quickWrap: { width: "48%" },
   quickCard: { gap: spacing.xs },
   quickIcon: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center", marginBottom: spacing.xs },
-  quickEmoji: { fontSize: 22 },
   quickTitle: { ...typography.body, fontFamily: fonts.bodySemiBold, fontWeight: "700" },
   quickSub: { ...typography.caption, color: colors.textMuted },
 

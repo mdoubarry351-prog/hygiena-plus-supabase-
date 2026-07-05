@@ -7,11 +7,11 @@ import * as SplashScreen from "expo-splash-screen";
 import * as Notifications from "expo-notifications";
 import { useFonts } from "expo-font";
 import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from "@expo-google-fonts/inter";
+  Nunito_500Medium,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+} from "@expo-google-fonts/nunito";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
 import { AppLockProvider, useAppLock } from "@/providers/AppLockProvider";
 import { ToastProvider } from "@/providers/ToastProvider";
@@ -117,10 +117,10 @@ function OnboardingGate() {
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
+    Nunito_500Medium,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
   });
 
   useEffect(() => {

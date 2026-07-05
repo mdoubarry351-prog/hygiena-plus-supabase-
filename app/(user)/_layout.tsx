@@ -1,13 +1,14 @@
 import { Tabs } from "expo-router";
-import { StyleSheet, Text } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { RoleGuard } from "@/components/RoleGuard";
 import { CartProvider } from "@/providers/CartProvider";
 import { colors, fonts } from "@/theme";
 
-// Icône d'onglet = emoji (maquette). Atténué quand l'onglet n'est pas actif.
-function tabEmoji(emoji: string) {
-  return function TabEmoji({ focused }: { focused: boolean }) {
-    return <Text style={[styles.emoji, !focused && styles.emojiDim]}>{emoji}</Text>;
+// Icône d'onglet = Ionicons au trait (design « Coton doux » — finis les emojis).
+// Variante pleine quand l'onglet est actif, contour sinon.
+function tabIcon(active: keyof typeof Ionicons.glyphMap, inactive: keyof typeof Ionicons.glyphMap) {
+  return function TabIcon({ focused, color }: { focused: boolean; color: string }) {
+    return <Ionicons name={focused ? active : inactive} size={23} color={color} />;
   };
 }
 
@@ -28,11 +29,11 @@ export default function UserLayout() {
           }}
         >
           {/* 5 onglets : Aujourd'hui · Cycle · Boutique · Forum · Profil */}
-          <Tabs.Screen name="index" options={{ title: "Aujourd'hui", tabBarIcon: tabEmoji("🏡") }} />
-          <Tabs.Screen name="cycle/calendar" options={{ title: "Cycle", tabBarIcon: tabEmoji("🩸") }} />
-          <Tabs.Screen name="marketplace/index" options={{ title: "Boutique", tabBarIcon: tabEmoji("🛍️") }} />
-          <Tabs.Screen name="community/index" options={{ title: "Forum", tabBarIcon: tabEmoji("💬") }} />
-          <Tabs.Screen name="profile" options={{ title: "Profil", tabBarIcon: tabEmoji("👤") }} />
+          <Tabs.Screen name="index" options={{ title: "Aujourd'hui", tabBarIcon: tabIcon("home", "home-outline") }} />
+          <Tabs.Screen name="cycle/calendar" options={{ title: "Cycle", tabBarIcon: tabIcon("water", "water-outline") }} />
+          <Tabs.Screen name="marketplace/index" options={{ title: "Boutique", tabBarIcon: tabIcon("bag-handle", "bag-handle-outline") }} />
+          <Tabs.Screen name="community/index" options={{ title: "Forum", tabBarIcon: tabIcon("chatbubbles", "chatbubbles-outline") }} />
+          <Tabs.Screen name="profile" options={{ title: "Profil", tabBarIcon: tabIcon("person", "person-outline") }} />
 
           {/* Consultations retirées de la barre — accès via la carte « Consultations » de l'accueil.
               (La restriction médecin reste assurée par le garde in-screen + la carte masquée pour un doctor.) */}
@@ -84,7 +85,3 @@ export default function UserLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  emoji: { fontSize: 22, marginTop: 2 },
-  emojiDim: { opacity: 0.4 },
-});
