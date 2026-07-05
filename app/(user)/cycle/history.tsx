@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { FadeInView } from "@/components/FadeInView";
 import { useCycles } from "@/hooks/useCycles";
+import { deleteCycleSmart } from "@/lib/cycle-offline";
 import { cycleService } from "@/lib/cycle-service";
 import { resyncCycleReminders } from "@/lib/reminders";
 import { hapticLight } from "@/lib/haptics";
@@ -89,10 +90,10 @@ export default function CycleHistory() {
     if (!ok) return;
     setDeleting(c.id);
     try {
-      await cycleService.deleteCycle(c.id);
+      const { queued } = await deleteCycleSmart(session!.user.id, c.id);
       await reload();
       if (session?.user) resyncCycleReminders(session.user.id); // replanifie (silencieux)
-      toast.success("Saisie supprimée.");
+      toast.success(queued ? "Suppression enregistrée hors-ligne — synchronisation au retour du réseau 📶" : "Saisie supprimée.");
     } catch (e) {
       Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
     } finally {

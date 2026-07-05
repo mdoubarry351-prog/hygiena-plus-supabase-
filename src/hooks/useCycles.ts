@@ -1,58 +1,88 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/providers/AuthProvider";
 import { cycleService, type CyclePrediction } from "@/lib/cycle-service";
+import {
+  applyPendingOps,
+  flushPendingCycles,
+  pendingCount,
+  readCyclesCache,
+  writeCyclesCache,
+} from "@/lib/cycle-offline";
 import type { MenstrualCycle } from "@/lib/database.types";
 
-const cacheKey = (userId: string) => `cycles_cache_${userId}`;
+// Délai max accordé au réseau avant de considérer qu'on est hors-ligne.
+// (Sans ça, une connexion moribonde bloque l'écran de longues secondes.)
+const NETWORK_TIMEOUT_MS = 8000;
 
-type CachePayload = { cachedAt: string; cycles: MenstrualCycle[] };
+function withTimeout<T>(p: Promise<T>): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("network timeout")), NETWORK_TIMEOUT_MS)),
+  ]);
+}
 
+/**
+ * Saisies de cycle avec stratégie HORS-LIGNE D'ABORD :
+ * 1. Le cache local s'affiche IMMÉDIATEMENT (zéro attente, même sans réseau),
+ *    écritures en attente incluses (saisies faites hors-ligne).
+ * 2. En arrière-plan : synchronisation de la file d'attente puis rafraîchissement
+ *    réseau (timeout court). Succès → données fraîches + cache mis à jour.
+ *    Échec → on reste sur le cache, bannière hors-ligne (offline + cachedAt).
+ */
 export function useCycles() {
   const { session } = useAuth();
   const [cycles, setCycles] = useState<MenstrualCycle[]>([]);
   const [prediction, setPrediction] = useState<CyclePrediction | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Hors-ligne : on affiche des données issues du cache (avec la date de mise en cache).
   const [offline, setOffline] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
+  // Nombre de saisies en attente de synchronisation (affichable si besoin).
+  const [pending, setPending] = useState(0);
+  // Évite que deux load() concurrents (focus rapprochés) ne s'entremêlent.
+  const seq = useRef(0);
 
   const load = useCallback(async () => {
     if (!session?.user) return;
     const uid = session.user.id;
-    setLoading(true);
+    const mySeq = ++seq.current;
     setError(null);
+
+    // 1) CACHE D'ABORD : affichage instantané (avec les écritures en attente).
+    const cache = await readCyclesCache(uid);
+    if (cache && seq.current === mySeq) {
+      setCycles(cache.cycles);
+      setPrediction(cycleService.computePrediction(cache.cycles));
+      setLoading(false); // l'utilisatrice voit ses données tout de suite
+    } else {
+      setLoading(true); // premier lancement : rien en cache
+    }
+    setPending(await pendingCount(uid));
+
+    // 2) ARRIÈRE-PLAN : file d'attente puis rafraîchissement réseau.
     try {
-      const data = await cycleService.getCycles(uid);
+      await withTimeout(flushPendingCycles(uid));
+      const data = await withTimeout(cycleService.getCycles(uid));
+      if (seq.current !== mySeq) return;
       setCycles(data);
       setPrediction(cycleService.computePrediction(data));
       setOffline(false);
       setCachedAt(null);
-      // Met en cache les dernières données connues (best-effort).
-      const payload: CachePayload = { cachedAt: new Date().toISOString(), cycles: data };
-      AsyncStorage.setItem(cacheKey(uid), JSON.stringify(payload)).catch(() => {});
+      setPending(await pendingCount(uid));
+      writeCyclesCache(uid, data);
     } catch (e) {
-      // Échec réseau → repli sur le cache si disponible.
-      try {
-        const raw = await AsyncStorage.getItem(cacheKey(uid));
-        if (raw) {
-          const parsed = JSON.parse(raw) as CachePayload;
-          const cached = parsed.cycles ?? [];
-          setCycles(cached);
-          setPrediction(cycleService.computePrediction(cached));
-          setOffline(true);
-          setCachedAt(parsed.cachedAt ?? null);
-          setError(null); // on a des données (du cache)
-        } else {
-          setError(e instanceof Error ? e.message : "Erreur de chargement");
-        }
-      } catch {
+      if (seq.current !== mySeq) return;
+      if (cache) {
+        // Hors-ligne avec cache : les données restent affichées, on le signale.
+        setOffline(true);
+        setCachedAt(cache.cachedAt ?? null);
+      } else {
+        // Premier lancement ET hors-ligne : rien à montrer.
         setError(e instanceof Error ? e.message : "Erreur de chargement");
       }
     } finally {
-      setLoading(false);
+      if (seq.current === mySeq) setLoading(false);
     }
   }, [session?.user]);
 
@@ -61,5 +91,5 @@ export function useCycles() {
   // édition de la date de fin) au retour sur l'historique/calendrier/accueil.
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  return { cycles, prediction, loading, error, offline, cachedAt, reload: load };
+  return { cycles, prediction, loading, error, offline, cachedAt, pending, reload: load };
 }

@@ -11,6 +11,7 @@ import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
+import { addCycleSmart, updateCycleSmart } from "@/lib/cycle-offline";
 import { cycleService, SYMPTOMS, FLOW_OPTIONS, MOOD_OPTIONS } from "@/lib/cycle-service";
 import { resyncCycleReminders } from "@/lib/reminders";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
@@ -191,12 +192,12 @@ export default function LogCycle() {
         notes: notes.trim() ? notes.trim() : null,
       };
       if (isEdit) {
-        await cycleService.updateCycle(id!, payload);
-        toast.success("Saisie modifiée.");
+        const { queued } = await updateCycleSmart(session.user.id, id!, payload);
+        toast.success(queued ? "Modification enregistrée hors-ligne — synchronisation automatique au retour du réseau 📶" : "Saisie modifiée.");
       } else {
-        await cycleService.addCycle({ user_id: session.user.id, ...payload });
+        const { queued } = await addCycleSmart({ user_id: session.user.id, ...payload });
         clearDraft(DRAFT_KEYS.cycleLog); // brouillon consommé
-        toast.success("Tes règles ont été enregistrées.");
+        toast.success(queued ? "Règles enregistrées hors-ligne — synchronisation automatique au retour du réseau 📶" : "Tes règles ont été enregistrées.");
       }
       hapticSuccess();
       // Replanifie les rappels locaux d'après les nouvelles prédictions (silencieux).
