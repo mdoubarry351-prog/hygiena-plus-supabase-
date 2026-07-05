@@ -73,7 +73,6 @@ export default function UserLayout() {
           <Tabs.Screen name="blocked" options={{ href: null }} />
           <Tabs.Screen name="library" options={{ href: null }} />
           <Tabs.Screen name="article" options={{ href: null }} />
-          <Tabs.Screen name="pregnancy" options={{ href: null }} />
           <Tabs.Screen name="help" options={{ href: null }} />
           <Tabs.Screen name="privacy" options={{ href: null }} />
           <Tabs.Screen name="terms" options={{ href: null }} />

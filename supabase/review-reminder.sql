@@ -1,0 +1,5 @@
+-- Demande d'avis post-livraison (ajoutée au cron quotidien generate_reminders,
+-- appliquée en production le 05/07/2026) : commande `completed` depuis 2 jours
+-- → notification « Ton avis compte ⭐ » (kind: orders), une seule fois par commande.
+-- La table pregnancies a été supprimée le même jour (fonctionnalité retirée).
+-- Voir la définition complète de generate_reminders dans le dashboard Supabase.

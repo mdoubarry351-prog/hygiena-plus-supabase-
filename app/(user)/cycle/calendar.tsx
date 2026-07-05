@@ -11,7 +11,7 @@ import { FadeInView } from "@/components/FadeInView";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useCycles } from "@/hooks/useCycles";
 import { useAppSettings } from "@/hooks/useAppSettings";
-import { SHOW_PREGNANCY } from "@/lib/app-config";
+import {  } from "@/lib/app-config";
 import { hapticLight } from "@/lib/haptics";
 import type { MenstrualCycle } from "@/lib/database.types";
 import { colors, durations, fonts, phase, radius, spacing, typography } from "@/theme";
@@ -25,9 +25,7 @@ const LINKS: { icon: keyof typeof Ionicons.glyphMap; title: string; sub: string;
   { icon: "bar-chart-outline", title: "Statistiques", sub: "Graphiques : durées, symptômes, humeur, douleur", href: "/(user)/cycle/stats" },
   { icon: "list-outline", title: "Historique des cycles", sub: "Tous tes cycles, modifier ou supprimer", href: "/(user)/cycle/history" },
   { icon: "bulb-outline", title: "Comprendre mon cycle", sub: "Phases, ovulation, fertilité, irrégularités", href: "/(user)/cycle/learn" },
-  // Suivi de grossesse retiré de l'accès tant que SHOW_PREGNANCY=false (réversible ;
-  // l'écran /(user)/pregnancy et la table pregnancies restent intacts).
-  ...(SHOW_PREGNANCY ? [{ icon: "heart-outline" as const, title: "Suivi de grossesse", sub: "Semaine par semaine, du début à la naissance", href: "/(user)/pregnancy" as Href }] : []),
+  // Suivi de grossesse retiré de l'accès tant que =false (réversible ;
 ];
 
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
