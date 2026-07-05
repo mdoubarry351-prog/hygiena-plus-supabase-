@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
+import { Avatar } from "@/components/Avatar";
 import { Input } from "@/components/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -41,6 +42,8 @@ export default function CommunityHome() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeCat, setActiveCat] = useState<string>("all");
   const [doctorsOnly, setDoctorsOnly] = useState(false);
+  // Filtre « Suivis » : uniquement les publications des membres que je suis.
+  const [followedOnly, setFollowedOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<"recent" | "trending">("recent");
   // Médecins correspondant à la recherche (section en tête du fil).
@@ -48,11 +51,12 @@ export default function CommunityHome() {
   const { community_enabled } = useAppSettings();
 
   // Filtres appliqués CÔTÉ SERVEUR (recherche + catégorie + tri + filtre médecins).
-  const { posts, likedIds, loading, loadingMore, hasMore, error, reload, loadMore, toggleLike } = useCommunity({
+  const { posts, likedIds, loading, loadingMore, hasMore, error, reload, loadMore, toggleLike, newPostsCount, applyNewPosts } = useCommunity({
     search,
     category: activeCat === "all" ? null : activeCat,
     sort: sortMode === "trending" ? "trending" : "recents",
     doctorsOnly,
+    followedOnly,
   });
   const { savedIds, toggle: toggleSave } = useBookmarks();
   const { session } = useAuth();
@@ -181,6 +185,8 @@ export default function CommunityHome() {
 
   // Handlers stables (id-based) pour mémoïser les cartes.
   const onPressPost = useCallback((id: string) => router.push(`/(user)/community/${id}`), [router]);
+  // Profil public d'un auteur (jamais appelé pour un post anonyme : user_id null).
+  const onOpenProfile = useCallback((userId: string) => router.push(`/(user)/community/profile/${userId}`), [router]);
   const onOpenCommentsPost = useCallback((id: string) => router.push(`/(user)/community/${id}?focus=comments`), [router]);
   const onLikePost = useCallback((id: string) => toggleLike(id), [toggleLike]);
   const onSavePost = useCallback((id: string) => toggleSave(id), [toggleSave]);
@@ -202,9 +208,10 @@ export default function CommunityHome() {
         onOpenComments={onOpenCommentsPost}
         onLike={onLikePost}
         onShare={sharePost}
+        onOpenProfile={onOpenProfile}
       />
     ),
-    [likedIds, savedIds, onSavePost, openPostMenu, onPressPost, onOpenCommentsPost, onLikePost, sharePost]
+    [likedIds, savedIds, onSavePost, openPostMenu, onPressPost, onOpenCommentsPost, onLikePost, sharePost, onOpenProfile]
   );
 
   // Service désactivé par l'admin : état neutre (n'empêche pas les autres onglets).
@@ -292,6 +299,9 @@ export default function CommunityHome() {
         <Pressable onPress={() => { hapticLight(); setActiveCat("all"); }} style={({ pressed }) => [styles.filterChip, activeCat === "all" && styles.filterChipActive, pressed && styles.chipPressed]}>
           <Text style={[styles.filterChipText, activeCat === "all" && styles.filterChipTextActive]}>✨ Toutes</Text>
         </Pressable>
+        <Pressable onPress={() => { hapticLight(); setFollowedOnly((v) => !v); }} style={({ pressed }) => [styles.filterChip, followedOnly && styles.filterChipActive, pressed && styles.chipPressed]}>
+          <Text style={[styles.filterChipText, followedOnly && styles.filterChipTextActive]}>⭐ Suivis</Text>
+        </Pressable>
         <Pressable onPress={() => { hapticLight(); setDoctorsOnly((v) => !v); }} style={({ pressed }) => [styles.filterChip, doctorsOnly && styles.filterChipActive, pressed && styles.chipPressed]}>
           <Text style={[styles.filterChipText, doctorsOnly && styles.filterChipTextActive]}>👩‍⚕️ Médecins</Text>
         </Pressable>
@@ -314,18 +324,25 @@ export default function CommunityHome() {
         </View>
       ) : null}
 
+      {/* Pastille TEMPS RÉEL : des publications sont arrivées pendant la lecture.
+          Un tap → rechargement de la page 0 (le compteur repart à zéro). */}
+      {newPostsCount > 0 ? (
+        <Pressable onPress={applyNewPosts} style={({ pressed }) => [styles.livePill, pressed && styles.chipPressed]} accessibilityRole="button" accessibilityLabel={`${newPostsCount} nouvelles publications, toucher pour actualiser`}>
+          <View style={styles.liveDot} />
+          <Text style={styles.livePillText}>
+            {newPostsCount} nouvelle{newPostsCount > 1 ? "s" : ""} publication{newPostsCount > 1 ? "s" : ""} ↑
+          </Text>
+        </Pressable>
+      ) : null}
+
     </View>
   );
 
-  const listFooter = hasMore ? (
+  // Scroll infini pur : onEndReached charge la suite, seul un spinner s'affiche
+  // (le bouton « Charger plus » est supprimé — plus personne ne fait ça).
+  const listFooter = hasMore && loadingMore ? (
     <View style={styles.footer}>
-      {loadingMore ? (
-        <ActivityIndicator color={colors.primary} />
-      ) : (
-        <Pressable onPress={loadMore} style={styles.loadMore}>
-          <Text style={styles.loadMoreText}>Charger plus</Text>
-        </Pressable>
-      )}
+      <ActivityIndicator color={colors.primary} />
     </View>
   ) : null;
 
@@ -409,6 +426,7 @@ const PostRow = memo(function PostRow({
   onOpenComments,
   onLike,
   onShare,
+  onOpenProfile,
 }: {
   post: CommunityPostWithAuthor;
   liked: boolean;
@@ -419,12 +437,15 @@ const PostRow = memo(function PostRow({
   onOpenComments: (id: string) => void;
   onLike: (id: string) => void;
   onShare: (post: CommunityPostWithAuthor) => void;
+  onOpenProfile: (userId: string) => void;
 }) {
   const isAnon = post.is_anonymous;
   // Anonyme : libellé intentionnel + avatar teinté. Sinon : nom réel (logique inchangée).
   const name = isAnon ? "Membre Hygiena+" : authorDisplayName(false, post.author);
-  const tint = isAnon ? anonTint(post.id) : { bg: colors.primaryLight, fg: colors.primary };
+  const tint = isAnon ? anonTint(post.id) : null;
   const edited = wasEdited(post.created_at, post.updated_at);
+  // L'auteur a un profil consultable seulement si le post n'est PAS anonyme.
+  const canOpenProfile = !isAnon && !!post.user_id;
   // Contenu long : aperçu tronqué + « Voir plus / Voir moins » (inline, sans ouvrir le post).
   const [expanded, setExpanded] = useState(false);
   const isLong = post.content.length > 220 || (post.content.match(/\n/g)?.length ?? 0) >= 4;
@@ -432,14 +453,33 @@ const PostRow = memo(function PostRow({
   return (
     <FadeInView fill={false}>
     <Card onPress={() => onPress(post.id)} accessibilityLabel="Ouvrir la publication" style={styles.post}>
-        {/* En-tête : avatar + (nom gras / temps · chip catégorie) + menu ⋯ */}
+        {/* En-tête : avatar photo (ou initiale) + (nom gras / temps · chip catégorie) + menu ⋯
+            Avatar et nom sont TOUCHABLES → page profil (posts non anonymes uniquement). */}
         <View style={styles.postHead}>
-          <View style={[styles.avatar, { backgroundColor: tint.bg }]}>
-            <Ionicons name="person" size={18} color={tint.fg} />
-          </View>
+          <Pressable
+            onPress={canOpenProfile ? () => { hapticLight(); onOpenProfile(post.user_id!); } : undefined}
+            disabled={!canOpenProfile}
+            hitSlop={4}
+            accessibilityRole={canOpenProfile ? "button" : undefined}
+            accessibilityLabel={canOpenProfile ? `Voir le profil de ${name}` : undefined}
+          >
+            {isAnon ? (
+              <View style={[styles.avatar, { backgroundColor: tint!.bg }]}>
+                <Ionicons name="person" size={18} color={tint!.fg} />
+              </View>
+            ) : (
+              <Avatar uri={post.author?.avatar_url} name={name} size={40} />
+            )}
+          </Pressable>
           <View style={styles.headInfo}>
             <View style={styles.authorRow}>
-              <Text style={styles.author} numberOfLines={1}>{name}</Text>
+              <Pressable
+                onPress={canOpenProfile ? () => { hapticLight(); onOpenProfile(post.user_id!); } : undefined}
+                disabled={!canOpenProfile}
+                hitSlop={4}
+              >
+                <Text style={styles.author} numberOfLines={1}>{name}</Text>
+              </Pressable>
               {!isAnon && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge specialty={post.author.doctorSpecialty} /> : null}
             </View>
             <View style={styles.metaRow}>
@@ -465,6 +505,20 @@ const PostRow = memo(function PostRow({
         ) : null}
 
         <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
+
+        {/* Aperçu du 1ᵉʳ commentaire (le plus aimé) : donne vie au fil et invite à
+            participer, façon Facebook. Un tap → commentaires du post. */}
+        {post.firstComment ? (
+          <Pressable onPress={() => onOpenComments(post.id)} style={({ pressed }) => [styles.cPreview, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
+            <Text style={styles.cPreviewText} numberOfLines={2}>
+              <Text style={styles.cPreviewName}>{post.firstComment.name}{post.firstComment.isVerifiedDoctor ? " ✔" : ""}</Text>
+              {"  "}{post.firstComment.content}
+            </Text>
+            {post.comments_count > 1 ? (
+              <Text style={styles.cPreviewMore}>Voir les {post.comments_count} commentaires</Text>
+            ) : null}
+          </Pressable>
+        ) : null}
 
         {/* Barre d'engagement en pilules : like + commenter à gauche, partage + signet à droite. */}
         <View style={styles.postFoot}>
@@ -564,8 +618,22 @@ const styles = StyleSheet.create({
   sortChip: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, height: 44, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
   sortChipText: { ...typography.caption, fontWeight: "700", color: colors.text },
   footer: { alignItems: "center", paddingVertical: spacing.md },
-  loadMore: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.primary },
-  loadMoreText: { ...typography.caption, color: colors.primary, fontWeight: "700" },
+  // Pastille « N nouvelles publications ↑ » (temps réel), centrée au-dessus du fil.
+  livePill: {
+    flexDirection: "row", alignItems: "center", gap: spacing.xs, alignSelf: "center",
+    backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    borderRadius: radius.pill, marginTop: spacing.sm, ...shadows.md,
+  },
+  livePillText: { color: colors.white, fontSize: 12.5, fontWeight: "800" },
+  liveDot: { width: 7, height: 7, borderRadius: radius.pill, backgroundColor: colors.white },
+  // Aperçu du 1ᵉʳ commentaire sous le contenu du post.
+  cPreview: {
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: 3,
+  },
+  cPreviewText: { ...typography.caption, fontSize: 12.5, lineHeight: 17, color: colors.text },
+  cPreviewName: { fontWeight: "800" },
+  cPreviewMore: { ...typography.caption, fontSize: 12, color: colors.textMuted, fontWeight: "600" },
   // Rangée de catégories : chips fines (déclutter).
   filterBar: { flexGrow: 0, flexShrink: 0 },
   filterChips: { gap: spacing.xs, alignItems: "center", paddingVertical: spacing.sm },

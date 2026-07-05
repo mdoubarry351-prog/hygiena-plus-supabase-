@@ -52,6 +52,8 @@ export type PostAuthor = Pick<Profile, "full_name" | "avatar_url"> & {
 export type CommunityPostWithAuthor = CommunityPostSafe & {
   author: PostAuthor | null;
   comments_count: number;
+  // Aperçu du 1ᵉʳ commentaire (fil uniquement — null si aucun commentaire).
+  firstComment?: CommentPreview | null;
 };
 
 // Résultat de recherche d'un médecin (identité PUBLIQUE — jamais un membre anonyme).
@@ -65,6 +67,29 @@ export type DoctorSearchResult = {
 
 // Mon commentaire enrichi d'un extrait de la publication parente (historique).
 export type MyComment = CommunityComment & { postExcerpt: string | null };
+
+// Aperçu d'un commentaire affiché sous la carte du post dans le fil
+// (le plus aimé, sinon le plus ancien). Anonymat respecté.
+export type CommentPreview = {
+  name: string;
+  content: string;
+  isVerifiedDoctor: boolean;
+};
+
+// Profil public d'un membre (page profil communauté).
+export type PublicProfile = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  isVerifiedDoctor: boolean;
+  doctorSpecialty: string | null;
+  postsCount: number;
+  followersCount: number;
+  followingCount: number;
+  isFollowedByMe: boolean;
+  isMe: boolean;
+};
 
 // Normalise un texte pour comparaison insensible à la casse ET aux accents.
 function normalizeText(s: string): string {
@@ -184,6 +209,43 @@ async function enrichSafePosts(rows: CommunityPostSafe[]): Promise<CommunityPost
     }));
 }
 
+// Attache à chaque post l'aperçu de son « meilleur » commentaire (le plus aimé,
+// à égalité le plus ancien). UNE requête pour toute la page. Anonymat respecté :
+// commentaire anonyme → nom « Anonyme », jamais de résolution d'identité.
+async function attachFirstComments(posts: CommunityPostWithAuthor[]): Promise<void> {
+  const ids = posts.filter((p) => (p.comments_count ?? 0) > 0).map((p) => p.id);
+  if (ids.length === 0) return;
+  const { data, error } = await supabase
+    .from("community_comments")
+    .select("post_id, content, is_anonymous, user_id, likes_count, created_at, author:profiles(full_name)")
+    .in("post_id", ids)
+    .is("parent_comment_id", null)
+    .order("likes_count", { ascending: false })
+    .order("created_at", { ascending: true });
+  if (error) return; // aperçu best-effort : ne bloque jamais le fil
+  const rows = (data ?? []) as {
+    post_id: string;
+    content: string;
+    is_anonymous: boolean;
+    user_id: string;
+    likes_count: number;
+    created_at: string;
+    author: { full_name: string | null } | null;
+  }[];
+  // Badge médecin pour les auteurs de ces commentaires (une requête).
+  const verified = await fetchVerifiedDoctors(rows.filter((r) => !r.is_anonymous).map((r) => r.user_id));
+  const best = new Map<string, CommentPreview>();
+  for (const r of rows) {
+    if (best.has(r.post_id)) continue; // déjà le meilleur (tri SQL)
+    best.set(r.post_id, {
+      name: r.is_anonymous ? "Anonyme" : r.author?.full_name?.trim() || "Utilisatrice",
+      content: r.content,
+      isVerifiedDoctor: !r.is_anonymous && verified.has(r.user_id),
+    });
+  }
+  for (const p of posts) p.firstComment = best.get(p.id) ?? null;
+}
+
 // Raisons de signalement proposées à l'utilisatrice (modération).
 export const REPORT_REASONS = [
   "Spam",
@@ -234,6 +296,8 @@ export const communityService = {
     category?: string | null;
     sort?: "recents" | "trending";
     doctorsOnly?: boolean;
+    // Filtre « Suivis » : uniquement les posts (non anonymes) des membres que je suis.
+    followedOnly?: boolean;
   }): Promise<{ posts: CommunityPostWithAuthor[]; rawCount: number }> {
     const limit = opts?.limit ?? 20;
     const offset = opts?.offset ?? 0;
@@ -248,15 +312,25 @@ export const communityService = {
       if (doctorIds.length === 0) return { posts: [], rawCount: 0 };
       query = query.in("user_id", doctorIds);
     }
+    if (opts?.followedOnly) {
+      const followedIds = await this.getFollowedIds();
+      if (followedIds.length === 0) return { posts: [], rawCount: 0 };
+      query = query.in("user_id", followedIds);
+    }
     if (opts?.sort === "trending") {
-      query = query.order("likes_count", { ascending: false }).order("comments_count", { ascending: false });
+      // Score « hot » à décroissance temporelle calculé côté SQL (façon Reddit) :
+      // un post récent avec un peu d'engagement bat un vieux post très liké.
+      query = query.order("hot_score", { ascending: false });
     } else {
       query = query.order("created_at", { ascending: false });
     }
     const { data, error } = await query.range(offset, offset + limit - 1);
     if (error) throw error;
     const rows = data ?? [];
-    return { posts: await enrichSafePosts(rows), rawCount: rows.length };
+    const posts = await enrichSafePosts(rows);
+    // Aperçu du 1ᵉʳ commentaire (le plus aimé, sinon le plus ancien) par post.
+    await attachFirstComments(posts);
+    return { posts, rawCount: rows.length };
   },
 
   // Infos « médecin vérifié » de l'utilisatrice courante (pour l'aperçu avant
@@ -379,11 +453,9 @@ export const communityService = {
     return data;
   },
 
-  // Supprime SA propre publication (la RLS own_or_admin protège). On retire
-  // d'abord les dépendances (likes, commentaires) pour éviter les orphelins.
+  // Supprime SA propre publication (RLS own_or_admin). Les likes, commentaires,
+  // réponses et signets sont supprimés automatiquement (ON DELETE CASCADE).
   async deletePost(id: string): Promise<void> {
-    await supabase.from("community_likes").delete().eq("post_id", id);
-    await supabase.from("community_comments").delete().eq("post_id", id);
     const { error } = await supabase.from("community_posts").delete().eq("id", id);
     if (error) throw error;
   },
@@ -449,45 +521,17 @@ export const communityService = {
     return ids.map((id) => map.get(id)).filter((p): p is CommunityPostSafe => !!p);
   },
 
-  // Ajoute / retire un like via community_likes puis recalcule likes_count
-  // sur la publication. Retourne l'état final (liké ou non) et le compteur.
+  // Like/unlike via la RPC `toggle_like` : UN SEUL aller-retour réseau.
+  // Le trigger SQL `trg_post_like_aiud` maintient likes_count de façon fiable
+  // (quel que soit l'auteur du post — l'ancien update client était bloqué par la RLS).
   async toggleLike(
     postId: string,
-    userId: string
+    _userId?: string
   ): Promise<{ liked: boolean; likesCount: number }> {
-    const { data: existing, error: selErr } = await supabase
-      .from("community_likes")
-      .select("id")
-      .eq("post_id", postId)
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (selErr) throw selErr;
-
-    if (existing) {
-      const { error } = await supabase.from("community_likes").delete().eq("id", existing.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase
-        .from("community_likes")
-        .insert({ post_id: postId, user_id: userId });
-      if (error) throw error;
-    }
-
-    // Recompte les likes réels puis met à jour le compteur dénormalisé.
-    const { count, error: cntErr } = await supabase
-      .from("community_likes")
-      .select("id", { count: "exact", head: true })
-      .eq("post_id", postId);
-    if (cntErr) throw cntErr;
-
-    const likesCount = count ?? 0;
-    const { error: updErr } = await supabase
-      .from("community_posts")
-      .update({ likes_count: likesCount })
-      .eq("id", postId);
-    if (updErr) throw updErr;
-
-    return { liked: !existing, likesCount };
+    const { data, error } = await supabase.rpc("toggle_like", { p_post_id: postId });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return { liked: !!row?.liked, likesCount: row?.likes_count ?? 0 };
   },
 
   // Commentaires d'une publication, les plus anciens en premier (ordre de lecture).
@@ -589,10 +633,9 @@ export const communityService = {
     return data;
   },
 
-  // Supprime SON propre commentaire (la RLS own_or_admin protège).
-  // Retire d'abord les likes liés pour éviter les orphelins.
+  // Supprime SON propre commentaire (RLS own_or_admin). Ses likes et ses
+  // réponses partent automatiquement (ON DELETE CASCADE).
   async deleteComment(id: string): Promise<void> {
-    await supabase.from("comment_likes").delete().eq("comment_id", id);
     const { error } = await supabase.from("community_comments").delete().eq("id", id);
     if (error) throw error;
   },
@@ -722,5 +765,85 @@ export const communityService = {
   async toggleBookmark(postId: string, isSaved: boolean): Promise<void> {
     if (isSaved) await this.removeBookmark(postId);
     else await this.addBookmark(postId);
+  },
+
+  // ---------------- Abonnements (follows) ----------------
+  // Suit / ne suit plus un membre en 1 appel RPC. Renvoie l'état final.
+  async toggleFollow(targetUserId: string): Promise<{ following: boolean; followersCount: number }> {
+    const { data, error } = await supabase.rpc("toggle_follow", { p_target: targetUserId });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return { following: !!row?.following, followersCount: row?.followers_count ?? 0 };
+  },
+
+  // Ids des membres que JE suis (pour le filtre « Suivis » du fil).
+  async getFollowedIds(): Promise<string[]> {
+    const me = await currentUserId();
+    if (!me) return [];
+    const { data, error } = await supabase
+      .from("user_follows")
+      .select("followed_id")
+      .eq("follower_id", me);
+    if (error) return [];
+    return (data ?? []).map((r) => r.followed_id);
+  },
+
+  // Ensemble (Set) des membres suivis — pratique pour marquer les cartes du fil.
+  async getFollowedIdSet(): Promise<Set<string>> {
+    return new Set(await this.getFollowedIds());
+  },
+
+  // ---------------- Profil public d'un membre ----------------
+  // Profil + compteurs + état « suivi » en parallèle. Ne JAMAIS appeler pour
+  // un post anonyme (user_id null dans la vue → pas de navigation possible).
+  async getPublicProfile(userId: string): Promise<PublicProfile | null> {
+    const me = await currentUserId();
+    const [profRes, verified, postsRes, followersRes, followingRes, meFollowRes] = await Promise.all([
+      supabase.from("profiles").select("id, full_name, avatar_url, created_at").eq("id", userId).maybeSingle(),
+      fetchVerifiedDoctors([userId]),
+      supabase
+        .from("community_posts_safe")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("is_anonymous", false),
+      supabase.from("user_follows").select("id", { count: "exact", head: true }).eq("followed_id", userId),
+      supabase.from("user_follows").select("id", { count: "exact", head: true }).eq("follower_id", userId),
+      me
+        ? supabase
+            .from("user_follows")
+            .select("id", { count: "exact", head: true })
+            .eq("follower_id", me)
+            .eq("followed_id", userId)
+        : Promise.resolve({ count: 0 } as { count: number | null }),
+    ]);
+    if (profRes.error || !profRes.data) return null;
+    return {
+      id: profRes.data.id,
+      full_name: profRes.data.full_name,
+      avatar_url: profRes.data.avatar_url,
+      created_at: profRes.data.created_at,
+      isVerifiedDoctor: verified.has(userId),
+      doctorSpecialty: verified.get(userId) ?? null,
+      postsCount: postsRes.count ?? 0,
+      followersCount: followersRes.count ?? 0,
+      followingCount: followingRes.count ?? 0,
+      isFollowedByMe: (meFollowRes.count ?? 0) > 0,
+      isMe: me === userId,
+    };
+  },
+
+  // Publications PUBLIQUES (non anonymes) d'un membre, récentes d'abord.
+  async getUserPosts(userId: string): Promise<CommunityPostWithAuthor[]> {
+    const { data, error } = await supabase
+      .from("community_posts_safe")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("is_anonymous", false)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    const posts = await enrichSafePosts(data ?? []);
+    await attachFirstComments(posts);
+    return posts;
   },
 };

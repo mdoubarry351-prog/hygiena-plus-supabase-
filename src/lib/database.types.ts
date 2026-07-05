@@ -1426,6 +1426,28 @@ export type Database = {
         };
         Relationships: [];
       };
+      // Graphe social : qui suit qui (RLS : chacun gère ses propres abonnements).
+      user_follows: {
+        Row: {
+          id: string;
+          follower_id: string;
+          followed_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          follower_id: string;
+          followed_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          follower_id?: string;
+          followed_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       // Vue sécurisée des publications : user_id renvoyé NULL pour un post
@@ -1443,6 +1465,8 @@ export type Database = {
           comments_count: number;
           created_at: string;
           updated_at: string;
+          // Score « Tendances » à décroissance temporelle (calculé côté SQL).
+          hot_score: number;
         };
         Relationships: [];
       };
@@ -1451,6 +1475,16 @@ export type Database = {
       is_admin: {
         Args: Record<string, never>;
         Returns: boolean;
+      };
+      // Like/unlike d'une publication en 1 appel (trigger SQL fiabilise le compteur).
+      toggle_like: {
+        Args: { p_post_id: string };
+        Returns: { liked: boolean; likes_count: number }[];
+      };
+      // Suivre/ne plus suivre un membre en 1 appel.
+      toggle_follow: {
+        Args: { p_target: string };
+        Returns: { following: boolean; followers_count: number }[];
       };
       // Créneaux OCCUPÉS d'un médecin (sans aucune info patiente).
       doctor_booked_slots: {
@@ -1531,6 +1565,7 @@ export type CommunityPost = Tables<"community_posts">;
 export type CommunityPostSafe = Database["public"]["Views"]["community_posts_safe"]["Row"];
 export type CommunityComment = Tables<"community_comments">;
 export type CommunityLike = Tables<"community_likes">;
+export type UserFollow = Tables<"user_follows">;
 export type CommentLike = Tables<"comment_likes">;
 export type AppSettings = Tables<"app_settings">;
 export type StoreSettings = Tables<"store_settings">;
