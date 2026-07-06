@@ -4,6 +4,20 @@ import { supabase } from "@/lib/supabase";
 // Daily + jeton temporaire). Seul un participant du RDV obtient un jeton.
 export type ConsultationRoom = { roomUrl: string; token: string; isOwner: boolean };
 
+// Anti-SSRF / anti-open-redirect (P0-6) : on ne rejoint JAMAIS une URL de salle
+// arbitraire. Seules les URL https du domaine daily.co sont acceptées. Défense
+// en profondeur côté client ; la même whitelist DOIT exister côté Edge Function
+// consultation-room (voir supabase/SCHEMA_PULL_TODO.md).
+export function isAllowedDailyRoomUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return false;
+    return u.hostname === "daily.co" || u.hostname.endsWith(".daily.co");
+  } catch {
+    return false;
+  }
+}
+
 // Fenêtre d'accès à la salle (chat ET appels) autour de l'heure du RDV :
 // de 1 h avant à 1 h après. Unifiée pour le chat et les appels.
 const CALL_WINDOW_BEFORE_MS = 60 * 60 * 1000;
@@ -55,6 +69,10 @@ export async function getConsultationRoom(appointmentId: string): Promise<Consul
   const body = data as (Partial<ConsultationRoom> & { error?: string }) | null;
   if (!body || body.error || !body.roomUrl || !body.token) {
     throw new Error(body?.error || "Salle d'appel indisponible.");
+  }
+  // Anti-SSRF : refuse toute URL de salle hors domaine daily.co.
+  if (!isAllowedDailyRoomUrl(body.roomUrl)) {
+    throw new Error("Salle d'appel invalide.");
   }
   return { roomUrl: body.roomUrl, token: body.token, isOwner: !!body.isOwner };
 }
