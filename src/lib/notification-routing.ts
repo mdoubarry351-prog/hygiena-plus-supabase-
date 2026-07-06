@@ -6,6 +6,7 @@ export type NotifData = {
   kind?: string;
   type?: string | null;
   postId?: string;
+  orderId?: string;
   appointmentId?: string;
   doctorId?: string;
   patientId?: string;
@@ -18,8 +19,14 @@ export function notificationRoute(data: NotifData, type: string | null): Href | 
   switch (data?.kind) {
     case "post":
       return data?.postId ? { pathname: "/(user)/community/[id]", params: { id: data.postId } } : null;
+    case "order":
+      return data?.orderId
+        ? { pathname: "/(user)/marketplace/order", params: { id: data.orderId } }
+        : "/(user)/marketplace/orders";
     case "orders":
-      return "/(user)/marketplace/orders";
+      return data?.orderId
+        ? { pathname: "/(user)/marketplace/order", params: { id: data.orderId } }
+        : "/(user)/marketplace/orders";
     case "my_appointments":
       return "/(user)/appointments/mine";
     case "doctor_appointments":

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { OrderStatus, DeliveryMode } from "@/lib/database.types";
+import type { OrderStatus, DeliveryMode, OrderEvent } from "@/lib/database.types";
 import { formatOrderDateShort } from "@/lib/order-display";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -34,11 +34,15 @@ export function OrderTimeline({
   deliveryMode = "delivery",
   createdAt,
   updatedAt,
+  events,
 }: {
   status: OrderStatus;
   deliveryMode?: DeliveryMode;
   createdAt?: string;
   updatedAt?: string;
+  // Historique horodaté (order_events) : quand fourni, CHAQUE étape franchie
+  // affiche son heure réelle (et plus seulement la première/courante).
+  events?: OrderEvent[];
 }) {
   // Annulée = état dédié (hors stepper).
   if (status === "cancelled") {
@@ -63,8 +67,10 @@ export function OrderTimeline({
         const current = i === currentIndex;
         const future = i > currentIndex;
         const isLast = i === steps.length - 1;
-        // Date connue : étape 1 (création) + étape courante (dernier changement).
-        const date = i === 0 ? createdAt : current ? updatedAt : undefined;
+        // Heure réelle de l'étape depuis l'historique (dernier événement de ce
+        // statut) ; repli sur création/màj si l'historique n'est pas fourni.
+        const ev = events?.filter((e) => e.status === s.key).at(-1);
+        const date = ev?.created_at ?? (i === 0 ? createdAt : current ? updatedAt : undefined);
         return (
           <View key={s.key} style={styles.row}>
             <View style={styles.rail}>

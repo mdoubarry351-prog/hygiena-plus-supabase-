@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -22,15 +22,34 @@ import {
   formatOrderDate,
 } from "@/lib/order-display";
 import { hapticWarning } from "@/lib/haptics";
-import type { MarketplaceOrder } from "@/lib/database.types";
-import { colors, spacing, typography } from "@/theme";
+import { supabase } from "@/lib/supabase";
+import type { MarketplaceOrder, OrderEvent, OrderStatus } from "@/lib/database.types";
+import { colors, radius, spacing, typography } from "@/theme";
 
 const STEP = 55; // pas de l'apparition échelonnée
+
+
+// Présentation du statut courant (hero) : icône, titre chaleureux, teinte.
+const ORDER_STEPS: OrderStatus[] = ["pending", "confirmed", "preparing", "delivering", "completed"];
+function heroFor(status: OrderStatus, pickup: boolean): { icon: keyof typeof Ionicons.glyphMap; title: string; sub?: string } {
+  switch (status) {
+    case "pending": return { icon: "receipt", title: "Commande bien reçue 💜", sub: "La boutique va la confirmer très vite." };
+    case "confirmed": return { icon: "checkmark-circle", title: "Confirmée par la boutique ✅", sub: "Elle passe bientôt en préparation." };
+    case "preparing": return { icon: "cube", title: "Préparée avec soin 📦", sub: pickup ? "Bientôt prête pour le retrait." : "Bientôt confiée au livreur." };
+    case "delivering": return pickup
+      ? { icon: "storefront", title: "Prête pour le retrait 🏬", sub: "Ta commande t'attend en boutique." }
+      : { icon: "bicycle", title: "En route vers toi ! 🛵", sub: "Livraison prévue aujourd'hui." };
+    case "completed": return { icon: "heart", title: pickup ? "Commande retirée 💜" : "Commande livrée 💜", sub: "Merci pour ton achat !" };
+    default: return { icon: "close-circle", title: "Commande annulée" };
+  }
+}
 
 export default function OrderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [order, setOrder] = useState<MarketplaceOrder | null>(null);
+  const [events, setEvents] = useState<OrderEvent[]>([]);
+  const [whatsapp, setWhatsapp] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
 
@@ -38,7 +57,12 @@ export default function OrderDetail() {
     if (!id) { setLoading(false); return; }
     setLoading(true);
     try {
-      setOrder(await marketplaceService.getOrder(id));
+      const [o, ev] = await Promise.all([
+        marketplaceService.getOrder(id),
+        marketplaceService.getOrderEvents(id).catch(() => [] as OrderEvent[]),
+      ]);
+      setOrder(o);
+      setEvents(ev);
     } catch {
       setOrder(null);
     } finally {
@@ -47,6 +71,38 @@ export default function OrderDetail() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Rechargement silencieux (sans spinner) pour le suivi en direct.
+  const refresh = useCallback(async () => {
+    if (!id) return;
+    try {
+      const [o, ev] = await Promise.all([
+        marketplaceService.getOrder(id),
+        marketplaceService.getOrderEvents(id).catch(() => [] as OrderEvent[]),
+      ]);
+      if (o) { setOrder(o); setEvents(ev); }
+    } catch { /* on garde l'affichage courant */ }
+  }, [id]);
+
+  // TEMPS RÉEL : chaque étape validée par l'admin (nouvel order_event)
+  // met à jour cet écran immédiatement, sans que la cliente ait à rafraîchir.
+  useEffect(() => {
+    if (!id) return;
+    const ch = supabase
+      .channel(`order-track-${id}`)
+      .on("postgres_changes",
+        { event: "INSERT", schema: "public", table: "order_events", filter: `order_id=eq.${id}` },
+        () => { refresh(); })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [id, refresh]);
+
+  // Numéro WhatsApp de la boutique (si activé dans les réglages).
+  useEffect(() => {
+    marketplaceService.getStorePaymentSettings()
+      .then((st) => { if (st?.whatsapp_enabled && st.whatsapp_number) setWhatsapp(st.whatsapp_number); })
+      .catch(() => {});
+  }, []);
 
   if (loading) return <Loading />;
   if (!order) {
@@ -117,6 +173,25 @@ export default function OrderDetail() {
         }
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        {/* HERO : où en est ma commande, en une demi-seconde */}
+        {order.status !== "cancelled" ? (
+          <FadeInView fill={false} delay={0}>
+          <View style={styles.hero}>
+            <View style={styles.heroIcon}>
+              <Ionicons name={heroFor(order.status, isPickup).icon} size={30} color={colors.white} />
+            </View>
+            <Text style={styles.heroTitle}>{heroFor(order.status, isPickup).title}</Text>
+            {heroFor(order.status, isPickup).sub ? <Text style={styles.heroSub}>{heroFor(order.status, isPickup).sub}</Text> : null}
+            <View style={styles.progress}>
+              {ORDER_STEPS.map((st, i) => {
+                const cur = ORDER_STEPS.indexOf(order.status);
+                return <View key={st} style={[styles.seg, i <= cur && styles.segDone]} />;
+              })}
+            </View>
+          </View>
+          </FadeInView>
+        ) : null}
+
         {/* En-tête reçu */}
         <FadeInView fill={false} delay={0}>
         <Card style={styles.card}>
@@ -129,7 +204,7 @@ export default function OrderDetail() {
             <Badge label={ORDER_STATUS_LABELS[order.status]} tone={ORDER_STATUS_TONE[order.status]} soft />
           </View>
           <View style={styles.timelineWrap}>
-            <OrderTimeline status={order.status} deliveryMode={order.delivery_mode} createdAt={order.created_at} updatedAt={order.updated_at} />
+            <OrderTimeline status={order.status} deliveryMode={order.delivery_mode} createdAt={order.created_at} updatedAt={order.updated_at} events={events} />
           </View>
         </Card>
         </FadeInView>
@@ -172,6 +247,15 @@ export default function OrderDetail() {
         </FadeInView>
 
         <FadeInView fill={false} delay={STEP * 3} style={styles.actionsBlock}>
+          {whatsapp ? (
+            <Button
+              title="Contacter la boutique sur WhatsApp"
+              onPress={() => {
+                const num = whatsapp.replace(/[^0-9]/g, "");
+                Linking.openURL(`https://wa.me/${num}?text=${encodeURIComponent(`Bonjour ! Ma commande #${shortId} :`)}`).catch(() => {});
+              }}
+            />
+          ) : null}
           <Button title="Partager le reçu" variant="outline" onPress={shareReceipt} />
           {order.status === "pending" ? (
             <Pressable onPress={confirmCancel} disabled={cancelling} style={({ pressed }) => [styles.cancelBtn, pressed && styles.cancelPressed]} accessibilityRole="button" accessibilityLabel="Annuler la commande">
@@ -198,6 +282,14 @@ function DetailLine({ icon, label, value }: { icon: keyof typeof Ionicons.glyphM
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  // Hero de statut (dégradé doux lavande, pastille pleine, barre 5 segments)
+  hero: { backgroundColor: colors.primaryLight, borderRadius: radius.lg, padding: spacing.lg, alignItems: "center", gap: spacing.xs },
+  heroIcon: { width: 62, height: 62, borderRadius: 31, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginBottom: spacing.xs, shadowColor: colors.primaryDark, shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
+  heroTitle: { ...typography.h3, textAlign: "center" },
+  heroSub: { ...typography.caption, color: colors.textMuted, textAlign: "center" },
+  progress: { flexDirection: "row", gap: 5, alignSelf: "stretch", marginTop: spacing.sm },
+  seg: { flex: 1, height: 6, borderRadius: radius.pill, backgroundColor: "#E4DDEE" },
+  segDone: { backgroundColor: colors.primary },
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   actionsBlock: { gap: spacing.md },
   card: { gap: spacing.sm },

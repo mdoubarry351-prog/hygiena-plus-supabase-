@@ -1,0 +1,9 @@
+-- SUIVI DE COMMANDE HORODATÉ (appliqué en production le 06/07/2026)
+-- · Table order_events : journal automatique de chaque changement de statut
+--   (triggers sur marketplace_orders, backfill des commandes existantes).
+-- · RLS : lecture par la propriétaire ou un admin ; écriture par trigger seul.
+-- · notify_on_order_status enrichi : data {kind:'order', orderId} → le tap
+--   sur la push ouvre directement la commande. Messages FR chaleureux.
+-- · Temps réel : order_events ajouté à supabase_realtime → l'écran de suivi
+--   cliente se met à jour EN DIRECT à chaque validation admin.
+-- Définitions complètes : migration order_events_tracking (dashboard Supabase).

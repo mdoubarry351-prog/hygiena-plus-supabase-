@@ -1364,6 +1364,31 @@ export type Database = {
       // push_tokens — jetons Expo pour le push serveur.
       // PK (user_id, token) ; RLS : l'utilisateur gère ses propres jetons.
       // =================================================
+      // Journal horodaté des statuts de commande (rempli par trigger uniquement).
+      order_events: {
+        Row: {
+          id: string;
+          order_id: string;
+          status: Database["public"]["Enums"]["order_status"];
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          status: Database["public"]["Enums"]["order_status"];
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          status?: Database["public"]["Enums"]["order_status"];
+          note?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       push_tokens: {
         Row: {
           user_id: string;
@@ -1521,6 +1546,7 @@ export type Appointment = Tables<"appointments">;
 export type DoctorMessage = Tables<"doctor_messages">;
 export type MarketplaceProduct = Tables<"marketplace_products">;
 export type MarketplaceOrder = Tables<"marketplace_orders">;
+export type OrderEvent = Tables<"order_events">;
 export type ProductReview = Tables<"product_reviews">;
 export type DoctorReview = Tables<"doctor_reviews">;
 export type CommunityPost = Tables<"community_posts">;

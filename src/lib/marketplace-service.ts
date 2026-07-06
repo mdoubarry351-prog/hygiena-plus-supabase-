@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { MarketplaceProduct, MarketplaceOrder, TablesInsert, Json } from "@/lib/database.types";
+import type { MarketplaceProduct, MarketplaceOrder, TablesInsert, Json, OrderEvent } from "@/lib/database.types";
 
 // Catégories de produits (liste fixe, FR). Centralisée : réutilisée par la
 // boutique (filtres) et le formulaire admin (select).
@@ -183,6 +183,17 @@ export const marketplaceService = {
       .maybeSingle();
     if (error) throw error;
     return data ?? null;
+  },
+
+  // Historique horodaté des statuts (rempli automatiquement par trigger).
+  async getOrderEvents(orderId: string): Promise<OrderEvent[]> {
+    const { data, error } = await supabase
+      .from("order_events")
+      .select("*")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data ?? [];
   },
 
   // Annule SA propre commande (autorisé par orders_update_own ; côté UI réservé

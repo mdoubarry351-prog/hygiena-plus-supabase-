@@ -687,6 +687,18 @@ export const adminService = {
     return fetchAllPages((from, to) => buildOrdersQuery(filters).range(from, to));
   },
 
+  // Compteurs de commandes par statut (pipeline de l'écran admin).
+  async getOrderCounts(): Promise<Partial<Record<OrderStatus, number>>> {
+    const { data, error } = await supabase.from("marketplace_orders").select("status");
+    if (error) throw error;
+    const out: Partial<Record<OrderStatus, number>> = {};
+    for (const row of data ?? []) {
+      const st = row.status as OrderStatus;
+      out[st] = (out[st] ?? 0) + 1;
+    }
+    return out;
+  },
+
   async updateOrderStatus(adminId: string, id: string, status: OrderStatus): Promise<void> {
     const { error } = await supabase.from("marketplace_orders").update({ status }).eq("id", id);
     if (error) throw error;
