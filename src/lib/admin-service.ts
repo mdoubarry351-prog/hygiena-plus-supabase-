@@ -476,11 +476,13 @@ export const adminService = {
   },
 
   // ---------------- 3. Utilisateurs ----------------
+  // Recherche d'utilisateurs (sélecteurs admins/suspensions). Plafonnée : sans
+  // borne, la requête rapatriait TOUTE la table profiles.
   async getUsers(search?: string): Promise<Profile[]> {
     let query = supabase.from("profiles").select("*").order("created_at", { ascending: false });
     const s = search?.trim();
     if (s) query = query.or(`full_name.ilike.%${s}%,email.ilike.%${s}%`);
-    const { data, error } = await query;
+    const { data, error } = await query.limit(50);
     if (error) throw error;
     return data ?? [];
   },
@@ -536,7 +538,8 @@ export const adminService = {
     const { data, error } = await supabase
       .from("doctors")
       .select("*, profile:profiles!doctors_user_id_fkey(full_name, email)")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (error) throw error;
     return (data ?? []) as DoctorRow[];
   },
@@ -862,7 +865,8 @@ export const adminService = {
     const { data, error } = await supabase
       .from("articles")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (error) throw error;
     return data ?? [];
   },
@@ -921,7 +925,8 @@ export const adminService = {
       .select(
         "*, reporter:profiles!user_reports_reporter_id_fkey(full_name), reported:profiles!user_reports_reported_user_id_fkey(full_name)"
       )
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (error) throw error;
     return (data ?? []) as ReportRow[];
   },

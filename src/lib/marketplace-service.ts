@@ -168,7 +168,8 @@ export const marketplaceService = {
       .from("marketplace_orders")
       .select("*")
       .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(100);
     if (error) throw error;
     return data ?? [];
   },

@@ -12,7 +12,8 @@ export const premiumService = {
       .from("subscription_payments")
       .select("*")
       .eq("user_id", userId)
-      .order("paid_at", { ascending: false });
+      .order("paid_at", { ascending: false })
+      .limit(100);
     if (error) throw error;
     return data ?? [];
   },
