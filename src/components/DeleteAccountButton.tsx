@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@/components/Button";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/providers/ToastProvider";
@@ -97,22 +98,26 @@ export function DeleteAccountButton() {
 
   return (
     <View style={styles.zone}>
-      <Text style={styles.zoneLabel}>Zone de danger</Text>
+      <View style={styles.zoneHead}>
+        <Ionicons name="warning-outline" size={16} color={colors.danger} />
+        <Text style={styles.zoneLabel}>Zone sensible</Text>
+      </View>
+      <Text style={styles.zoneHint}>La suppression est définitive : profil, cycles, commandes et messages seront effacés et ne pourront pas être récupérés.</Text>
       <Button title="Supprimer mon compte" variant="danger" onPress={handleDelete} loading={deleting} disabled={deleting} />
-      <Text style={styles.zoneHint}>Action définitive et irréversible. Vos données seront effacées.</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   zone: {
-    gap: spacing.xs,
-    marginTop: spacing.lg,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    borderRadius: radius.md,
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerSoft,
+    borderRadius: radius.lg,
   },
-  zoneLabel: { ...typography.caption, color: colors.danger, fontWeight: "700", letterSpacing: 0.5 },
-  zoneHint: { ...typography.caption, color: colors.textMuted },
+  zoneHead: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  zoneLabel: { ...typography.caption, color: colors.danger, fontWeight: "800", letterSpacing: 0.5 },
+  zoneHint: { ...typography.caption, color: colors.text },
 });
