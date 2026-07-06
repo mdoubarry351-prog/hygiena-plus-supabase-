@@ -70,7 +70,8 @@ create policy "appointments_select_doctor" on public.appointments
   ));
 
 -- =====================================================
--- Note : l'annulation par le patient et la confirmation/refus par le médecin
--- (UPDATE sur appointments) ne sont pas couvertes ici — à ajouter avec le
--- module Médecin, en suivant le même pattern.
+-- MISE À JOUR : les policies UPDATE (patient/médecin) et DELETE existent en
+-- production et sont désormais versionnées + DURCIES (verrouillage des colonnes
+-- de paiement et des transitions de statut) dans la migration
+-- supabase/migrations/20260705000005_appointments_update_integrity.sql.
 -- =====================================================

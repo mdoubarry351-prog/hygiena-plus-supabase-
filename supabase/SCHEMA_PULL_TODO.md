@@ -53,11 +53,16 @@ exister **côté serveur** :
 - Tout appel à l'API Daily doit cibler exclusivement `https://api.daily.co`.
 - Ne renvoyer au client qu'une `roomUrl` du domaine `*.daily.co`.
 
-## 5. Vérifier que l'Edge Function admin applique bien `is_admin()` (P1)
+## 5. Vérifier que l'Edge Function admin applique bien `is_admin()` (P1) — ✅ VÉRIFIÉ
 
-Sur `admin-user-actions` téléchargée : confirmer qu'elle vérifie le rôle admin
-(via `is_admin()` ou lecture du profil) AVANT toute action privilégiée, et
-qu'elle n'agit pas sur la seule foi du JWT.
+Extrait de la version live (v4) via MCP : `admin-user-actions` autorise
+`delete_self` uniquement sur le compte de l'appelant, puis pour TOUTE autre
+action lit `profiles.role` (via service_role) et renvoie 403 si `!= 'admin'`.
+La protection est correcte. Remarque mineure (P2) : `Access-Control-Allow-Origin: '*'`
+à restreindre au domaine de l'app.
+
+`public.is_admin()` (live) = SECURITY DEFINER `stable`, `search_path=public`,
+`select exists(select 1 from profiles where id=auth.uid() and role='admin')` — OK.
 
 ---
 
