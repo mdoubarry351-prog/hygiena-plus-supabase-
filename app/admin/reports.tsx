@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { Badge, type BadgeTone } from "@/components/Badge";
@@ -9,6 +9,7 @@ import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { adminService, REPORT_STATUSES, type ReportRow, type ReportStatus } from "@/lib/admin-service";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -32,6 +33,7 @@ const STATUS_TONE: Record<ReportStatus, BadgeTone> = {
 
 export default function AdminReports() {
   const { session } = useAuth();
+  const toast = useToast();
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,9 +70,9 @@ export default function AdminReports() {
     try {
       await adminService.updateReport(session.user.id, r.id, status, note.trim() || null);
       setReports((prev) => prev.map((x) => (x.id === r.id ? { ...x, status, admin_note: note.trim() || null } : x)));
-      Alert.alert("Enregistré", "Le signalement a été mis à jour.");
+      toast.success("Le signalement a été mis à jour.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+      toast.error(e instanceof Error ? e.message : "Action échouée");
     }
   }
 

@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
@@ -13,6 +14,7 @@ import { colors, radius, spacing, typography } from "@/theme";
 export default function BlockedUsers() {
   const [list, setList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
 
   const load = useCallback(async () => {
     try {
@@ -26,21 +28,22 @@ export default function BlockedUsers() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  function unblock(id: string, name: string) {
-    Alert.alert("Débloquer ?", `${name} réapparaîtra dans le fil de la communauté.`, [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Débloquer",
-        onPress: async () => {
-          setList((prev) => prev.filter((u) => u.id !== id));
-          try {
-            await communityService.unblockUser(id);
-          } catch {
-            await load();
-          }
-        },
-      },
-    ]);
+  async function unblock(id: string, name: string) {
+    if (
+      await confirm({
+        title: "Débloquer ?",
+        message: `${name} réapparaîtra dans le fil de la communauté.`,
+        confirmLabel: "Débloquer",
+        cancelLabel: "Annuler",
+      })
+    ) {
+      setList((prev) => prev.filter((u) => u.id !== id));
+      try {
+        await communityService.unblockUser(id);
+      } catch {
+        await load();
+      }
+    }
   }
 
   if (loading && list.length === 0) return <Loading />;

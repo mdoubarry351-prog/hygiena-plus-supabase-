@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -14,6 +14,7 @@ import { ExportButton } from "@/components/ExportButton";
 import { AppImage } from "@/components/AppImage";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { adminService } from "@/lib/admin-service";
 import { uploadProductImage } from "@/lib/storage";
 import { exportCsv } from "@/lib/csv-export";
@@ -25,6 +26,7 @@ type Editing = MarketplaceProduct | "new" | null;
 
 export default function AdminProducts() {
   const { session } = useAuth();
+  const toast = useToast();
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -103,7 +105,7 @@ export default function AdminProducts() {
         { key: "avis", label: "Nbre d'avis" },
       ]);
     } catch (e) {
-      Alert.alert("Export impossible", e instanceof Error ? e.message : "Réessayez.");
+      toast.error(e instanceof Error ? e.message : "Réessayez.");
     } finally {
       setExporting(false);
     }
@@ -115,7 +117,7 @@ export default function AdminProducts() {
     try {
       await adminService.updateProduct(session.user.id, p.id, { is_active: !p.is_active });
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+      toast.error(e instanceof Error ? e.message : "Action échouée");
       await load();
     }
   }
@@ -214,6 +216,7 @@ export default function AdminProducts() {
 
 function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduct | null; onDone: () => void; onCancel: () => void }) {
   const { session } = useAuth();
+  const toast = useToast();
   const [name, setName] = useState(product?.name ?? "");
   const [price, setPrice] = useState(product?.price != null ? String(product.price) : "");
   const [stock, setStock] = useState(product?.stock != null ? String(product.stock) : "0");
@@ -230,10 +233,10 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
   // Sélection de PLUSIEURS photos (jusqu'à 5) + upload de chacune vers Storage.
   async function pickImages() {
     const remaining = MAX_IMAGES - images.length;
-    if (remaining <= 0) { Alert.alert("Limite atteinte", `Jusqu'à ${MAX_IMAGES} photos par produit.`); return; }
+    if (remaining <= 0) { toast.info(`Jusqu'à ${MAX_IMAGES} photos par produit.`); return; }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour ajouter des images de produit.");
+      toast.info("Autorisez l'accès à vos photos pour ajouter des images de produit.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -246,14 +249,14 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
     });
     if (result.canceled) return;
     const assets = result.assets.slice(0, remaining).filter((a) => a.base64);
-    if (assets.length === 0) { Alert.alert("Erreur", "Impossible de lire les photos sélectionnées."); return; }
+    if (assets.length === 0) { toast.error("Impossible de lire les photos sélectionnées."); return; }
     setUploading(true);
     try {
       const urls: string[] = [];
       for (const a of assets) urls.push(await uploadProductImage(a.base64!));
       setImages((prev) => [...prev, ...urls].slice(0, MAX_IMAGES));
     } catch (e) {
-      Alert.alert("Échec de l'upload", e instanceof Error ? e.message : "Réessayez.");
+      toast.error(e instanceof Error ? e.message : "Réessayez.");
     } finally {
       setUploading(false);
     }
@@ -265,12 +268,12 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
 
   async function handleSave() {
     if (!session?.user) return;
-    if (uploading) { Alert.alert("Patientez", "Les photos sont encore en cours d'envoi."); return; }
+    if (uploading) { toast.info("Les photos sont encore en cours d'envoi."); return; }
     const priceNum = Number(price.replace(/\s/g, ""));
     const stockNum = Number(stock.replace(/\s/g, ""));
-    if (!name.trim()) { Alert.alert("Nom requis", "Indiquez le nom du produit."); return; }
-    if (Number.isNaN(priceNum) || priceNum < 0) { Alert.alert("Prix invalide", "Le prix doit être un nombre positif."); return; }
-    if (Number.isNaN(stockNum) || stockNum < 0) { Alert.alert("Stock invalide", "Le stock doit être un nombre positif."); return; }
+    if (!name.trim()) { toast.info("Indiquez le nom du produit."); return; }
+    if (Number.isNaN(priceNum) || priceNum < 0) { toast.info("Le prix doit être un nombre positif."); return; }
+    if (Number.isNaN(stockNum) || stockNum < 0) { toast.info("Le stock doit être un nombre positif."); return; }
 
     // image_url = 1ʳᵉ photo (compat affichage ancien) ; image_urls = la galerie.
     const firstImage = images[0] ?? null;
@@ -293,7 +296,7 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
       }
       onDone();
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Enregistrement échoué");
+      toast.error(e instanceof Error ? e.message : "Enregistrement échoué");
     } finally {
       setSaving(false);
     }

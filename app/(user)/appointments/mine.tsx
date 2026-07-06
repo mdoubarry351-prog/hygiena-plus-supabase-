@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +15,7 @@ import { FadeInView } from "@/components/FadeInView";
 import { AppointmentContact } from "@/components/AppointmentContact";
 import { practitionerLabels } from "@/lib/practitioner";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { hapticLight, hapticWarning } from "@/lib/haptics";
 import { syncAppointmentReminders } from "@/lib/reminders";
@@ -56,6 +57,7 @@ export default function MyAppointments() {
   const { session, role } = useAuth();
   const router = useRouter();
   const confirm = useConfirm();
+  const toast = useToast();
   const [appointments, setAppointments] = useState<AppointmentWithDoctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -101,7 +103,7 @@ export default function MyAppointments() {
       hapticWarning();
       await load();
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Annulation échouée");
+      toast.error(e instanceof Error ? e.message : "Annulation échouée");
     }
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ExportButton } from "@/components/ExportButton";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { adminService } from "@/lib/admin-service";
 import { exportCsv } from "@/lib/csv-export";
 import { formatPrice, type OrderItem } from "@/lib/marketplace-service";
@@ -57,6 +58,7 @@ function orderAge(o: MarketplaceOrder): { label: string; level: "ok" | "warn" | 
 
 export default function AdminOrders() {
   const { session } = useAuth();
+  const toast = useToast();
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -147,7 +149,7 @@ export default function AdminOrders() {
         { key: "date", label: "Date" },
       ]);
     } catch (e) {
-      Alert.alert("Export impossible", e instanceof Error ? e.message : "Réessayez.");
+      toast.error(e instanceof Error ? e.message : "Réessayez.");
     } finally {
       setExporting(false);
     }
@@ -167,7 +169,7 @@ export default function AdminOrders() {
         try {
           await adminService.updateOrderStatus(uid, order.id, s);
         } catch (e) {
-          Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+          toast.error(e instanceof Error ? e.message : "Action échouée");
           await load();
         }
       },
@@ -190,7 +192,7 @@ export default function AdminOrders() {
     try {
       await adminService.updateOrderStatus(session.user.id, order.id, nxt.status);
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+      toast.error(e instanceof Error ? e.message : "Action échouée");
       await load();
     }
   }

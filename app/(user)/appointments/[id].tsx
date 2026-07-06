@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useToast } from "@/providers/ToastProvider";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
@@ -15,7 +16,7 @@ import { Avatar } from "@/components/Avatar";
 import { FadeInView } from "@/components/FadeInView";
 import { FadeZoomIn } from "@/components/FadeZoomIn";
 import { useAuth } from "@/providers/AuthProvider";
-import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
+import { useAppSettings, SERVICE_UNAVAILABLE_MSG } from "@/hooks/useAppSettings";
 import {
   appointmentsService,
   doctorDisplayName,
@@ -57,6 +58,7 @@ export default function BookAppointment() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session, profile, role } = useAuth();
+  const toast = useToast();
   const { appointments_enabled, premium_enabled, messaging_enabled } = useAppSettings();
 
   const [doctor, setDoctor] = useState<DoctorWithProfile | null>(null);
@@ -167,9 +169,8 @@ export default function BookAppointment() {
         const d = await appointmentsService.getDoctor(id);
         if (mounted) setDoctor(d);
       } catch (e) {
-        Alert.alert("Erreur", e instanceof Error ? e.message : "Médecin introuvable", [
-          { text: "OK", onPress: () => router.back() },
-        ]);
+        toast.error(e instanceof Error ? e.message : "Médecin introuvable");
+        router.back();
       } finally {
         if (mounted) setLoading(false);
       }
@@ -192,7 +193,7 @@ export default function BookAppointment() {
   const interventions = doctor.intervention_areas?.trim();
 
   async function handleBook() {
-    if (!appointments_enabled) return showServiceUnavailable();
+    if (!appointments_enabled) return toast.info(SERVICE_UNAVAILABLE_MSG);
     if (!session?.user || !doctor || !selectedDate || !selectedTime) return;
     setSaving(true);
     try {
@@ -205,19 +206,16 @@ export default function BookAppointment() {
         reason: reason.trim() || null,
       });
       hapticSuccess();
-      Alert.alert(
-        "Rendez-vous demandé",
-        `Ta demande avec ${name} le ${formatAppointmentDate(selectedDate)} à ${selectedTime} a été envoyée. Tu seras notifiée dès sa confirmation.`,
-        [{ text: "OK", onPress: () => router.replace("/(user)/appointments/mine") }]
-      );
+      toast.success(`Ta demande avec ${name} le ${formatAppointmentDate(selectedDate)} à ${selectedTime} a été envoyée. Tu seras notifiée dès sa confirmation.`);
+      router.replace("/(user)/appointments/mine");
     } catch (e) {
       if (isSlotConflict(e)) {
         hapticError();
         await refreshSlots();
         setSelectedTime(null);
-        Alert.alert("Créneau indisponible", "Ce créneau vient d'être réservé, choisis-en un autre.");
+        toast.error("Créneau indisponible. Ce créneau vient d'être réservé, choisis-en un autre.");
       } else {
-        Alert.alert("Erreur", e instanceof Error ? e.message : "Prise de rendez-vous échouée");
+        toast.error(e instanceof Error ? e.message : "Prise de rendez-vous échouée");
       }
     } finally {
       setSaving(false);
@@ -229,7 +227,7 @@ export default function BookAppointment() {
   // dessous) plutôt que d'ouvrir un chat dont l'envoi échouerait (RLS).
   async function handleMessage() {
     // Téléconsultation désactivée par l'admin → message générique.
-    if (!messaging_enabled) return showServiceUnavailable();
+    if (!messaging_enabled) return toast.info(SERVICE_UNAVAILABLE_MSG);
     if (!doctor || !session?.user) return;
     hapticLight();
     try {
@@ -237,11 +235,7 @@ export default function BookAppointment() {
       if (appt) {
         router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: doctor.id, doctorName: name, appointmentId: appt.id, appointmentAt: `${appt.appointment_date}T${appt.appointment_time}:00`, consultationMode: appt.consultation_mode } });
       } else {
-        Alert.alert(
-          "Réservez d'abord une consultation",
-          `La messagerie avec ${name} s'ouvre une fois votre consultation réservée. Choisissez une date ci-dessous pour réserver.`,
-          [{ text: "OK" }]
-        );
+        toast.info(`La messagerie avec ${name} s'ouvre une fois votre consultation réservée. Choisissez une date ci-dessous pour réserver.`);
       }
     } catch {
       // En cas de doute, on ouvre la salle (la RLS protège l'envoi + message clair).
@@ -251,7 +245,7 @@ export default function BookAppointment() {
 
   // Paiement SIMULÉ : crée le RDV payé + reçu, puis ouvre le reçu.
   async function handlePay() {
-    if (!appointments_enabled) return showServiceUnavailable();
+    if (!appointments_enabled) return toast.info(SERVICE_UNAVAILABLE_MSG);
     if (!session?.user || !doctor || !selectedDate || !selectedTime) return;
     setSaving(true);
     try {
@@ -272,9 +266,9 @@ export default function BookAppointment() {
         hapticError();
         await refreshSlots();
         setSelectedTime(null);
-        Alert.alert("Créneau indisponible", "Ce créneau vient d'être réservé, choisis-en un autre.");
+        toast.error("Créneau indisponible. Ce créneau vient d'être réservé, choisis-en un autre.");
       } else {
-        Alert.alert("Erreur", e instanceof Error ? e.message : "Paiement échoué");
+        toast.error(e instanceof Error ? e.message : "Paiement échoué");
       }
     } finally {
       setSaving(false);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
@@ -78,7 +78,7 @@ export function ReviewsSection({
   useEffect(() => { load(); }, [load]);
 
   async function save() {
-    if (myRating < 1) { Alert.alert("Note requise", "Sélectionnez une note de 1 à 5 étoiles."); return; }
+    if (myRating < 1) { toast.info("Sélectionnez une note de 1 à 5 étoiles."); return; }
     setSaving(true);
     try {
       if (kind === "product") await reviewsService.upsertProductReview(targetId, myRating, myComment);
@@ -88,7 +88,7 @@ export function ReviewsSection({
       hapticSuccess();
       toast.success("Votre avis a été enregistré.");
     } catch (e) {
-      Alert.alert("Action impossible", e instanceof Error ? e.message : "Réessayez plus tard.");
+      toast.error(e instanceof Error ? e.message : "Réessayez plus tard.");
     } finally {
       setSaving(false);
     }
@@ -109,7 +109,7 @@ export function ReviewsSection({
       await load();
       onChanged?.();
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+      toast.error(e instanceof Error ? e.message : "Suppression échouée");
     }
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -44,7 +44,7 @@ export default function DoctorAvailability() {
       hapticSuccess();
       toast.success("Disponibilités enregistrées.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Enregistrement échoué");
+      toast.error(e instanceof Error ? e.message : "Enregistrement échoué");
     } finally {
       setSaving(false);
     }

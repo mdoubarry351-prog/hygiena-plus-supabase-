@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { colors, radius, spacing, typography } from "@/theme";
 
 const CODE_LENGTH = 6;
@@ -14,6 +15,7 @@ export default function VerifyOtp() {
   const { phone } = useLocalSearchParams<{ phone: string }>();
   const { verifyPhoneOtp, signInWithPhone } = useAuth();
   const router = useRouter();
+  const toast = useToast();
 
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -34,7 +36,7 @@ export default function VerifyOtp() {
       await verifyPhoneOtp(phone, code);
       // Succès : la session s'ouvre, (auth)/_layout redirige automatiquement.
     } catch (e) {
-      Alert.alert("Code invalide", e instanceof Error ? e.message : "Vérifiez le code et réessayez.");
+      toast.error(e instanceof Error ? e.message : "Vérifiez le code et réessayez.");
       setCode("");
     } finally {
       setVerifying(false);
@@ -47,9 +49,9 @@ export default function VerifyOtp() {
       await signInWithPhone(phone);
       setCountdown(RESEND_SECONDS);
       setCode("");
-      Alert.alert("Code renvoyé", "Un nouveau code vous a été envoyé par SMS.");
+      toast.success("Un nouveau code vous a été envoyé par SMS.");
     } catch (e) {
-      Alert.alert("Renvoi impossible", e instanceof Error ? e.message : "Erreur inconnue");
+      toast.error(e instanceof Error ? e.message : "Erreur inconnue");
     }
   }
 

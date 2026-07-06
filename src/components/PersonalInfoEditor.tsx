@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
@@ -49,7 +49,7 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
 
   async function saveNames() {
     if (!firstName.trim() || !lastName.trim()) {
-      Alert.alert("Nom requis", "Indique ton prénom et ton nom.");
+      toast.info("Indique ton prénom et ton nom.");
       return;
     }
     setBusy("names");
@@ -59,7 +59,7 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
       hapticSuccess();
       toast.success("Ton nom a été mis à jour.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
+      toast.error(e instanceof Error ? e.message : "Mise à jour échouée");
     } finally {
       setBusy(null);
     }
@@ -68,7 +68,7 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
   async function savePhone() {
     const local = onlyDigits(phone);
     if (local && !isValidGuineaLocal(local)) {
-      Alert.alert("Téléphone invalide", "Saisissez un numéro guinéen à 9 chiffres (ou laissez vide).");
+      toast.info("Saisissez un numéro guinéen à 9 chiffres (ou laissez vide).");
       return;
     }
     setBusy("phone");
@@ -79,7 +79,7 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
       hapticSuccess();
       toast.success("Ton numéro a été mis à jour.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
+      toast.error(e instanceof Error ? e.message : "Mise à jour échouée");
     } finally {
       setBusy(null);
     }
@@ -88,7 +88,7 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
   async function saveEmail() {
     const next = email.trim();
     if (!next) {
-      Alert.alert("Email requis", "Saisis une adresse email.");
+      toast.info("Saisis une adresse email.");
       return;
     }
     setBusy("email");
@@ -96,12 +96,9 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
       await authService.updateEmail(userId, next);
       await refreshProfile();
       hapticSuccess();
-      Alert.alert(
-        "Email mis à jour",
-        "Un email de confirmation a pu être envoyé à la nouvelle adresse. Le changement sera effectif après confirmation."
-      );
+      toast.success("Un email de confirmation a pu être envoyé à la nouvelle adresse. Le changement sera effectif après confirmation.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour de l'email échouée");
+      toast.error(e instanceof Error ? e.message : "Mise à jour de l'email échouée");
     } finally {
       setBusy(null);
     }
@@ -109,11 +106,11 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
 
   async function savePassword() {
     if (password.length < 6) {
-      Alert.alert("Mot de passe trop court", "Minimum 6 caractères.");
+      toast.info("Minimum 6 caractères.");
       return;
     }
     if (password !== confirm) {
-      Alert.alert("Non concordant", "Les deux mots de passe ne correspondent pas.");
+      toast.info("Les deux mots de passe ne correspondent pas.");
       return;
     }
     setBusy("password");
@@ -124,7 +121,7 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
       hapticSuccess();
       toast.success("Ton mot de passe a été mis à jour.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Changement de mot de passe échoué");
+      toast.error(e instanceof Error ? e.message : "Changement de mot de passe échoué");
     } finally {
       setBusy(null);
     }

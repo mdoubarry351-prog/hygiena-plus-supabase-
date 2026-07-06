@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { Alert } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { supabase } from "@/lib/supabase";
 import { PREMIUM_PRICE, PREMIUM_PERIOD_DAYS } from "@/lib/premium-service";
@@ -80,7 +79,6 @@ export function useAppSettings(): AppFlags & { loading: boolean; reload: () => P
   return { ...flags, loading, reload };
 }
 
-/** Message unique à afficher quand un module désactivé par l'admin est sollicité. */
-export function showServiceUnavailable(): void {
-  Alert.alert("Service non disponible pour le moment");
-}
+/** Message à afficher (via toast) quand un module désactivé par l'admin est
+ *  sollicité. Web-safe : à passer à toast.info(...) côté appelant. */
+export const SERVICE_UNAVAILABLE_MSG = "Ce service n'est pas disponible pour le moment.";

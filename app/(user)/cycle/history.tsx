@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -95,7 +95,7 @@ export default function CycleHistory() {
       if (session?.user) resyncCycleReminders(session.user.id); // replanifie (silencieux)
       toast.success(queued ? "Suppression enregistrée hors-ligne — synchronisation au retour du réseau 📶" : "Saisie supprimée.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+      toast.error(e instanceof Error ? e.message : "Suppression échouée");
     } finally {
       setDeleting(null);
     }

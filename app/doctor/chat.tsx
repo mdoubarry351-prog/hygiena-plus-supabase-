@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
-import { Alert } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import { useToast } from "@/providers/ToastProvider";
 import { ChatThread, type ChatMessage } from "@/components/ChatThread";
 import { ConsultationCall } from "@/components/ConsultationCall";
 import { Loading } from "@/components/Loading";
@@ -13,6 +13,7 @@ import { appointmentAtMs, roomWindowState } from "@/lib/call-service";
 export default function DoctorChat() {
   const { patientId, patientName } = useLocalSearchParams<{ patientId: string; patientName?: string }>();
   const { doctor, loading: loadingDoctor } = useMyDoctor();
+  const toast = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -56,7 +57,7 @@ export default function DoctorChat() {
       const msg = await messagesService.sendDoctorMessage(patientId, doctor.id, content);
       setMessages((prev) => [...prev, msg]);
     } catch (e) {
-      Alert.alert("Envoi impossible", e instanceof Error ? e.message : "Erreur");
+      toast.error(e instanceof Error ? e.message : "Envoi impossible");
     } finally {
       setSending(false);
     }

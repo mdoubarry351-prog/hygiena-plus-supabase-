@@ -14,7 +14,8 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
 import { useCycles } from "@/hooks/useCycles";
 import { currentPhase, getDailyTip, PHASE_LABEL } from "@/lib/cycle-tips";
-import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
+import { useAppSettings, SERVICE_UNAVAILABLE_MSG } from "@/hooks/useAppSettings";
+import { useToast } from "@/providers/ToastProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { notificationsService } from "@/lib/notifications-service";
 import { PREMIUM_ENABLED, SHOW_ARTICLES } from "@/lib/app-config";
@@ -79,6 +80,7 @@ export default function CycleHome() {
   const { profile, session, role } = useAuth();
   const { cycles, prediction, loading, reload, offline, cachedAt } = useCycles();
   const { marketplace_enabled, doctors_enabled, premium_enabled } = useAppSettings();
+  const toast = useToast();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -171,8 +173,8 @@ export default function CycleHome() {
 
   // Bloque la navigation vers un module désactivé par l'admin (message au tap).
   function openQuick(q: (typeof quick)[number]) {
-    if (q.module === "marketplace" && !marketplace_enabled) return showServiceUnavailable();
-    if (q.module === "doctors" && !doctors_enabled) return showServiceUnavailable();
+    if (q.module === "marketplace" && !marketplace_enabled) return toast.info(SERVICE_UNAVAILABLE_MSG);
+    if (q.module === "doctors" && !doctors_enabled) return toast.info(SERVICE_UNAVAILABLE_MSG);
     router.push(q.href);
   }
 
@@ -365,7 +367,7 @@ export default function CycleHome() {
             </View>
           ) : (
             <Card
-              onPress={() => { if (!premium_enabled) return showServiceUnavailable(); router.push("/(user)/premium"); }}
+              onPress={() => { if (!premium_enabled) return toast.info(SERVICE_UNAVAILABLE_MSG); router.push("/(user)/premium"); }}
               haptic
               accessibilityLabel="Passer au mode premium"
               style={styles.premiumCard}

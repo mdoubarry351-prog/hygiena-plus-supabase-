@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -54,7 +54,7 @@ export default function AdminCommunity() {
       setPosts((prev) => prev.filter((p) => p.id !== post.id));
       toast.success("Publication supprimée.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+      toast.error(e instanceof Error ? e.message : "Suppression échouée");
     }
   }
 

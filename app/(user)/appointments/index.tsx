@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 import { Redirect, useRouter, useLocalSearchParams } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
@@ -20,7 +21,7 @@ import { DOCTOR_MESSAGING_ENABLED } from "@/lib/app-config";
 import { PressableScale } from "@/components/PressableScale";
 import { useAuth } from "@/providers/AuthProvider";
 import { useDoctors } from "@/hooks/useDoctors";
-import { useAppSettings, showServiceUnavailable } from "@/hooks/useAppSettings";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { StarRating } from "@/components/StarRating";
 import { appointmentsService, doctorDisplayName, hasAnyAvailability, type DoctorWithProfile } from "@/lib/appointments-service";
 import { practitionerTypeOf, PRACTITIONER_LABELS } from "@/lib/practitioner";
@@ -47,6 +48,7 @@ export default function AppointmentsHome() {
   const { doctors, loading, error, reload } = useDoctors(ptype);
   const { doctors_enabled, premium_enabled } = useAppSettings();
   const router = useRouter();
+  const confirm = useConfirm();
 
   // Défilement vers la liste depuis les boutons de l'intro thérapie.
   const scrollRef = useRef<ScrollView>(null);
@@ -65,21 +67,21 @@ export default function AppointmentsHome() {
       const appt = await appointmentsService.findAppointmentForRoom(d.id, session.user.id);
       if (appt) {
         router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: d.id, doctorName: docName, appointmentId: appt.id, appointmentAt: `${appt.appointment_date}T${appt.appointment_time}:00`, consultationMode: appt.consultation_mode } });
-      } else {
-        Alert.alert(
-          "Réservez d'abord une consultation",
-          `Pour échanger avec ${docName}, réservez une consultation. La messagerie s'ouvre une fois le rendez-vous pris.`,
-          [
-            { text: "Plus tard", style: "cancel" },
-            { text: "Réserver", onPress: () => router.push(`/(user)/appointments/${d.id}`) },
-          ]
-        );
+      } else if (
+        await confirm({
+          title: "Réservez d'abord une consultation",
+          message: `Pour échanger avec ${docName}, réservez une consultation. La messagerie s'ouvre une fois le rendez-vous pris.`,
+          confirmLabel: "Réserver",
+          cancelLabel: "Plus tard",
+        })
+      ) {
+        router.push(`/(user)/appointments/${d.id}`);
       }
     } catch {
       // En cas de doute, on ouvre la salle (la RLS protège l'envoi + message clair).
       router.push({ pathname: "/(user)/appointments/chat", params: { doctorId: d.id, doctorName: docName } });
     }
-  }, [router, session?.user]);
+  }, [router, session?.user, confirm]);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [activeSpec, setActiveSpec] = useState<string>("all");

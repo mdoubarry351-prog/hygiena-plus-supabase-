@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -138,7 +138,7 @@ export default function AdminUsers() {
         { key: "inscription", label: "Inscription" },
       ]);
     } catch (e) {
-      Alert.alert("Export impossible", e instanceof Error ? e.message : "Réessayez.");
+      toast.error(e instanceof Error ? e.message : "Export impossible, réessayez.");
     } finally {
       setExporting(false);
     }
@@ -160,7 +160,7 @@ export default function AdminUsers() {
       await load();
       toast.success("Compte suspendu.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+      toast.error(e instanceof Error ? e.message : "Action échouée");
     }
   }
 
@@ -178,7 +178,7 @@ export default function AdminUsers() {
       await load();
       toast.success("Compte réactivé.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+      toast.error(e instanceof Error ? e.message : "Action échouée");
     }
   }
 
@@ -197,7 +197,7 @@ export default function AdminUsers() {
       setUsers((prev) => prev.filter((x) => x.id !== u.id));
       toast.success("Compte supprimé définitivement.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+      toast.error(e instanceof Error ? e.message : "Suppression échouée");
     }
   }
 
@@ -211,7 +211,7 @@ export default function AdminUsers() {
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role } : u)));
       toast.success(`Rôle mis à jour : ${ROLE_LABELS[role]}.`);
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
+      toast.error(e instanceof Error ? e.message : "Mise à jour échouée");
     }
   }
 

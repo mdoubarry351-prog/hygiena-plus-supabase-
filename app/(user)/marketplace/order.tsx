@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -22,6 +22,8 @@ import {
   formatOrderDate,
 } from "@/lib/order-display";
 import { hapticWarning } from "@/lib/haptics";
+import { useToast } from "@/providers/ToastProvider";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { supabase } from "@/lib/supabase";
 import type { MarketplaceOrder, OrderEvent, OrderStatus } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -47,6 +49,8 @@ function heroFor(status: OrderStatus, pickup: boolean): { icon: keyof typeof Ion
 export default function OrderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [order, setOrder] = useState<MarketplaceOrder | null>(null);
   const [events, setEvents] = useState<OrderEvent[]>([]);
   const [whatsapp, setWhatsapp] = useState<string | null>(null);
@@ -139,26 +143,19 @@ export default function OrderDetail() {
     }
   }
 
-  function confirmCancel() {
-    Alert.alert("Annuler la commande ?", "Cette action est définitive.", [
-      { text: "Retour", style: "cancel" },
-      {
-        text: "Annuler la commande",
-        style: "destructive",
-        onPress: async () => {
-          setCancelling(true);
-          hapticWarning();
-          try {
-            await marketplaceService.cancelOrder(order!.id);
-            await load();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Annulation impossible");
-          } finally {
-            setCancelling(false);
-          }
-        },
-      },
-    ]);
+  async function confirmCancel() {
+    if (await confirm({ title: "Annuler la commande ?", message: "Cette action est définitive.", confirmLabel: "Annuler la commande", cancelLabel: "Retour", danger: true })) {
+      setCancelling(true);
+      hapticWarning();
+      try {
+        await marketplaceService.cancelOrder(order!.id);
+        await load();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Annulation impossible");
+      } finally {
+        setCancelling(false);
+      }
+    }
   }
 
   return (

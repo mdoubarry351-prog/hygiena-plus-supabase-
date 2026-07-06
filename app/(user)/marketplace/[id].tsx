@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -53,9 +53,8 @@ export default function ProductDetail() {
         const p = await marketplaceService.getProduct(id);
         if (mounted) setProduct(p);
       } catch (e) {
-        Alert.alert("Erreur", e instanceof Error ? e.message : "Produit introuvable", [
-          { text: "OK", onPress: () => router.back() },
-        ]);
+        toast.error(e instanceof Error ? e.message : "Produit introuvable");
+        router.back();
       } finally {
         if (mounted) setLoading(false);
       }

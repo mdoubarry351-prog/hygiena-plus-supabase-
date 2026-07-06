@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -82,7 +82,7 @@ export default function AdminReviews() {
       setItems((prev) => prev.filter((r) => r.id !== review.id));
       toast.success("Avis supprimé.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+      toast.error(e instanceof Error ? e.message : "Suppression échouée");
     }
   }
 

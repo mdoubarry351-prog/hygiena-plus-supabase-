@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { authService } from "@/lib/auth-service";
 import { cycleService } from "@/lib/cycle-service";
 import { colors, durations, phase as PHASE_COLOR, radius, spacing, typography } from "@/theme";
@@ -54,6 +55,7 @@ function Dot({ active }: { active: boolean }) {
  */
 export function Onboarding() {
   const { session, refreshProfile } = useAuth();
+  const toast = useToast();
   const [step, setStep] = useState(0); // 0..LAST = intro, SLIDES.length = saisie
   const [startDate, setStartDate] = useState(toISODate(new Date()));
   const [cycleLen, setCycleLen] = useState("28");
@@ -70,7 +72,7 @@ export function Onboarding() {
   async function complete(withCycle: boolean) {
     if (!session?.user) return;
     if (withCycle && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
-      Alert.alert("Date invalide", "Format attendu : AAAA-MM-JJ (ex. 2026-06-08)");
+      toast.info("Format attendu : AAAA-MM-JJ (ex. 2026-06-08)");
       return;
     }
     setSaving(true);
@@ -86,7 +88,7 @@ export function Onboarding() {
       await authService.updateProfile(session.user.id, { onboarding_completed: true });
       await refreshProfile(); // → le gate se referme tout seul
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action impossible");
+      toast.error(e instanceof Error ? e.message : "Action impossible");
     } finally {
       setSaving(false);
     }

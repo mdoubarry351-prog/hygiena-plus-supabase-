@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -59,9 +59,9 @@ export default function AdminSuspensions() {
       await adminService.suspendUser(session.user.id, target.id, reason.trim() || null, null);
       setTarget(null); setReason(""); setSearch(""); setResults([]);
       await load();
-      Alert.alert("Suspendu", "L'utilisateur a été suspendu.");
+      toast.success("L'utilisateur a été suspendu.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+      toast.error(e instanceof Error ? e.message : "Action échouée");
     } finally {
       setSaving(false);
     }
@@ -76,7 +76,7 @@ export default function AdminSuspensions() {
       setSuspensions((prev) => prev.map((x) => (x.id === s.id ? { ...x, is_active: false } : x)));
       toast.success("Suspension levée.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+      toast.error(e instanceof Error ? e.message : "Action échouée");
     }
   }
 

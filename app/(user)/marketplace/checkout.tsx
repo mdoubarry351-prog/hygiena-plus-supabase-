@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, LayoutAnimation, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from "react-native";
+import { LayoutAnimation, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -101,23 +101,23 @@ export default function Checkout() {
     const livraison = deliveryMode === "delivery" ? `\nLivraison : ${delivery.free ? "Gratuite" : formatPrice(delivery.fee)}` : "";
     const msg = `Bonjour, je souhaite commander :\n${lines}\nSous-total : ${formatPrice(total)}${livraison}\nTotal : ${formatPrice(grandTotal)}\nTéléphone : ${toE164(onlyDigits(phone))}`;
     Linking.openURL(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`).catch(() =>
-      Alert.alert("WhatsApp indisponible", "Impossible d'ouvrir WhatsApp sur cet appareil.")
+      toast.error("Impossible d'ouvrir WhatsApp sur cet appareil.")
     );
   }
 
   async function handleSubmit() {
     if (!session?.user) return;
-    if (items.length === 0) { Alert.alert("Panier vide", "Ajoutez des produits avant de commander."); return; }
-    if (!isValidGuineaLocal(phone)) { Alert.alert("Téléphone invalide", "Saisissez un numéro guinéen à 9 chiffres."); return; }
+    if (items.length === 0) { toast.info("Ajoutez des produits avant de commander."); return; }
+    if (!isValidGuineaLocal(phone)) { toast.info("Saisissez un numéro guinéen à 9 chiffres."); return; }
     if (deliveryMode === "delivery" && !neighborhood.trim()) {
-      Alert.alert("Quartier requis", "Indique ton quartier pour la livraison.");
+      toast.info("Indique ton quartier pour la livraison.");
       return;
     }
 
     if (method === "whatsapp") { openWhatsApp(); return; }
 
     if (isMobileMoney && !isValidGuineaLocal(payPhone)) {
-      Alert.alert("Numéro requis", "Saisissez un numéro Mobile Money guinéen à 9 chiffres.");
+      toast.info("Saisissez un numéro Mobile Money guinéen à 9 chiffres.");
       return;
     }
 
@@ -151,7 +151,7 @@ export default function Checkout() {
       router.replace("/(user)/marketplace");
     } catch (e) {
       hapticError();
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Commande échouée");
+      toast.error(e instanceof Error ? e.message : "Commande échouée");
     } finally {
       setSubmitting(false);
     }

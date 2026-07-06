@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View, type ListRenderItemInfo } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View, type ListRenderItemInfo } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,6 +35,7 @@ import { HeartButton } from "@/components/HeartButton";
 import { BouncyIcon } from "@/components/BouncyIcon";
 import { hapticLight, hapticWarning } from "@/lib/haptics";
 import { useToast } from "@/providers/ToastProvider";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { APP_DOWNLOAD_URL } from "@/lib/app-config";
 import { colors, radius, shadows, spacing, typography } from "@/theme";
 
@@ -63,6 +64,7 @@ export default function CommunityHome() {
   const router = useRouter();
   const meId = session?.user?.id;
   const toast = useToast();
+  const confirm = useConfirm();
   const isSearching = !!search.trim();
   const isFiltering = isSearching || activeCat !== "all" || doctorsOnly;
 
@@ -100,59 +102,49 @@ export default function CommunityHome() {
   }, []);
 
   // Bloque l'auteur d'une publication → ses contenus disparaissent du fil.
-  const blockAuthor = useCallback((userId: string) => {
-    Alert.alert("Bloquer cet utilisateur ?", "Tu ne verras plus les publications de cette personne.", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Bloquer",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await communityService.blockUser(userId);
-            await reload();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Action impossible");
-          }
-        },
-      },
-    ]);
-  }, [reload]);
+  const blockAuthor = useCallback(async (userId: string) => {
+    if (await confirm({ title: "Bloquer cet utilisateur ?", message: "Tu ne verras plus les publications de cette personne.", confirmLabel: "Bloquer", cancelLabel: "Annuler", danger: true })) {
+      try {
+        await communityService.blockUser(userId);
+        await reload();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Action impossible");
+      }
+    }
+  }, [reload, confirm, toast]);
 
   // Signale la publication d'un autre : choix de la raison puis insertion.
   const reportPost = useCallback((post: CommunityPostWithAuthor) => {
-    const buttons = REPORT_REASONS.map((r) => ({
-      text: r,
-      onPress: async () => {
-        try {
-          await communityService.reportPost(post.id, post.user_id ?? null, r);
-          toast.success("Ce contenu a été signalé à la modération.");
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Signalement impossible");
-        }
-      },
-    }));
-    Alert.alert("Signaler la publication", "Pour quelle raison ?", [...buttons, { text: "Annuler", style: "cancel" }]);
+    // Feuille d'actions multiplateforme (web-safe) : liste des motifs.
+    setSheet({
+      title: "Signaler la publication — pour quelle raison ?",
+      options: REPORT_REASONS.map((r) => ({
+        label: r,
+        icon: "flag-outline" as const,
+        onPress: async () => {
+          try {
+            await communityService.reportPost(post.id, post.user_id ?? null, r);
+            toast.success("Ce contenu a été signalé à la modération.");
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Signalement impossible");
+          }
+        },
+      })),
+    });
   }, [toast]);
 
   // Supprime MA propre publication (confirmation + haptique).
-  const deleteMyPost = useCallback((postId: string) => {
-    Alert.alert("Supprimer la publication ?", "Cette action est définitive.", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Supprimer",
-        style: "destructive",
-        onPress: async () => {
-          hapticWarning();
-          try {
-            await communityService.deletePost(postId);
-            await reload();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-          }
-        },
-      },
-    ]);
-  }, [reload]);
+  const deleteMyPost = useCallback(async (postId: string) => {
+    if (await confirm({ title: "Supprimer la publication ?", message: "Cette action est définitive.", confirmLabel: "Supprimer", cancelLabel: "Annuler", danger: true })) {
+      hapticWarning();
+      try {
+        await communityService.deletePost(postId);
+        await reload();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Suppression échouée");
+      }
+    }
+  }, [reload, confirm, toast]);
 
   // Construit le menu ⋯ : MON post → Modifier/Partager/Supprimer ; autre → Partager/Signaler (+ Bloquer).
   const openPostMenu = useCallback((post: CommunityPostWithAuthor) => {

@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useToast } from "@/providers/ToastProvider";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { ChatThread, type ChatMessage } from "@/components/ChatThread";
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
 import { ConsultationCall } from "@/components/ConsultationCall";
@@ -20,6 +22,8 @@ export default function PatientChat() {
   const { doctorId, doctorName, appointmentId, appointmentAt, consultationMode } = useLocalSearchParams<{ doctorId: string; doctorName?: string; appointmentId?: string; appointmentAt?: string; consultationMode?: string }>();
   const { session, role } = useAuth();
   const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
   const { cycles, prediction } = useCycles();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,26 +80,22 @@ export default function PatientChat() {
       // La RLS exige un rendez-vous avec ce praticien : message clair.
       const raw = e instanceof Error ? e.message : "";
       const denied = /row-level security|policy|denied|not allowed|permission/i.test(raw);
-      Alert.alert(
-        "Envoi impossible",
-        denied ? "Réservez une consultation avec ce praticien pour pouvoir échanger." : (raw || "Erreur")
-      );
+      toast.error(denied ? "Réservez une consultation avec ce praticien pour pouvoir échanger." : (raw || "Erreur"));
     } finally {
       setSending(false);
     }
   }
 
   // Partage du suivi de cycle : génère le résumé, demande confirmation (aperçu), envoie.
-  function shareCycle() {
+  async function shareCycle() {
     const summary = buildCycleSummary(cycles, prediction);
     if (!summary) {
-      Alert.alert("Suivi indisponible", "Enregistre d'abord quelques cycles pour partager ton suivi.");
+      toast.info("Suivi indisponible. Enregistre d'abord quelques cycles pour partager ton suivi.");
       return;
     }
-    Alert.alert("Partager ce résumé avec le médecin ?", summary, [
-      { text: "Annuler", style: "cancel" },
-      { text: "Partager", onPress: () => handleSend(summary) },
-    ]);
+    if (await confirm({ title: "Partager ce résumé avec le médecin ?", message: summary, confirmLabel: "Partager", cancelLabel: "Annuler" })) {
+      handleSend(summary);
+    }
   }
 
   // Salle de consultation : RDV reçu en paramètre, ou à défaut le RDV trouvé.

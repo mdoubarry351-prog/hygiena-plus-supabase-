@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -9,6 +9,7 @@ import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { adminService } from "@/lib/admin-service";
 import { PREMIUM_ENABLED } from "@/lib/app-config";
 import type { AppSettings } from "@/lib/database.types";
@@ -31,6 +32,7 @@ const TOGGLES = PREMIUM_ENABLED ? ALL_TOGGLES : ALL_TOGGLES.filter((t) => t.key 
 
 export default function AdminSettings() {
   const { session } = useAuth();
+  const toast = useToast();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<ToggleKey | null>(null);
@@ -64,8 +66,8 @@ export default function AdminSettings() {
     if (!session?.user || !settings) return;
     const price = Number(priceStr.replace(/\s/g, ""));
     const days = Number(durationStr.replace(/\s/g, ""));
-    if (Number.isNaN(price) || price < 0) { Alert.alert("Prix invalide", "Le prix doit être un nombre positif ou nul."); return; }
-    if (Number.isNaN(days) || days < 1 || !Number.isInteger(days)) { Alert.alert("Durée invalide", "La durée doit être un entier supérieur ou égal à 1."); return; }
+    if (Number.isNaN(price) || price < 0) { toast.info("Le prix doit être un nombre positif ou nul."); return; }
+    if (Number.isNaN(days) || days < 1 || !Number.isInteger(days)) { toast.info("La durée doit être un entier supérieur ou égal à 1."); return; }
     setSavingPrice(true);
     try {
       const updated = await adminService.updateSettings(session.user.id, settings.id, {
@@ -74,9 +76,9 @@ export default function AdminSettings() {
         updated_by: session.user.id,
       });
       setSettings(updated);
-      Alert.alert("Enregistré", "La tarification Premium a été mise à jour.");
+      toast.success("La tarification Premium a été mise à jour.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
+      toast.error(e instanceof Error ? e.message : "Mise à jour échouée");
     } finally {
       setSavingPrice(false);
     }
@@ -91,7 +93,7 @@ export default function AdminSettings() {
       await adminService.updateSettings(session.user.id, settings.id, { [key]: next });
     } catch (e) {
       setSettings((s) => (s ? { ...s, [key]: !next } : s)); // rollback
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
+      toast.error(e instanceof Error ? e.message : "Mise à jour échouée");
     } finally {
       setBusyKey(null);
     }

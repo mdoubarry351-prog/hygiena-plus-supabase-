@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,6 +12,8 @@ import { Loading } from "@/components/Loading";
 import { Avatar } from "@/components/Avatar";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { FadeInView } from "@/components/FadeInView";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import { doctorService } from "@/lib/doctor-service";
@@ -26,6 +28,18 @@ export default function DoctorProfile() {
   const { profile, signOut, refreshProfile } = useAuth();
   const router = useRouter();
   const { doctor, loading, setDoctor } = useMyDoctor();
+  const confirm = useConfirm();
+  const toast = useToast();
+
+  async function handleSignOut() {
+    if (await confirm({ title: "Se déconnecter", message: "Voulez-vous vraiment vous déconnecter ?", confirmLabel: "Se déconnecter", danger: true })) {
+      try {
+        await signOut();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Déconnexion échouée");
+      }
+    }
+  }
 
   const [specialty, setSpecialty] = useState("");
   const [clinic, setClinic] = useState("");
@@ -41,7 +55,7 @@ export default function DoctorProfile() {
     if (!profile) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour changer votre photo de profil.");
+      toast.error("Autorisation requise : autorisez l'accès à vos photos pour changer votre photo de profil.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -53,16 +67,16 @@ export default function DoctorProfile() {
     });
     if (result.canceled) return;
     const asset = result.assets[0];
-    if (!asset?.base64) { Alert.alert("Erreur", "Impossible de lire la photo sélectionnée."); return; }
+    if (!asset?.base64) { toast.error("Impossible de lire la photo sélectionnée."); return; }
     setAvatarUploading(true);
     try {
       const url = await uploadAvatar(asset.base64);
       await authService.updateProfile(profile.id, { avatar_url: url });
       await refreshProfile();
       hapticSuccess();
-      Alert.alert("Photo mise à jour", "Votre photo de profil a été enregistrée. Elle est visible par les patientes.");
+      toast.success("Votre photo de profil a été enregistrée. Elle est visible par les patientes.");
     } catch (e) {
-      Alert.alert("Échec de l'envoi", e instanceof Error ? e.message : "Mise à jour de la photo échouée.");
+      toast.error(e instanceof Error ? e.message : "Mise à jour de la photo échouée.");
     } finally {
       setAvatarUploading(false);
     }
@@ -90,7 +104,7 @@ export default function DoctorProfile() {
           message="Aucune fiche n'est rattachée à votre compte. Contactez l'administrateur."
         />
         <View style={styles.signOutWrap}>
-          <Button title="Se déconnecter" variant="danger" onPress={() => handleSignOut(signOut)} />
+          <Button title="Se déconnecter" variant="danger" onPress={handleSignOut} />
         </View>
       </Screen>
     );
@@ -108,11 +122,11 @@ export default function DoctorProfile() {
   async function handleSave() {
     if (!doctor) return;
     if (!specialty.trim()) {
-      Alert.alert("Spécialité requise", "Veuillez indiquer votre spécialité.");
+      toast.error("Spécialité requise : veuillez indiquer votre spécialité.");
       return;
     }
     if (feeInvalid) {
-      Alert.alert("Tarif invalide", "Le tarif de consultation doit être un nombre positif.");
+      toast.error("Tarif invalide : le tarif de consultation doit être un nombre positif.");
       return;
     }
     setSaving(true);
@@ -125,9 +139,9 @@ export default function DoctorProfile() {
       });
       setDoctor(updated);
       hapticSuccess();
-      Alert.alert("Enregistré", "Votre fiche a été mise à jour.");
+      toast.success("Votre fiche a été mise à jour.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
+      toast.error(e instanceof Error ? e.message : "Mise à jour échouée");
     } finally {
       setSaving(false);
     }
@@ -138,7 +152,7 @@ export default function DoctorProfile() {
     if (!doctor) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour téléverser votre document.");
+      toast.error("Autorisation requise : autorisez l'accès à vos photos pour téléverser votre document.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -149,16 +163,16 @@ export default function DoctorProfile() {
     });
     if (result.canceled) return;
     const asset = result.assets[0];
-    if (!asset?.base64) { Alert.alert("Erreur", "Impossible de lire le document sélectionné."); return; }
+    if (!asset?.base64) { toast.error("Impossible de lire le document sélectionné."); return; }
     setKycUploading(true);
     try {
       const path = await uploadKycDocument(asset.base64);
       const updated = await doctorService.updateLicenseDocument(doctor.id, path);
       setDoctor(updated);
       hapticSuccess();
-      Alert.alert("Document envoyé", "Votre document a été transmis. Il sera vérifié par un administrateur.");
+      toast.success("Votre document a été transmis. Il sera vérifié par un administrateur.");
     } catch (e) {
-      Alert.alert("Échec de l'envoi", e instanceof Error ? e.message : "Réessayez.");
+      toast.error(e instanceof Error ? e.message : "Envoi du document échoué.");
     } finally {
       setKycUploading(false);
     }
@@ -296,29 +310,12 @@ export default function DoctorProfile() {
         </FadeInView>
 
         <FadeInView fill={false} delay={STEP * 5} style={styles.actionsBlock}>
-          <Button title="Se déconnecter" variant="outline" onPress={() => handleSignOut(signOut)} />
+          <Button title="Se déconnecter" variant="outline" onPress={handleSignOut} />
           <DeleteAccountButton />
         </FadeInView>
       </ScrollView>
     </Screen>
   );
-}
-
-function handleSignOut(signOut: () => Promise<void>) {
-  Alert.alert("Se déconnecter", "Voulez-vous vraiment vous déconnecter ?", [
-    { text: "Annuler", style: "cancel" },
-    {
-      text: "Se déconnecter",
-      style: "destructive",
-      onPress: async () => {
-        try {
-          await signOut();
-        } catch (e) {
-          Alert.alert("Erreur", e instanceof Error ? e.message : "Déconnexion échouée");
-        }
-      },
-    },
-  ]);
 }
 
 const AVATAR = 84;

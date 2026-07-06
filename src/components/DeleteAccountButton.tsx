@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { authService } from "@/lib/auth-service";
 import { appointmentsService } from "@/lib/appointments-service";
@@ -42,6 +43,7 @@ export function DeleteAccountButton() {
   const { session } = useAuth();
   const [deleting, setDeleting] = useState(false);
   const confirm = useConfirm();
+  const toast = useToast();
 
   // Double confirmation (sécurité) via dialogue design system.
   async function handleDelete() {
@@ -89,7 +91,7 @@ export function DeleteAccountButton() {
       // Session fermée → redirection automatique vers la connexion.
     } catch (e) {
       setDeleting(false);
-      Alert.alert("Suppression impossible", e instanceof Error ? e.message : "Réessayez plus tard.");
+      toast.error(e instanceof Error ? e.message : "Suppression impossible, réessayez plus tard.");
     }
   }
 

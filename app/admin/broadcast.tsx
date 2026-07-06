@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -52,7 +52,7 @@ export default function AdminBroadcast() {
     try {
       setCount(await adminService.broadcastCount(audience));
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Prévisualisation impossible.");
+      toast.error(e instanceof Error ? e.message : "Prévisualisation impossible.");
     } finally {
       setPreviewing(false);
     }
@@ -60,8 +60,8 @@ export default function AdminBroadcast() {
 
   async function confirmSend() {
     if (!session?.user) return;
-    if (!title.trim()) { Alert.alert("Titre requis", "Saisissez un titre."); return; }
-    if (!message.trim()) { Alert.alert("Message requis", "Saisissez un message."); return; }
+    if (!title.trim()) { toast.info("Saisissez un titre."); return; }
+    if (!message.trim()) { toast.info("Saisissez un message."); return; }
 
     const who = count !== null ? `${count} personne${count > 1 ? "s" : ""}` : `« ${audienceLabel} »`;
     const warn = count !== null && count > LARGE_THRESHOLD ? "\n\nC'est un envoi important." : "";

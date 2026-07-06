@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -75,7 +75,7 @@ export default function AdminAdmins() {
       await loadAdmins();
       toast.success(`${label(u)} est désormais administrateur.`);
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Promotion échouée");
+      toast.error(e instanceof Error ? e.message : "Promotion échouée");
     }
   }
 
@@ -93,7 +93,7 @@ export default function AdminAdmins() {
       setAdmins((prev) => prev.filter((x) => x.id !== u.id));
       toast.success(`${label(u)} n'est plus administrateur.`);
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Retrait échoué");
+      toast.error(e instanceof Error ? e.message : "Retrait échoué");
     }
   }
 

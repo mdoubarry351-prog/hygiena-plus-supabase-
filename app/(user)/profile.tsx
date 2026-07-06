@@ -1,5 +1,7 @@
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useToast } from "@/providers/ToastProvider";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -18,24 +20,27 @@ const STEP = 55; // pas de l'apparition échelonnée (cohérent Vagues 1-5)
 export default function Profile() {
   const { profile, role, signOut } = useAuth();
   const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   if (!profile) return <Loading />;
 
-  function handleSignOut() {
-    Alert.alert("Se déconnecter", "Veux-tu vraiment te déconnecter ?", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Se déconnecter",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await signOut();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Déconnexion échouée");
-          }
-        },
-      },
-    ]);
+  async function handleSignOut() {
+    if (
+      await confirm({
+        title: "Se déconnecter",
+        message: "Veux-tu vraiment te déconnecter ?",
+        confirmLabel: "Se déconnecter",
+        cancelLabel: "Annuler",
+        danger: true,
+      })
+    ) {
+      try {
+        await signOut();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Déconnexion échouée");
+      }
+    }
   }
 
   const fullName =

@@ -1,7 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -40,6 +39,7 @@ import { FadeInView } from "@/components/FadeInView";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { useToast } from "@/providers/ToastProvider";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { APP_DOWNLOAD_URL } from "@/lib/app-config";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
@@ -52,6 +52,7 @@ export default function PostDetail() {
   const scrollRef = useRef<ScrollView>(null);
   const didFocusScroll = useRef(false);
   const toast = useToast();
+  const confirm = useConfirm();
   const [sheet, setSheet] = useState<{ title?: string; options: ActionSheetOption[] } | null>(null);
 
   const [post, setPost] = useState<CommunityPostWithAuthor | null>(null);
@@ -92,9 +93,8 @@ export default function PostDetail() {
         setLiked(likedIds.includes(id));
       }
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Publication introuvable", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      toast.error(e instanceof Error ? e.message : "Publication introuvable");
+      router.back();
     } finally {
       setLoading(false);
     }
@@ -111,7 +111,7 @@ export default function PostDetail() {
       setLiked(nowLiked);
       setPost((prev) => (prev ? { ...prev, likes_count: likesCount } : prev));
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action impossible");
+      toast.error(e instanceof Error ? e.message : "Action impossible");
     }
   }
 
@@ -135,7 +135,7 @@ export default function PostDetail() {
       setComments(c);
       hapticSuccess();
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Commentaire échoué");
+      toast.error(e instanceof Error ? e.message : "Commentaire échoué");
     } finally {
       setSending(false);
     }
@@ -190,24 +190,17 @@ export default function PostDetail() {
     });
   }
 
-  function deleteMyPost() {
+  async function deleteMyPost() {
     if (!post) return;
-    Alert.alert("Supprimer la publication ?", "Cette action est définitive.", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Supprimer",
-        style: "destructive",
-        onPress: async () => {
-          hapticWarning();
-          try {
-            await communityService.deletePost(post.id);
-            router.back();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-          }
-        },
-      },
-    ]);
+    if (await confirm({ title: "Supprimer la publication ?", message: "Cette action est définitive.", confirmLabel: "Supprimer", cancelLabel: "Annuler", danger: true })) {
+      hapticWarning();
+      try {
+        await communityService.deletePost(post.id);
+        router.back();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Suppression échouée");
+      }
+    }
   }
 
   // ---- Mon commentaire : modifier (inline) / supprimer ----
@@ -229,7 +222,7 @@ export default function PostDetail() {
       setEditText("");
       if (post) setComments(await communityService.getComments(post.id));
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Modification échouée");
+      toast.error(e instanceof Error ? e.message : "Modification échouée");
     } finally {
       setSavingEdit(false);
     }
@@ -243,58 +236,49 @@ export default function PostDetail() {
       ],
     });
   }
-  function deleteCommentConfirm(c: CommunityCommentWithAuthor) {
-    Alert.alert("Supprimer le commentaire ?", "Cette action est définitive.", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Supprimer",
-        style: "destructive",
-        onPress: async () => {
-          hapticWarning();
-          try {
-            await communityService.deleteComment(c.id);
-            if (post) setComments(await communityService.getComments(post.id));
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
-          }
-        },
-      },
-    ]);
+  async function deleteCommentConfirm(c: CommunityCommentWithAuthor) {
+    if (await confirm({ title: "Supprimer le commentaire ?", message: "Cette action est définitive.", confirmLabel: "Supprimer", cancelLabel: "Annuler", danger: true })) {
+      hapticWarning();
+      try {
+        await communityService.deleteComment(c.id);
+        if (post) setComments(await communityService.getComments(post.id));
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Suppression échouée");
+      }
+    }
   }
 
   // Bloque un utilisateur (auteur d'un post ou d'un commentaire).
-  function confirmBlock(userId: string, afterBlock: () => void) {
-    Alert.alert("Bloquer cet utilisateur ?", "Tu ne verras plus les publications de cette personne.", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Bloquer",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await communityService.blockUser(userId);
-            afterBlock();
-          } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Action impossible");
-          }
-        },
-      },
-    ]);
+  async function confirmBlock(userId: string, afterBlock: () => void) {
+    if (await confirm({ title: "Bloquer cet utilisateur ?", message: "Tu ne verras plus les publications de cette personne.", confirmLabel: "Bloquer", cancelLabel: "Annuler", danger: true })) {
+      try {
+        await communityService.blockUser(userId);
+        afterBlock();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Action impossible");
+      }
+    }
   }
 
   // ---- Signalement (contenu des autres) ----
+  // Feuille d'actions multiplateforme (web-safe) au lieu d'un Alert à boutons
+  // multiples : liste des motifs de signalement.
   function reportReasonAlert(title: string, onPick: (reason: string) => Promise<void>) {
-    const buttons = REPORT_REASONS.map((r) => ({
-      text: r,
-      onPress: async () => {
-        try {
-          await onPick(r);
-          toast.success("Ce contenu a été signalé à la modération.");
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Signalement impossible");
-        }
-      },
-    }));
-    Alert.alert(title, "Pour quelle raison ?", [...buttons, { text: "Annuler", style: "cancel" }]);
+    setSheet({
+      title: `${title} — pour quelle raison ?`,
+      options: REPORT_REASONS.map((r) => ({
+        label: r,
+        icon: "flag-outline" as const,
+        onPress: async () => {
+          try {
+            await onPick(r);
+            toast.success("Ce contenu a été signalé à la modération.");
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Signalement impossible");
+          }
+        },
+      })),
+    });
   }
 
   // Menu ⋯ d'un post qui n'est pas le mien : Partager / Signaler (+ Bloquer si non anonyme).

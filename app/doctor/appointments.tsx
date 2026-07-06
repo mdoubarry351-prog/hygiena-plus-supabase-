@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -7,6 +7,8 @@ import { Card } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useToast } from "@/providers/ToastProvider";
 import { FadeInView } from "@/components/FadeInView";
 import { useMyDoctor } from "@/hooks/useMyDoctor";
 import { doctorService, type AppointmentWithPatient } from "@/lib/doctor-service";
@@ -33,6 +35,8 @@ const STATUS_COLORS: Record<AppointmentStatus, string> = {
 
 export default function DoctorAppointments() {
   const { doctor, loading: loadingDoctor } = useMyDoctor();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [appointments, setAppointments] = useState<AppointmentWithPatient[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,18 +70,17 @@ export default function DoctorAppointments() {
     try {
       await doctorService.updateStatus(id, status);
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour du statut échouée");
+      toast.error(e instanceof Error ? e.message : "Mise à jour du statut échouée");
       await load(); // resynchronise
     } finally {
       setBusyId(null);
     }
   }
 
-  function confirmCancel(id: string) {
-    Alert.alert("Annuler le rendez-vous ?", "Le patient verra son rendez-vous comme annulé.", [
-      { text: "Retour", style: "cancel" },
-      { text: "Annuler le RDV", style: "destructive", onPress: () => changeStatus(id, "cancelled") },
-    ]);
+  async function confirmCancel(id: string) {
+    if (await confirm({ title: "Annuler le rendez-vous ?", message: "Le patient verra son rendez-vous comme annulé.", confirmLabel: "Annuler le RDV", cancelLabel: "Retour", danger: true })) {
+      changeStatus(id, "cancelled");
+    }
   }
 
   if (loadingDoctor || (loading && appointments.length === 0)) return <Loading />;

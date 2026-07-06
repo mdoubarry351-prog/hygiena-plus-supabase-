@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -142,7 +142,7 @@ export default function AdminDoctors() {
     try {
       setKycUrl(await adminService.getKycSignedUrl(path));
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Document indisponible.");
+      toast.error(e instanceof Error ? e.message : "Document indisponible.");
     } finally {
       setKycLoading(false);
     }
@@ -181,7 +181,7 @@ export default function AdminDoctors() {
         { key: "tarif", label: "Tarif" },
       ]);
     } catch (e) {
-      Alert.alert("Export impossible", e instanceof Error ? e.message : "Réessayez.");
+      toast.error(e instanceof Error ? e.message : "Réessayez.");
     } finally {
       setExporting(false);
     }
@@ -198,7 +198,7 @@ export default function AdminDoctors() {
   async function pickAvatar() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour ajouter une photo de médecin.");
+      toast.info("Autorisez l'accès à vos photos pour ajouter une photo de médecin.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -210,14 +210,14 @@ export default function AdminDoctors() {
     });
     if (result.canceled) return;
     const asset = result.assets[0];
-    if (!asset?.base64) { Alert.alert("Erreur", "Impossible de lire la photo."); return; }
+    if (!asset?.base64) { toast.error("Impossible de lire la photo."); return; }
     setLocalAvatar(asset.uri);
     setAvatarUploading(true);
     try {
       setAvatarUrl(await uploadAvatar(asset.base64));
     } catch (e) {
       setLocalAvatar(null);
-      Alert.alert("Échec de l'upload", e instanceof Error ? e.message : "Réessayez.");
+      toast.error(e instanceof Error ? e.message : "Réessayez.");
     } finally {
       setAvatarUploading(false);
     }
@@ -225,10 +225,10 @@ export default function AdminDoctors() {
 
   async function submitCreate() {
     if (!session?.user) return;
-    if (avatarUploading) { Alert.alert("Patientez", "La photo est encore en cours d'envoi."); return; }
-    if (!fullName.trim()) { Alert.alert("Nom requis", "Indiquez le nom complet du médecin."); return; }
-    if (!specialty) { Alert.alert("Spécialité requise", "Sélectionnez une spécialité."); return; }
-    if (!isValidGuineaLocal(phone)) { Alert.alert("Téléphone requis", "Saisissez le numéro de connexion du médecin (9 chiffres)."); return; }
+    if (avatarUploading) { toast.info("La photo est encore en cours d'envoi."); return; }
+    if (!fullName.trim()) { toast.info("Indiquez le nom complet du médecin."); return; }
+    if (!specialty) { toast.info("Sélectionnez une spécialité."); return; }
+    if (!isValidGuineaLocal(phone)) { toast.info("Saisissez le numéro de connexion du médecin (9 chiffres)."); return; }
 
     const parts = fullName.trim().split(/\s+/);
     const firstName = parts[0];
@@ -236,7 +236,7 @@ export default function AdminDoctors() {
 
     const years = Number(yearsExp.replace(/\s/g, "")) || 0;
     const feeNum = fee.trim() ? Number(fee.replace(/\s/g, "")) : 0;
-    if (!Number.isFinite(feeNum) || feeNum < 0) { Alert.alert("Tarif invalide", "Le tarif doit être un nombre positif."); return; }
+    if (!Number.isFinite(feeNum) || feeNum < 0) { toast.info("Le tarif doit être un nombre positif."); return; }
 
     setSaving(true);
     try {
@@ -270,9 +270,9 @@ export default function AdminDoctors() {
       resetAdd();
       await load();
       hapticSuccess();
-      Alert.alert("Médecin créé ✅", lines.join("\n"));
+      toast.success(lines.join("\n"));
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Création échouée");
+      toast.error(e instanceof Error ? e.message : "Création échouée");
     } finally {
       setSaving(false);
     }

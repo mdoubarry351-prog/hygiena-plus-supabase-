@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useRef, useEffect, useCallback, ReactNode } from "react";
-import { Alert, Animated, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, usePathname, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "@/components/Avatar";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAdminBadges, badgeForSeg } from "@/hooks/useAdminBadges";
 import { ADMIN_TABS, isActiveSeg, isTabActive, tabSegments } from "@/lib/admin-nav";
@@ -38,6 +39,7 @@ export function AdminDrawer() {
   const router = useRouter();
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
+  const confirm = useConfirm();
   const badges = useAdminBadges();
   const anim = useRef(new Animated.Value(0)).current;
 
@@ -61,12 +63,11 @@ export function AdminDrawer() {
     router.push(href);
   }
 
-  function handleSignOut() {
+  async function handleSignOut() {
     closeDrawer();
-    Alert.alert("Se déconnecter", "Voulez-vous vraiment vous déconnecter ?", [
-      { text: "Annuler", style: "cancel" },
-      { text: "Se déconnecter", style: "destructive", onPress: () => signOut() },
-    ]);
+    if (await confirm({ title: "Se déconnecter", message: "Voulez-vous vraiment vous déconnecter ?", confirmLabel: "Se déconnecter", danger: true })) {
+      signOut();
+    }
   }
 
   return (

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Linking, StyleSheet, Text, TextInput, View } from "react-native";
+import { Linking, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useToast } from "@/providers/ToastProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Input } from "@/components/Input";
@@ -34,6 +35,7 @@ function parseAuthParams(url: string): Record<string, string> {
 
 export default function ResetPassword() {
   const router = useRouter();
+  const toast = useToast();
   const [status, setStatus] = useState<Status>("checking");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -92,11 +94,10 @@ export default function ResetPassword() {
       hapticSuccess();
       // Session de récupération fermée → connexion avec le nouveau mot de passe.
       await authService.signOut();
-      Alert.alert("Mot de passe mis à jour", "Tu peux maintenant te connecter avec ton nouveau mot de passe.", [
-        { text: "OK", onPress: () => router.replace("/(auth)/login") },
-      ]);
+      toast.success("Mot de passe mis à jour. Tu peux maintenant te connecter avec ton nouveau mot de passe.");
+      router.replace("/(auth)/login");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Mise à jour échouée");
+      toast.error(e instanceof Error ? e.message : "Mise à jour échouée");
     } finally {
       setSaving(false);
     }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useToast } from "@/providers/ToastProvider";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Card } from "@/components/Card";
@@ -15,6 +16,7 @@ type Step = "current" | "new" | "confirm";
 
 export default function LockSettings() {
   const { enabled, biometric, refresh } = useAppLock();
+  const toast = useToast();
   const [bioAvailable, setBioAvailable] = useState(false);
 
   const [mode, setMode] = useState<Mode>(null);
@@ -64,14 +66,14 @@ export default function LockSettings() {
     await refresh();
     setBusy(false);
     closeFlow();
-    Alert.alert(mode === "change" ? "Code modifié" : "Verrouillage activé");
+    toast.success(mode === "change" ? "Code modifié" : "Verrouillage activé");
   }
 
   async function finishDisable() {
     await appLock.disableLock();
     await refresh();
     closeFlow();
-    Alert.alert("Verrouillage désactivé");
+    toast.success("Verrouillage désactivé");
   }
 
   // Déverrouillage de l'étape « code actuel » par biométrie (désactivation / modification).

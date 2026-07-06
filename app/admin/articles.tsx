@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -53,7 +53,7 @@ export default function AdminArticles() {
       await adminService.setArticlePublished(session.user.id, article.id, next);
     } catch (e) {
       setArticles((prev) => prev.map((a) => (a.id === article.id ? { ...a, is_published: article.is_published } : a)));
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action échouée");
+      toast.error(e instanceof Error ? e.message : "Action échouée");
     }
   }
 
@@ -71,7 +71,7 @@ export default function AdminArticles() {
       setArticles((prev) => prev.filter((a) => a.id !== article.id));
       toast.success("Article supprimé.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Suppression échouée");
+      toast.error(e instanceof Error ? e.message : "Suppression échouée");
     }
   }
 
@@ -138,6 +138,7 @@ export default function AdminArticles() {
 
 function ArticleForm({ article, onDone, onCancel }: { article: Article | null; onDone: () => void; onCancel: () => void }) {
   const { session } = useAuth();
+  const toast = useToast();
   const [title, setTitle] = useState(article?.title ?? "");
   const [category, setCategory] = useState<string>(article?.category ?? ARTICLE_CATEGORIES[0]);
   const [excerpt, setExcerpt] = useState(article?.excerpt ?? "");
@@ -153,7 +154,7 @@ function ArticleForm({ article, onDone, onCancel }: { article: Article | null; o
   async function pickImage() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour ajouter une image de couverture.");
+      toast.info("Autorisez l'accès à vos photos pour ajouter une image de couverture.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -164,14 +165,14 @@ function ArticleForm({ article, onDone, onCancel }: { article: Article | null; o
     });
     if (result.canceled) return;
     const asset = result.assets[0];
-    if (!asset?.base64) { Alert.alert("Erreur", "Impossible de lire la photo sélectionnée."); return; }
+    if (!asset?.base64) { toast.error("Impossible de lire la photo sélectionnée."); return; }
     setLocalPreview(asset.uri);
     setUploading(true);
     try {
       setCoverUrl(await uploadArticleImage(asset.base64));
     } catch (e) {
       setLocalPreview(null);
-      Alert.alert("Échec de l'upload", e instanceof Error ? e.message : "Réessayez.");
+      toast.error(e instanceof Error ? e.message : "Réessayez.");
     } finally {
       setUploading(false);
     }
@@ -184,9 +185,9 @@ function ArticleForm({ article, onDone, onCancel }: { article: Article | null; o
 
   async function handleSave() {
     if (!session?.user) return;
-    if (uploading) { Alert.alert("Patientez", "L'image est encore en cours d'envoi."); return; }
-    if (!title.trim()) { Alert.alert("Titre requis", "Indiquez le titre de l'article."); return; }
-    if (!content.trim()) { Alert.alert("Contenu requis", "Rédigez le contenu de l'article."); return; }
+    if (uploading) { toast.info("L'image est encore en cours d'envoi."); return; }
+    if (!title.trim()) { toast.info("Indiquez le titre de l'article."); return; }
+    if (!content.trim()) { toast.info("Rédigez le contenu de l'article."); return; }
 
     const input = {
       title: title.trim(),
@@ -207,7 +208,7 @@ function ArticleForm({ article, onDone, onCancel }: { article: Article | null; o
       hapticSuccess();
       onDone();
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Enregistrement échoué");
+      toast.error(e instanceof Error ? e.message : "Enregistrement échoué");
     } finally {
       setSaving(false);
     }

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -59,7 +59,7 @@ export default function AdminBannedWords() {
   async function submitAdd() {
     if (!session?.user) return;
     const w = newWord.trim();
-    if (!w) { Alert.alert("Mot requis", "Saisissez un terme à interdire."); return; }
+    if (!w) { toast.info("Saisissez un terme à interdire."); return; }
     setSaving(true);
     try {
       const created = await adminService.addBannedWord(session.user.id, w, severity);
@@ -68,7 +68,7 @@ export default function AdminBannedWords() {
       setSeverity(1);
       hapticSuccess();
     } catch (e) {
-      Alert.alert("Ajout impossible", e instanceof Error ? e.message : "Réessayez.");
+      toast.error(e instanceof Error ? e.message : "Réessayez.");
     } finally {
       setSaving(false);
     }

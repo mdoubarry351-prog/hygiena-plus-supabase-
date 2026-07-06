@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
@@ -94,10 +94,12 @@ export default function LogCycle() {
           setPain(c.pain);
           setNotes(c.notes ?? "");
         } else {
-          Alert.alert("Introuvable", "Cette saisie n'existe plus.", [{ text: "OK", onPress: () => router.back() }]);
+          toast.error("Cette saisie n'existe plus.");
+          router.back();
         }
       } catch {
-        Alert.alert("Erreur", "Impossible de charger la saisie.", [{ text: "OK", onPress: () => router.back() }]);
+        toast.error("Impossible de charger la saisie.");
+        router.back();
       } finally {
         setLoadingCycle(false);
       }
@@ -177,7 +179,7 @@ export default function LogCycle() {
   async function handleSave() {
     if (!session?.user) return;
     if (endDate && endDate < startDate) {
-      Alert.alert("Dates incohérentes", "La date de fin doit être après la date de début.");
+      toast.info("La date de fin doit être après la date de début.");
       return;
     }
     setSaving(true);
@@ -206,10 +208,7 @@ export default function LogCycle() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
       const isNetwork = /network request failed|fetch|timeout|offline/i.test(msg);
-      Alert.alert(
-        isNetwork ? "Pas de connexion" : "Erreur",
-        isNetwork ? "Pas de connexion — réessayez une fois en ligne." : (msg || "Enregistrement échoué")
-      );
+      toast.error(isNetwork ? "Pas de connexion — réessayez une fois en ligne." : (msg || "Enregistrement échoué"));
     } finally {
       setSaving(false);
     }

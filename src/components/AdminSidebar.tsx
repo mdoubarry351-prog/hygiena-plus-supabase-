@@ -1,6 +1,7 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAdminBadges, badgeForSeg } from "@/hooks/useAdminBadges";
 import { ADMIN_TABS, isActiveSeg, isTabActive, tabSegments } from "@/lib/admin-nav";
@@ -11,13 +12,13 @@ export function AdminSidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { signOut } = useAuth();
+  const confirm = useConfirm();
   const badges = useAdminBadges();
 
-  function handleSignOut() {
-    Alert.alert("Se déconnecter", "Voulez-vous vraiment vous déconnecter ?", [
-      { text: "Annuler", style: "cancel" },
-      { text: "Se déconnecter", style: "destructive", onPress: () => signOut() },
-    ]);
+  async function handleSignOut() {
+    if (await confirm({ title: "Se déconnecter", message: "Voulez-vous vraiment vous déconnecter ?", confirmLabel: "Se déconnecter", danger: true })) {
+      signOut();
+    }
   }
 
   return (

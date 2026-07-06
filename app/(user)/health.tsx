@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -88,8 +88,8 @@ export default function HealthInfo() {
     const userId = session.user.id;
     const h = height.trim() ? parseInt(height.replace(/\s/g, ""), 10) : null;
     const w = weight.trim() ? parseFloat(weight.replace(",", ".").replace(/\s/g, "")) : null;
-    if (h != null && (Number.isNaN(h) || h <= 0 || h > 300)) { Alert.alert("Taille invalide", "Indique une taille en cm (1–300)."); return; }
-    if (w != null && (Number.isNaN(w) || w <= 0 || w > 500)) { Alert.alert("Poids invalide", "Indique un poids en kg (1–500)."); return; }
+    if (h != null && (Number.isNaN(h) || h <= 0 || h > 300)) { toast.error("Taille invalide. Indique une taille en cm (1–300)."); return; }
+    if (w != null && (Number.isNaN(w) || w <= 0 || w > 500)) { toast.error("Poids invalide. Indique un poids en kg (1–500)."); return; }
     setSaving(true);
     try {
       const nextDob = dob ? toISODate(dob) : null;
@@ -108,7 +108,7 @@ export default function HealthInfo() {
       hapticSuccess();
       toast.success("Tes informations de santé ont été enregistrées.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Enregistrement échoué");
+      toast.error(e instanceof Error ? e.message : "Enregistrement échoué");
     } finally {
       setSaving(false);
     }

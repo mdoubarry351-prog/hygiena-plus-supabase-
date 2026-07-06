@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@/components/Button";
@@ -15,6 +15,7 @@ import {
   type DoctorWithProfile,
 } from "@/lib/appointments-service";
 import { hapticSuccess, hapticError } from "@/lib/haptics";
+import { useToast } from "@/providers/ToastProvider";
 import { colors, radius, spacing, typography } from "@/theme";
 
 function toISO(d: Date): string {
@@ -57,6 +58,7 @@ export function RescheduleModal({
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const toast = useToast();
 
   const days = useMemo(buildDays, []);
   const todayISO = useMemo(() => toISO(new Date()), []);
@@ -109,9 +111,9 @@ export function RescheduleModal({
         hapticError();
         await refreshSlots();
         setSelectedTime(null);
-        Alert.alert("Créneau indisponible", "Ce créneau vient d'être réservé, choisissez-en un autre.");
+        toast.error("Ce créneau vient d'être réservé, choisissez-en un autre.");
       } else {
-        Alert.alert("Erreur", e instanceof Error ? e.message : "Report échoué");
+        toast.error(e instanceof Error ? e.message : "Report échoué");
       }
     } finally {
       setSaving(false);

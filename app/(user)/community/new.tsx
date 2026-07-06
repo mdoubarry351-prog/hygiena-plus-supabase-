@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable,
+  ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,6 +20,7 @@ import { VerifiedDoctorBadge, CategoryTag } from "@/components/CommunityBadges";
 import { PostImages } from "@/components/PostImages";
 import { CommunityRules } from "@/components/CommunityRules";
 import { useToast } from "@/providers/ToastProvider";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { uploadCommunityImage } from "@/lib/storage";
 import { getDraft, setDraft, clearDraft, DRAFT_KEYS } from "@/lib/draft";
@@ -37,6 +38,7 @@ export default function NewPost() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEdit = !!id;
   const toast = useToast();
+  const confirm = useConfirm();
 
   // Acceptation de la charte requise avant la 1ʳᵉ publication (pas en édition).
   const needsRules = !isEdit && profile?.community_rules_accepted === false;
@@ -84,7 +86,8 @@ export default function NewPost() {
           setImages(p.image_urls ?? (p.image_url ? [p.image_url] : []));
         }
       } catch {
-        Alert.alert("Erreur", "Publication introuvable.", [{ text: "OK", onPress: () => router.back() }]);
+        toast.error("Publication introuvable.");
+        router.back();
       } finally {
         setLoadingPost(false);
       }
@@ -121,10 +124,10 @@ export default function NewPost() {
   // Sélection de PLUSIEURS photos (jusqu'à 4) + upload de chacune.
   async function pickImages() {
     const remaining = MAX_IMAGES - images.length;
-    if (remaining <= 0) { Alert.alert("Limite atteinte", `Vous pouvez ajouter jusqu'à ${MAX_IMAGES} photos.`); return; }
+    if (remaining <= 0) { toast.info(`Vous pouvez ajouter jusqu'à ${MAX_IMAGES} photos.`); return; }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour ajouter des images.");
+      toast.error("Autorisez l'accès à vos photos pour ajouter des images.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -137,7 +140,7 @@ export default function NewPost() {
     });
     if (result.canceled) return;
     const assets = result.assets.slice(0, remaining).filter((a) => a.base64);
-    if (assets.length === 0) { Alert.alert("Erreur", "Impossible de lire les photos sélectionnées."); return; }
+    if (assets.length === 0) { toast.error("Impossible de lire les photos sélectionnées."); return; }
     setUploading(true);
     try {
       const urls: string[] = [];
@@ -146,7 +149,7 @@ export default function NewPost() {
       }
       setImages((prev) => [...prev, ...urls].slice(0, MAX_IMAGES));
     } catch (e) {
-      Alert.alert("Échec de l'upload", e instanceof Error ? e.message : "Réessayez.");
+      toast.error(e instanceof Error ? e.message : "Réessayez.");
     } finally {
       setUploading(false);
     }
@@ -164,7 +167,7 @@ export default function NewPost() {
       await authService.updateProfile(session.user.id, { community_rules_accepted: true });
       await refreshProfile();
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Action impossible");
+      toast.error(e instanceof Error ? e.message : "Action impossible");
     } finally {
       setAccepting(false);
     }
@@ -172,11 +175,11 @@ export default function NewPost() {
 
   async function handlePublish() {
     if (!session?.user) return;
-    if (needsRules) { Alert.alert("Règles à accepter", "Veuillez accepter les règles de la communauté avant de publier."); return; }
-    if (uploading) { Alert.alert("Patientez", "Les photos sont encore en cours d'envoi."); return; }
+    if (needsRules) { toast.info("Veuillez accepter les règles de la communauté avant de publier."); return; }
+    if (uploading) { toast.info("Les photos sont encore en cours d'envoi."); return; }
     const text = content.trim();
     if (!text) {
-      Alert.alert("Publication vide", "Écrivez quelque chose avant de publier.");
+      toast.info("Écrivez quelque chose avant de publier.");
       return;
     }
     setSaving(true);
@@ -205,7 +208,7 @@ export default function NewPost() {
       }
     } catch (e) {
       // L'erreur backend (ex. mots interdits) est affichée telle quelle.
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Publication échouée");
+      toast.error(e instanceof Error ? e.message : "Publication échouée");
     } finally {
       setSaving(false);
     }
@@ -213,9 +216,9 @@ export default function NewPost() {
 
   // Ouvre l'aperçu (mêmes garde-fous que la publication, hors envoi en cours).
   function openPreview() {
-    if (needsRules) { Alert.alert("Règles à accepter", "Veuillez accepter les règles de la communauté avant de publier."); return; }
-    if (uploading) { Alert.alert("Patientez", "Les photos sont encore en cours d'envoi."); return; }
-    if (!content.trim()) { Alert.alert("Publication vide", "Écrivez quelque chose avant de prévisualiser."); return; }
+    if (needsRules) { toast.info("Veuillez accepter les règles de la communauté avant de publier."); return; }
+    if (uploading) { toast.info("Les photos sont encore en cours d'envoi."); return; }
+    if (!content.trim()) { toast.info("Écrivez quelque chose avant de prévisualiser."); return; }
     setShowPreview(true);
   }
 
@@ -226,17 +229,18 @@ export default function NewPost() {
   }
 
   // Fermeture : confirmation si du contenu non publié existe.
-  function handleClose() {
+  async function handleClose() {
     const dirty = content.trim().length > 0 || images.length > 0;
     if (dirty) {
-      Alert.alert(
-        "Quitter sans publier ?",
-        isEdit ? "Tes modifications ne seront pas enregistrées." : "Ton brouillon reste enregistré sur cet appareil.",
-        [
-          { text: "Continuer", style: "cancel" },
-          { text: "Quitter", style: "destructive", onPress: () => router.back() },
-        ]
-      );
+      if (await confirm({
+        title: "Quitter sans publier ?",
+        message: isEdit ? "Tes modifications ne seront pas enregistrées." : "Ton brouillon reste enregistré sur cet appareil.",
+        confirmLabel: "Quitter",
+        cancelLabel: "Continuer",
+        danger: true,
+      })) {
+        router.back();
+      }
     } else {
       router.back();
     }

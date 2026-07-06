@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -8,6 +8,7 @@ import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { useToast } from "@/providers/ToastProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
 import type { StoreSettings, Json } from "@/lib/database.types";
@@ -33,6 +34,7 @@ function formatDateTime(iso: string | null): string | null {
 
 export default function StoreSettingsScreen() {
   const { session } = useAuth();
+  const toast = useToast();
   const [row, setRow] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -93,24 +95,24 @@ export default function StoreSettingsScreen() {
     // --- Validation montants ---
     const codMaxNum = Number(codMax.replace(/\s/g, ""));
     if (codMax.trim() === "" || !Number.isFinite(codMaxNum) || codMaxNum < 0) {
-      Alert.alert("Montant invalide", "Le montant max COD doit être un nombre positif.");
+      toast.error("Montant max COD invalide : un nombre positif est requis.");
       return;
     }
     const codAgeNum = Number(codMinAge.replace(/\s/g, ""));
     if (codMinAge.trim() === "" || !Number.isInteger(codAgeNum) || codAgeNum < 0) {
-      Alert.alert("Valeur invalide", "L'ancienneté minimale doit être un entier positif (en jours).");
+      toast.error("Ancienneté minimale invalide : un entier positif (en jours) est requis.");
       return;
     }
     const feeNum = Number(deliveryFee.replace(/\s/g, ""));
     if (deliveryFee.trim() === "" || !Number.isFinite(feeNum) || feeNum < 0) {
-      Alert.alert("Frais invalides", "Les frais de livraison doivent être un nombre positif.");
+      toast.error("Frais de livraison invalides : un nombre positif est requis.");
       return;
     }
     let thresholdNum: number | null = null;
     if (freeThreshold.trim() !== "") {
       const t = Number(freeThreshold.replace(/\s/g, ""));
       if (!Number.isFinite(t) || t < 0) {
-        Alert.alert("Seuil invalide", "Le seuil de livraison gratuite doit être un nombre positif.");
+        toast.error("Seuil de livraison gratuite invalide : un nombre positif est requis.");
         return;
       }
       thresholdNum = t;
@@ -122,7 +124,7 @@ export default function StoreSettingsScreen() {
       try {
         deliveryZones = JSON.parse(deliveryZonesJson) as Json;
       } catch {
-        Alert.alert("JSON invalide", "Le champ « Zones de livraison » doit contenir du JSON valide.");
+        toast.error("Le champ « Zones de livraison » doit contenir du JSON valide.");
         return;
       }
     }
@@ -142,9 +144,9 @@ export default function StoreSettingsScreen() {
         announcement: announcement.trim() || null,
       });
       setRow(updated);
-      Alert.alert("Enregistré", "Les paramètres de la boutique ont été mis à jour.");
+      toast.success("Les paramètres de la boutique ont été mis à jour.");
     } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Enregistrement échoué");
+      toast.error(e instanceof Error ? e.message : "Enregistrement échoué");
     } finally {
       setSaving(false);
     }
