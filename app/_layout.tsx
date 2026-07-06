@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import { Slot, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -49,7 +50,10 @@ function NotificationsBootstrap() {
   useEffect(() => { setupNotificationHandler(); }, []);
 
   // Réponse au tap (push ou locale) → navigation. + cas du démarrage à froid.
+  // Pas de notifications sur le web : aucun listener (le module web
+  // d'expo-notifications émettrait un avertissement inutile).
   useEffect(() => {
+    if (Platform.OS === "web") return;
     let sub: ReturnType<typeof Notifications.addNotificationResponseReceivedListener> | undefined;
     try {
       sub = Notifications.addNotificationResponseReceivedListener((response) => {

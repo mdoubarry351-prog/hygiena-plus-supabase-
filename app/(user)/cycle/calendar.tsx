@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useMemo, useRef, useState } from "react";
 import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
@@ -148,14 +149,14 @@ export default function CalendarScreen() {
     hapticLight();
     const out = delta > 0 ? -SLIDE : SLIDE;
     Animated.parallel([
-      Animated.timing(fade, { toValue: 0, duration: durations.fast, useNativeDriver: true }),
-      Animated.timing(slide, { toValue: out, duration: durations.fast, useNativeDriver: true }),
+      Animated.timing(fade, { toValue: 0, duration: durations.fast, useNativeDriver: NATIVE_ANIM }),
+      Animated.timing(slide, { toValue: out, duration: durations.fast, useNativeDriver: NATIVE_ANIM }),
     ]).start(() => {
       slide.setValue(-out);
       setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1));
       Animated.parallel([
-        Animated.timing(fade, { toValue: 1, duration: durations.normal, useNativeDriver: true }),
-        Animated.timing(slide, { toValue: 0, duration: durations.normal, useNativeDriver: true }),
+        Animated.timing(fade, { toValue: 1, duration: durations.normal, useNativeDriver: NATIVE_ANIM }),
+        Animated.timing(slide, { toValue: 0, duration: durations.normal, useNativeDriver: NATIVE_ANIM }),
       ]).start(() => { animating.current = false; });
     });
   }

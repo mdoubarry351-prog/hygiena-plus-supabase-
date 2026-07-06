@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, Text, TextInput, type TextInputProps, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -83,7 +84,7 @@ export const PhoneInput = forwardRef<TextInput, Props>(function PhoneInput(
 function ErrorRow({ message }: { message: string }) {
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(opacity, { toValue: 1, duration: durations.fast, useNativeDriver: true }).start();
+    Animated.timing(opacity, { toValue: 1, duration: durations.fast, useNativeDriver: NATIVE_ANIM }).start();
   }, [opacity]);
   return (
     <Animated.View style={[styles.errorRow, { opacity }]}>

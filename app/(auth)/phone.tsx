@@ -87,7 +87,7 @@ export default function PhoneLogin() {
 
   return (
     <Screen keyboardAware>
-      <View style={styles.glow} pointerEvents="none" />
+      <View style={[styles.glow, { pointerEvents: "none" }]} />
 
       <View style={styles.header}>
         <View style={styles.logoHalo}>

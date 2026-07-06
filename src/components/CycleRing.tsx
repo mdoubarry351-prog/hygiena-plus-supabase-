@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
@@ -51,7 +52,7 @@ export function CycleRing({
       toValue: 1,
       duration: durations.slow,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_ANIM,
     }).start();
   }, [appear]);
   const appearStyle = {
@@ -65,7 +66,7 @@ export function CycleRing({
   useEffect(() => {
     if (currentDay == null) return;
     const loop = Animated.loop(
-      Animated.timing(pulse, { toValue: 1, duration: PULSE_MS, easing: Easing.out(Easing.ease), useNativeDriver: true })
+      Animated.timing(pulse, { toValue: 1, duration: PULSE_MS, easing: Easing.out(Easing.ease), useNativeDriver: NATIVE_ANIM })
     );
     loop.start();
     return () => loop.stop();
@@ -137,16 +138,15 @@ export function CycleRing({
         {/* Halo pulsé sous le marqueur (emanation douce). */}
         {marker && (
           <Animated.View
-            pointerEvents="none"
             style={[
               styles.halo,
-              { left: marker.x - HALO / 2, top: marker.y - HALO / 2, backgroundColor: markerColor },
+              { left: marker.x - HALO / 2, top: marker.y - HALO / 2, backgroundColor: markerColor, pointerEvents: "none" },
               pulseStyle,
             ]}
           />
         )}
 
-        <View style={[styles.center, { width: size, height: size }]} pointerEvents="none">
+        <View style={[styles.center, { width: size, height: size, pointerEvents: "none" }]}>
           {currentDay != null ? (
             <Animated.View style={[styles.centerInner, appearStyle]}>
               <Text style={styles.jour}>JOUR</Text>

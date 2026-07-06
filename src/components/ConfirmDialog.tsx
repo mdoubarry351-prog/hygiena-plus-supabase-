@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Button } from "@/components/Button";
@@ -37,8 +38,8 @@ export function ConfirmDialog({
     scale.setValue(0.96);
     opacity.setValue(0);
     Animated.parallel([
-      Animated.timing(scale, { toValue: 1, duration: durations.fast, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 1, duration: durations.fast, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1, duration: durations.fast, useNativeDriver: NATIVE_ANIM }),
+      Animated.timing(opacity, { toValue: 1, duration: durations.fast, useNativeDriver: NATIVE_ANIM }),
     ]).start();
   }, [visible, scale, opacity]);
 

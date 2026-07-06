@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useEffect, useRef, type ReactNode } from "react";
 import { Animated, Easing, type StyleProp, type ViewStyle } from "react-native";
 import { durations } from "@/theme";
@@ -21,7 +22,7 @@ export function FadeZoomIn({
   const t = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(t, { toValue: 1, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(t, { toValue: 1, duration, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_ANIM }).start();
   }, [t, duration]);
 
   const scale = t.interpolate({ inputRange: [0, 1], outputRange: [1.04, 1] });

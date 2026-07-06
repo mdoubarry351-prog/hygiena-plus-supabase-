@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -41,14 +42,14 @@ export function ActionSheet({
       // Anime à l'image suivante (après le montage du Modal).
       requestAnimationFrame(() => {
         Animated.parallel([
-          Animated.spring(translateY, { toValue: 0, useNativeDriver: true, speed: 18, bounciness: 4 }),
-          Animated.timing(backdrop, { toValue: 1, duration: durations.normal, useNativeDriver: true }),
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: NATIVE_ANIM, speed: 18, bounciness: 4 }),
+          Animated.timing(backdrop, { toValue: 1, duration: durations.normal, useNativeDriver: NATIVE_ANIM }),
         ]).start();
       });
     } else if (mounted) {
       Animated.parallel([
-        Animated.timing(translateY, { toValue: SHEET_OFFSET, duration: durations.fast, useNativeDriver: true }),
-        Animated.timing(backdrop, { toValue: 0, duration: durations.fast, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: SHEET_OFFSET, duration: durations.fast, useNativeDriver: NATIVE_ANIM }),
+        Animated.timing(backdrop, { toValue: 0, duration: durations.fast, useNativeDriver: NATIVE_ANIM }),
       ]).start(() => setMounted(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

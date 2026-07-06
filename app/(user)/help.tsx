@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useEffect, useRef, useState } from "react";
 import { Animated, LayoutAnimation, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
@@ -90,7 +91,7 @@ const GUIDES: Guide[] = [
 function Chevron({ open }: { open: boolean }) {
   const r = useRef(new Animated.Value(open ? 1 : 0)).current;
   useEffect(() => {
-    Animated.timing(r, { toValue: open ? 1 : 0, duration: durations.fast, useNativeDriver: true }).start();
+    Animated.timing(r, { toValue: open ? 1 : 0, duration: durations.fast, useNativeDriver: NATIVE_ANIM }).start();
   }, [open, r]);
   const rotate = r.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "180deg"] });
   return (

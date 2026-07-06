@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useEffect, useRef, type ReactNode } from "react";
 import { Animated, type StyleProp, type ViewStyle } from "react-native";
 import { durations } from "@/theme";
@@ -28,8 +29,8 @@ export function FadeInView({
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration, delay, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: 0, duration, delay, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration, delay, useNativeDriver: NATIVE_ANIM }),
+      Animated.timing(translateY, { toValue: 0, duration, delay, useNativeDriver: NATIVE_ANIM }),
     ]).start();
   }, [opacity, translateY, duration, delay]);
 

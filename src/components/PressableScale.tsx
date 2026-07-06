@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useRef, useState, type ReactNode } from "react";
 import { Animated, Pressable, type StyleProp, type ViewStyle, type GestureResponderEvent } from "react-native";
 import { durations } from "@/theme";
@@ -45,8 +46,8 @@ export function PressableScale({
 
   function animateTo(toScale: number, toOpacity: number) {
     Animated.parallel([
-      Animated.spring(scale, { toValue: toScale, useNativeDriver: true, speed: 40, bounciness: 4 }),
-      Animated.timing(opacity, { toValue: toOpacity, duration: durations.fast, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: toScale, useNativeDriver: NATIVE_ANIM, speed: 40, bounciness: 4 }),
+      Animated.timing(opacity, { toValue: toOpacity, duration: durations.fast, useNativeDriver: NATIVE_ANIM }),
     ]).start();
   }
 

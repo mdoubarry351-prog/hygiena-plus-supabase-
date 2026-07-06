@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { createContext, useContext, useState, useRef, useEffect, useCallback, ReactNode } from "react";
 import { Animated, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -47,7 +48,7 @@ export function AdminDrawer() {
     Animated.timing(anim, {
       toValue: drawerOpen ? 1 : 0,
       duration: 220,
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_ANIM,
     }).start();
     // Rafraîchit les compteurs à chaque ouverture du menu.
     // (badges.reload est stable ; on ne dépend que de l'état d'ouverture.)

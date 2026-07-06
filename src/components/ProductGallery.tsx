@@ -68,7 +68,7 @@ export function ProductGallery({ imageUrls, imageUrl }: { imageUrls?: string[] |
         )}
       />
       {/* Points de pagination */}
-      <View style={styles.dots} pointerEvents="none">
+      <View style={[styles.dots, { pointerEvents: "none" }]}>
         {urls.map((_, i) => (
           <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
         ))}

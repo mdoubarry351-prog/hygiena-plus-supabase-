@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useRef } from "react";
 import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,7 +27,7 @@ export function Button({ title, onPress, variant = "primary", size = "md", icon,
   const scale = useRef(new Animated.Value(1)).current;
 
   function animate(to: number) {
-    Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 40, bounciness: 4 }).start();
+    Animated.spring(scale, { toValue: to, useNativeDriver: NATIVE_ANIM, speed: 40, bounciness: 4 }).start();
   }
 
   const isOutline = variant === "outline";

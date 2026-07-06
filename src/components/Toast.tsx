@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,15 +27,15 @@ export function ToastBanner({ type, message, onHide }: { type: ToastType; messag
     if (hidden.current) return;
     hidden.current = true;
     Animated.parallel([
-      Animated.timing(translateY, { toValue: -16, duration: durations.fast, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 0, duration: durations.fast, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: -16, duration: durations.fast, useNativeDriver: NATIVE_ANIM }),
+      Animated.timing(opacity, { toValue: 0, duration: durations.fast, useNativeDriver: NATIVE_ANIM }),
     ]).start(() => onHide());
   }
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, speed: 16, bounciness: 6 }),
-      Animated.timing(opacity, { toValue: 1, duration: durations.normal, useNativeDriver: true }),
+      Animated.spring(translateY, { toValue: 0, useNativeDriver: NATIVE_ANIM, speed: 16, bounciness: 6 }),
+      Animated.timing(opacity, { toValue: 1, duration: durations.normal, useNativeDriver: NATIVE_ANIM }),
     ]).start();
     const t = setTimeout(hide, VISIBLE_MS);
     return () => clearTimeout(t);
@@ -42,7 +43,7 @@ export function ToastBanner({ type, message, onHide }: { type: ToastType; messag
   }, []);
 
   return (
-    <View pointerEvents="box-none" style={[styles.overlay, { top: insets.top + spacing.xs }]}>
+    <View style={[styles.overlay, { top: insets.top + spacing.xs, pointerEvents: "box-none" }]}>
       <Animated.View style={[styles.toast, { opacity, transform: [{ translateY }] }]}>
         <Pressable onPress={hide} style={styles.inner} accessibilityRole="button" accessibilityLabel={message}>
           <View style={[styles.iconWrap, { backgroundColor: `${meta.color}1A` }]}>

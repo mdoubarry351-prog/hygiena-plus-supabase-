@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useEffect, useRef, useState } from "react";
 import { Animated, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
@@ -34,7 +35,7 @@ export default function Receipt() {
   const pop = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
     if (loading || !appt) return;
-    Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 12, bounciness: 12 }).start();
+    Animated.spring(pop, { toValue: 1, useNativeDriver: NATIVE_ANIM, speed: 12, bounciness: 12 }).start();
   }, [loading, appt, pop]);
 
   useEffect(() => {

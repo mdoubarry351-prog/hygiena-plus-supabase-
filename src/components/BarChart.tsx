@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { Animated, Easing, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { useEffect, useRef } from "react";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -22,7 +23,7 @@ function AnimatedBar({
   const p = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     p.setValue(0);
-    Animated.timing(p, { toValue: 1, duration: 520, delay: index * BAR_STEP, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(p, { toValue: 1, duration: 520, delay: index * BAR_STEP, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_ANIM }).start();
   }, [p, animKey, index]);
   return (
     <Animated.View
@@ -70,7 +71,7 @@ export function BarChart({ labels, values, tint, average = null, unitSuffix = ""
   return (
     <View>
       <View style={[styles.plot, { height }]}>
-        <View pointerEvents="none" style={[styles.avgWrap, { bottom: (average / max) * usable }]}>
+        <View style={[styles.avgWrap, { bottom: (average / max) * usable, pointerEvents: "none" }]}>
           <View style={[styles.avgLine, { borderColor: tint }]} />
           <Text style={[styles.avgTag, { color: tint }]}>moy {Math.round(average)}{unitSuffix}</Text>
         </View>

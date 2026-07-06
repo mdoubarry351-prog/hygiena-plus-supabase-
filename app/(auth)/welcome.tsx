@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useEffect, useRef } from "react";
 import { Animated, Image, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -13,11 +14,11 @@ export default function Welcome() {
   // « Pop » doux du logo au lancement (spring scale), première impression.
   const pop = useRef(new Animated.Value(0.7)).current;
   useEffect(() => {
-    Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 9, bounciness: 10 }).start();
+    Animated.spring(pop, { toValue: 1, useNativeDriver: NATIVE_ANIM, speed: 9, bounciness: 10 }).start();
   }, [pop]);
   return (
     <Screen>
-      <View style={styles.glow} pointerEvents="none" />
+      <View style={[styles.glow, { pointerEvents: "none" }]} />
       <FadeInView>
         <View style={styles.container}>
           <View style={styles.header}>

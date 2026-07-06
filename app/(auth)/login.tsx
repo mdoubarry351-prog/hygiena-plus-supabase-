@@ -92,7 +92,7 @@ export default function Login() {
   return (
     <Screen keyboardAware>
       {/* Halo mint doux derrière l'en-tête (décoratif, non interactif) */}
-      <View style={styles.glow} pointerEvents="none" />
+      <View style={[styles.glow, { pointerEvents: "none" }]} />
 
       <View style={styles.header}>
         <View style={styles.logoHalo}>

@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useEffect, useRef } from "react";
 import { Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,8 +31,8 @@ export function BouncyIcon({
       return;
     }
     Animated.sequence([
-      Animated.timing(scale, { toValue: 1.3, duration: durations.fast, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 12 }),
+      Animated.timing(scale, { toValue: 1.3, duration: durations.fast, useNativeDriver: NATIVE_ANIM }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: NATIVE_ANIM, speed: 20, bounciness: 12 }),
     ]).start();
   }, [popKey, scale]);
 

@@ -191,7 +191,7 @@ export default function CallScreen() {
       ) : null}
 
       {/* Barre de contrôles */}
-      <SafeAreaView edges={["bottom"]} style={styles.controlsSafe} pointerEvents="box-none">
+      <SafeAreaView edges={["bottom"]} style={[styles.controlsSafe, { pointerEvents: "box-none" }]}>
         <View style={styles.controls}>
           <ControlButton icon={micOn ? "mic" : "mic-off"} active={micOn} onPress={toggleMic} label="Micro" />
           {isVideo ? <ControlButton icon={camOn ? "videocam" : "videocam-off"} active={camOn} onPress={toggleCam} label="Caméra" /> : null}

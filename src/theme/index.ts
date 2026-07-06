@@ -3,6 +3,8 @@
 // Pastels apaisants (lavande + pêche rosée), rondeur
 // généreuse, typographie Nunito. Palette sur-mesure.
 // =====================================================
+import { Platform } from "react-native";
+
 export const colors = {
   // Lavande — couleur principale de la marque.
   primary: "#7C6BB8",
@@ -51,28 +53,23 @@ export const radius = {
 } as const;
 
 // Ombres teintées lavande (douces, jamais grises/dures).
+// Sur le web, react-native-web déprécie les props shadow* : on émet
+// l'équivalent boxShadow (mêmes couleur/flou/décalage) ; natif inchangé.
+const shadowToken = (opacity: number, blur: number, offsetY: number, elevation: number) =>
+  Platform.OS === "web"
+    ? ({ boxShadow: `0 ${offsetY}px ${blur}px rgba(103, 92, 140, ${opacity})` } as const)
+    : ({
+        shadowColor: "#675C8C",
+        shadowOpacity: opacity,
+        shadowRadius: blur,
+        shadowOffset: { width: 0, height: offsetY },
+        elevation,
+      } as const);
+
 export const shadows = {
-  sm: {
-    shadowColor: "#675C8C",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  md: {
-    shadowColor: "#675C8C",
-    shadowOpacity: 0.13,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
-  },
-  lg: {
-    shadowColor: "#675C8C",
-    shadowOpacity: 0.18,
-    shadowRadius: 26,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
-  },
+  sm: shadowToken(0.08, 12, 4, 2),
+  md: shadowToken(0.13, 18, 8, 5),
+  lg: shadowToken(0.18, 26, 12, 10),
 } as const;
 
 // Durées d'animation (ms) — micro-interactions cohérentes.

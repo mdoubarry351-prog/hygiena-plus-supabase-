@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -63,7 +64,7 @@ export function Onboarding() {
   useEffect(() => {
     if (step > LAST) return;
     slideAnim.setValue(0);
-    Animated.timing(slideAnim, { toValue: 1, duration: durations.normal, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(slideAnim, { toValue: 1, duration: durations.normal, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_ANIM }).start();
   }, [step, slideAnim]);
 
   async function complete(withCycle: boolean) {

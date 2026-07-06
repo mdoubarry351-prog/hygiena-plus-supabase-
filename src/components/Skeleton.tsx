@@ -1,3 +1,4 @@
+import { NATIVE_ANIM } from "@/lib/anim";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, View, type DimensionValue } from "react-native";
 import { Screen } from "@/components/Screen";
@@ -25,7 +26,7 @@ export function Skeleton({
 
   useEffect(() => {
     const loop = Animated.loop(
-      Animated.timing(progress, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+      Animated.timing(progress, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: NATIVE_ANIM })
     );
     loop.start();
     return () => loop.stop();
