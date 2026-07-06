@@ -3,9 +3,8 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { LegalDocument } from "@/components/LegalDocument";
 import { TERMS } from "@/lib/legal";
 
-// Version in-app (depuis les réglages). Contenu partagé avec la route publique
-// /legal/terms via <LegalDocument> (source unique : src/lib/legal.ts).
-export default function Terms() {
+// Route PUBLIQUE (hors RoleGuard) — lisible avant l'inscription.
+export default function PublicTerms() {
   return (
     <Screen>
       <ScreenHeader title={TERMS.title} />

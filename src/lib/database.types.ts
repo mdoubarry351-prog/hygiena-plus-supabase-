@@ -1435,6 +1435,78 @@ export type Database = {
         };
         Relationships: [];
       };
+
+      // Consentement juridique horodaté (CGU + confidentialité). Append-only.
+      legal_consents: {
+        Row: {
+          id: string;
+          user_id: string;
+          document: "terms" | "privacy";
+          version: string;
+          accepted_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          document: "terms" | "privacy";
+          version: string;
+          accepted_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          document?: "terms" | "privacy";
+          version?: string;
+          accepted_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "legal_consents_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+
+      // Journal anti-rejeu des webhooks de paiement (Orange Money / MTN).
+      // Écriture service_role uniquement ; lecture admin.
+      payment_events: {
+        Row: {
+          id: string;
+          provider: "orange_money" | "mtn_momo";
+          reference: string;
+          status: string;
+          amount: number;
+          target_type: "premium" | "order";
+          target_id: string | null;
+          raw: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          provider: "orange_money" | "mtn_momo";
+          reference: string;
+          status: string;
+          amount: number;
+          target_type: "premium" | "order";
+          target_id?: string | null;
+          raw?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          provider?: "orange_money" | "mtn_momo";
+          reference?: string;
+          status?: string;
+          amount?: number;
+          target_type?: "premium" | "order";
+          target_id?: string | null;
+          raw?: Json | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       // Vue sécurisée des publications : user_id renvoyé NULL pour un post

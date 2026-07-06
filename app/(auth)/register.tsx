@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Link, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Input } from "@/components/Input";
@@ -11,6 +12,8 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { onlyDigits, toE164 } from "@/lib/phone";
 import { isValidEmail, passwordStrength, passwordIssue, PASSWORD_MIN_LENGTH } from "@/lib/validation";
+import { LEGAL_VERSION } from "@/lib/legal";
+import { PENDING_CONSENT_KEY } from "@/lib/legal-service";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 import { colors, spacing, typography } from "@/theme";
 
@@ -49,6 +52,10 @@ export default function Register() {
     if (!formValid) return;
     setLoading(true);
     try {
+      // Consentement explicite (case cochée) : on mémorise la version acceptée.
+      // Elle sera enregistrée côté serveur dès qu'une session est active
+      // (immédiate, ou après confirmation e-mail). Cf. AuthProvider.
+      await AsyncStorage.setItem(PENDING_CONSENT_KEY, LEGAL_VERSION);
       const localPhone = onlyDigits(phone);
       const { needsEmailConfirmation } = await signUp(email.trim(), password, {
         firstName: firstName.trim(),
@@ -183,7 +190,7 @@ export default function Register() {
       <Pressable onPress={() => { hapticLight(); setAccepted((a) => !a); }} style={({ pressed }) => [styles.terms, pressed && styles.termsPressed]} accessibilityRole="checkbox" accessibilityState={{ checked: accepted }}>
         <Ionicons name={accepted ? "checkbox" : "square-outline"} size={22} color={accepted ? colors.primary : colors.textMuted} />
         <Text style={styles.termsText}>
-          J'accepte les <Link href="/(user)/terms" style={styles.termsLink}>conditions d'utilisation</Link> et la <Link href="/(user)/privacy" style={styles.termsLink}>politique de confidentialité</Link>.
+          J'accepte les <Link href="/legal/terms" style={styles.termsLink}>conditions d'utilisation</Link> et la <Link href="/legal/privacy" style={styles.termsLink}>politique de confidentialité</Link>.
         </Text>
       </Pressable>
 

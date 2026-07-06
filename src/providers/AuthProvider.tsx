@@ -1,10 +1,25 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { AppState } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { authService } from "@/lib/auth-service";
+import { legalService, PENDING_CONSENT_KEY } from "@/lib/legal-service";
 import { unregisterPushToken } from "@/lib/local-notifications";
 import type { Profile, UserRole } from "@/lib/database.types";
+
+// Enregistre le consentement en attente (posé à l'inscription) une fois la
+// session active. Best-effort : ne bloque jamais le flux d'auth.
+async function flushPendingConsent(userId: string) {
+  try {
+    const pending = await AsyncStorage.getItem(PENDING_CONSENT_KEY);
+    if (!pending) return;
+    await legalService.recordConsent(userId, pending);
+    await AsyncStorage.removeItem(PENDING_CONSENT_KEY);
+  } catch {
+    // on réessaiera à la prochaine session ; le drapeau reste posé.
+  }
+}
 
 type AuthState = {
   session: Session | null;
@@ -40,7 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
       setSession(data.session);
       currentUserId.current = data.session?.user.id ?? null;
-      if (data.session?.user) await loadProfile(data.session.user.id);
+      if (data.session?.user) {
+        await loadProfile(data.session.user.id);
+        flushPendingConsent(data.session.user.id);
+      }
       setInitializing(false);
     });
 
@@ -53,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (newUserId && newUserId !== currentUserId.current) {
         currentUserId.current = newUserId;
         await loadProfile(newUserId);
+        flushPendingConsent(newUserId);
       } else if (!newUserId) {
         currentUserId.current = null;
         setProfile(null);
