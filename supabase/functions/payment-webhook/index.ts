@@ -23,15 +23,13 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { json as jsonWithCors } from "../_shared/http.ts";
 
 type Provider = "orange_money" | "mtn_momo";
 
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
+// Webhook serveur-à-serveur : pas de CORS (aucun navigateur n'appelle cette
+// route), mais les en-têtes de sécurité (nosniff/no-store) s'appliquent.
+const json = (body: unknown, status = 200) => jsonWithCors(body, status, false);
 
 // Comparaison à temps constant de la signature attendue vs reçue.
 function verifyHmac(secret: string, rawBody: string, provided: string): boolean {

@@ -18,20 +18,7 @@
 // =====================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
+import { json, preflight } from "../_shared/http.ts";
 
 function addDaysISO(days: number): { start: string; end: string } {
   const now = new Date();
@@ -42,7 +29,7 @@ function addDaysISO(days: number): { start: string; end: string } {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return preflight();
   if (req.method !== "POST") return json({ error: "Méthode non autorisée" }, 405);
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
