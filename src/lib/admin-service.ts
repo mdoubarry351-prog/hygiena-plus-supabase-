@@ -446,6 +446,11 @@ export const adminService = {
   },
 
   async updateUserRole(adminId: string, userId: string, role: UserRole): Promise<void> {
+    // Le rôle « doctor » ne s'attribue pas ici : un médecin se crée via
+    // « Ajouter un médecin » (compte + fiche) et se retire via demoteDoctor.
+    if (role === "doctor") {
+      throw new Error("Les médecins se gèrent depuis l'écran Médecins.");
+    }
     const { error } = await supabase.from("profiles").update({ role }).eq("id", userId);
     if (error) throw error;
     await logAction(adminId, "update_user_role", "profiles", userId, { role });
@@ -922,39 +927,9 @@ export const adminService = {
     if (error) throw error;
   },
 
-  // Promeut un compte EXISTANT en médecin : role='doctor' puis création de la fiche (validée).
-  async addDoctor(
-    adminId: string,
-    targetUserId: string,
-    input: {
-      specialty: string;
-      bio?: string | null;
-      consultation_fee?: number | null;
-      clinic_name?: string | null;
-    }
-  ): Promise<Doctor> {
-    const { error: roleErr } = await supabase
-      .from("profiles")
-      .update({ role: "doctor" })
-      .eq("id", targetUserId);
-    if (roleErr) throw roleErr;
-    await logAction(adminId, "update_user_role", "profiles", targetUserId, { role: "doctor" });
-
-    const payload: TablesInsert<"doctors"> = {
-      user_id: targetUserId,
-      specialty: input.specialty,
-      bio: input.bio ?? null,
-      consultation_fee: input.consultation_fee ?? null,
-      clinic_name: input.clinic_name ?? null,
-      is_validated: true,
-      validated_by: adminId,
-      validated_at: new Date().toISOString(),
-    };
-    const { data, error } = await supabase.from("doctors").insert(payload).select("*").single();
-    if (error) throw error;
-    await logAction(adminId, "add_doctor", "doctors", data.id, { user_id: targetUserId });
-    return data;
-  },
+  // (Retirée) La promotion d'un utilisateur existant en médecin n'est plus
+  // proposée : un médecin se crée UNIQUEMENT via createDoctor (« Ajouter un
+  // médecin »), qui met en place le compte de connexion ET la fiche cohérente.
 
   // Retire le statut médecin : supprime la fiche doctors et repasse le compte en 'user'.
   async demoteDoctor(adminId: string, doctor: { id: string; user_id: string }): Promise<void> {
