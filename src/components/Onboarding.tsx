@@ -8,11 +8,8 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { authService } from "@/lib/auth-service";
 import { cycleService } from "@/lib/cycle-service";
+import { toISODate } from "@/lib/dates";
 import { colors, durations, phase as PHASE_COLOR, radius, spacing, typography } from "@/theme";
-
-function toISODate(d: Date): string {
-  return d.toISOString().split("T")[0];
-}
 
 type Slide = { icon: keyof typeof Ionicons.glyphMap; tint: string; title: string; text: string };
 

@@ -14,18 +14,11 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { authService } from "@/lib/auth-service";
 import { healthService, BLOOD_GROUPS } from "@/lib/health-service";
+import { toISODate, parseISODate } from "@/lib/dates";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
 const STEP = 55; // pas de l'apparition échelonnée
-
-// Date locale « AAAA-MM-JJ » (composants locaux → pas de décalage de fuseau).
-function toISODate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-function parseISODate(iso: string): Date {
-  return new Date(`${iso}T12:00:00`);
-}
 function formatDateLabel(d: Date): string {
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 }

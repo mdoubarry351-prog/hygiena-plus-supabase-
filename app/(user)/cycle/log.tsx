@@ -16,6 +16,7 @@ import { cycleService, SYMPTOMS, FLOW_OPTIONS, MOOD_OPTIONS } from "@/lib/cycle-
 import { resyncCycleReminders } from "@/lib/reminders";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { getDraft, setDraft, clearDraft, DRAFT_KEYS } from "@/lib/draft";
+import { toISODate, parseISODate } from "@/lib/dates";
 import { colors, radius, spacing, typography } from "@/theme";
 
 // Brouillon local (création uniquement) : tous les champs saisis, hors mode édition.
@@ -28,20 +29,6 @@ type CycleDraft = {
   pain: number | null;
   notes: string;
 };
-
-// Parse une date SQL « AAAA-MM-JJ » en Date locale (midi → évite les décalages DST/fuseau).
-function parseISODate(iso: string): Date {
-  return new Date(`${iso}T12:00:00`);
-}
-
-// Format date en YYYY-MM-DD à partir des composants LOCAUX (évite le décalage de
-// fuseau qu'introduirait toISOString() pour les minuits locaux).
-function toISODate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 // Libellé lisible (« dim. 14 juin 2026 ») pour les boutons de date.
 function formatDateLabel(d: Date): string {

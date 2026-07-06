@@ -13,6 +13,7 @@ import { useCycles } from "@/hooks/useCycles";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import {  } from "@/lib/app-config";
 import { hapticLight } from "@/lib/haptics";
+import { toISODate } from "@/lib/dates";
 import type { MenstrualCycle } from "@/lib/database.types";
 import { colors, durations, fonts, phase, radius, spacing, typography } from "@/theme";
 
@@ -41,9 +42,10 @@ function sameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-// Clé jour alignée sur le reste du calendrier (toISOString → AAAA-MM-JJ).
+// Clé jour en date LOCALE (même convention que la saisie du cycle — la clé
+// UTC décalait d'un jour autour de minuit pour tout fuseau ≠ UTC).
 function dayKey(d: Date): string {
-  return d.toISOString().split("T")[0];
+  return toISODate(d);
 }
 
 // Un cycle « avec saisie » = au moins un champ de ressenti renseigné ce jour-là.
