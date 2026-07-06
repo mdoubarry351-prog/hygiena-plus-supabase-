@@ -257,17 +257,16 @@ export default function CommunityHome() {
       {error ? <OfflineBanner cachedAt={null} /> : null}
 
       <View style={styles.topBar}>
-        <Text style={typography.h2}>Communauté</Text>
+        <View>
+          <Text style={typography.h2}>Entre nous 🤍</Text>
+          <Text style={styles.tagline}>Un espace sûr, avec de vraies médecins</Text>
+        </View>
         <View style={styles.topActions}>
           <PressableScale onPress={() => router.push("/(user)/community/rules")} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Règles de la communauté">
             <Ionicons name="information-circle-outline" size={23} color={colors.text} />
           </PressableScale>
           <PressableScale onPress={() => router.push("/(user)/community/saved")} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Publications enregistrées">
             <Ionicons name="bookmark-outline" size={22} color={colors.text} />
-          </PressableScale>
-          <PressableScale onPress={() => router.push("/(user)/community/new")} haptic style={styles.newBtn} pressedStyle={styles.newBtnPressed} accessibilityLabel="Publier">
-            <Ionicons name="create-outline" size={18} color={colors.white} />
-            <Text style={styles.newBtnText}>Publier</Text>
           </PressableScale>
         </View>
       </View>
@@ -283,21 +282,14 @@ export default function CommunityHome() {
             style={styles.searchInput}
           />
         </View>
-        <Pressable
-          onPress={() => { hapticLight(); setSortMode((m) => (m === "recent" ? "trending" : "recent")); }}
-          style={({ pressed }) => [styles.sortChip, pressed && styles.chipPressed]}
-          accessibilityRole="button"
-          accessibilityLabel={`Tri : ${sortMode === "trending" ? "Tendances" : "Récents"}. Toucher pour changer.`}
-        >
-          <Ionicons name={sortMode === "trending" ? "flame" : "time-outline"} size={15} color={sortMode === "trending" ? colors.accent : colors.primary} />
-          <Text style={styles.sortChipText}>{sortMode === "trending" ? "Tendances" : "Récents"}</Text>
-          <Ionicons name="swap-vertical" size={13} color={colors.textMuted} />
-        </Pressable>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterChips}>
-        <Pressable onPress={() => { hapticLight(); setActiveCat("all"); }} style={({ pressed }) => [styles.filterChip, activeCat === "all" && styles.filterChipActive, pressed && styles.chipPressed]}>
-          <Text style={[styles.filterChipText, activeCat === "all" && styles.filterChipTextActive]}>✨ Toutes</Text>
+        <Pressable onPress={() => { hapticLight(); setActiveCat("all"); setSortMode("recent"); }} style={({ pressed }) => [styles.filterChip, activeCat === "all" && sortMode === "recent" && styles.filterChipActive, pressed && styles.chipPressed]}>
+          <Text style={[styles.filterChipText, activeCat === "all" && sortMode === "recent" && styles.filterChipTextActive]}>✨ Pour toi</Text>
+        </Pressable>
+        <Pressable onPress={() => { hapticLight(); setSortMode((m) => (m === "trending" ? "recent" : "trending")); }} style={({ pressed }) => [styles.filterChip, sortMode === "trending" && styles.filterChipActive, pressed && styles.chipPressed]}>
+          <Text style={[styles.filterChipText, sortMode === "trending" && styles.filterChipTextActive]}>🔥 Tendances</Text>
         </Pressable>
         <Pressable onPress={() => { hapticLight(); setFollowedOnly((v) => !v); }} style={({ pressed }) => [styles.filterChip, followedOnly && styles.filterChipActive, pressed && styles.chipPressed]}>
           <Text style={[styles.filterChipText, followedOnly && styles.filterChipTextActive]}>⭐ Suivis</Text>
@@ -387,6 +379,11 @@ export default function CommunityHome() {
         windowSize={11}
         keyboardShouldPersistTaps="handled"
       />
+
+      {/* FAB : publier — signature du design « fil épuré ». */}
+      <PressableScale onPress={() => router.push("/(user)/community/new")} haptic style={styles.fab} pressedStyle={styles.fabPressed} accessibilityLabel="Publier">
+        <Ionicons name="add" size={30} color={colors.white} />
+      </PressableScale>
 
       <ActionSheet
         visible={!!sheet}
@@ -481,6 +478,12 @@ const PostRow = memo(function PostRow({
                 <Text style={styles.author} numberOfLines={1}>{name}</Text>
               </Pressable>
               {!isAnon && post.author?.isVerifiedDoctor ? <VerifiedDoctorBadge specialty={post.author.doctorSpecialty} /> : null}
+              {isAnon ? (
+                <View style={styles.anonBadge}>
+                  <Ionicons name="lock-closed" size={9} color={colors.textMuted} />
+                  <Text style={styles.anonBadgeText}>Anonyme</Text>
+                </View>
+              ) : null}
             </View>
             <View style={styles.metaRow}>
               <Text style={styles.time}>{formatRelativeTime(post.created_at)}{edited ? " · modifié" : ""}</Text>
@@ -510,13 +513,18 @@ const PostRow = memo(function PostRow({
             participer, façon Facebook. Un tap → commentaires du post. */}
         {post.firstComment ? (
           <Pressable onPress={() => onOpenComments(post.id)} style={({ pressed }) => [styles.cPreview, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
-            <Text style={styles.cPreviewText} numberOfLines={2}>
-              <Text style={styles.cPreviewName}>{post.firstComment.name}{post.firstComment.isVerifiedDoctor ? " ✔" : ""}</Text>
-              {"  "}{post.firstComment.content}
-            </Text>
-            {post.comments_count > 1 ? (
-              <Text style={styles.cPreviewMore}>Voir les {post.comments_count} commentaires</Text>
-            ) : null}
+            <View style={styles.cPreviewAvatar}>
+              <Text style={styles.cPreviewAvatarText}>{(post.firstComment.name || "?").trim().charAt(0).toUpperCase()}</Text>
+            </View>
+            <View style={styles.cPreviewBody}>
+              <Text style={styles.cPreviewText} numberOfLines={2}>
+                <Text style={styles.cPreviewName}>{post.firstComment.name}{post.firstComment.isVerifiedDoctor ? " ✔" : ""}</Text>
+                {"  "}{post.firstComment.content}
+              </Text>
+              {post.comments_count > 1 ? (
+                <Text style={styles.cPreviewMore}>Voir les {post.comments_count} commentaires</Text>
+              ) : null}
+            </View>
           </Pressable>
         ) : null}
 
@@ -578,16 +586,17 @@ const DoctorResultRow = memo(function DoctorResultRow({
 });
 
 const styles = StyleSheet.create({
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.lg },
+  topBar: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingTop: spacing.lg },
+  tagline: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  anonBadge: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.surface, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill },
+  anonBadgeText: { fontSize: 9.5, fontWeight: "800", color: colors.textMuted, fontFamily: typography.caption.fontFamily },
+  cPreviewAvatar: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  cPreviewAvatarText: { fontSize: 10, fontWeight: "900", color: colors.primaryDark, fontFamily: typography.caption.fontFamily },
+  cPreviewBody: { flex: 1 },
+  fab: { position: "absolute", right: spacing.md, bottom: spacing.lg, width: 58, height: 58, borderRadius: 29, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", ...shadows.lg },
+  fabPressed: { backgroundColor: colors.primaryDark },
   topActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   iconBtn: { padding: spacing.xs },
-  newBtn: {
-    flexDirection: "row", alignItems: "center", gap: spacing.xs,
-    backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-  },
-  newBtnText: { color: colors.white, fontSize: 14, fontWeight: "600" },
-  newBtnPressed: { ...shadows.sm },
   chipPressed: { opacity: 0.7 },
   footPressed: { opacity: 0.5 },
   content: { paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
@@ -615,8 +624,6 @@ const styles = StyleSheet.create({
   searchFieldWrap: { flex: 1 },
   searchInput: { marginBottom: 0 },
   // Tri compact (chip discret), bascule Récents ↔ Tendances.
-  sortChip: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, height: 44, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
-  sortChipText: { ...typography.caption, fontWeight: "700", color: colors.text },
   footer: { alignItems: "center", paddingVertical: spacing.md },
   // Pastille « N nouvelles publications ↑ » (temps réel), centrée au-dessus du fil.
   livePill: {
@@ -629,8 +636,8 @@ const styles = StyleSheet.create({
   // Aperçu du 1ᵉʳ commentaire sous le contenu du post.
   cPreview: {
     backgroundColor: colors.surface, borderRadius: radius.md,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: 3,
-  },
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    flexDirection: "row", gap: spacing.sm, alignItems: "flex-start" },
   cPreviewText: { ...typography.caption, fontSize: 12.5, lineHeight: 17, color: colors.text },
   cPreviewName: { fontWeight: "800" },
   cPreviewMore: { ...typography.caption, fontSize: 12, color: colors.textMuted, fontWeight: "600" },
