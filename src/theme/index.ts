@@ -1,35 +1,35 @@
 // =====================================================
-// Thème « Coton doux » — refonte visuelle Hygiena+
-// Pastels apaisants (lavande + pêche rosée), rondeur
-// généreuse, typographie Nunito. Palette sur-mesure.
+// Thème « Violette électrique » — évolution vive du Coton doux.
+// Même design (rondeur, Nunito, douceur), couleurs saturées et
+// lumineuses : violet vif, menthe, orange chaud, rose franc.
 // =====================================================
 export const colors = {
-  // Lavande — couleur principale de la marque.
-  primary: "#7C6BB8",
-  primaryDark: "#5F4FA0",
-  primaryLight: "#F1EDFA",
-  // Vert doux — validations, santé, succès.
-  secondary: "#4FA379",
-  // Or doux — moments précieux (ovulation, premium, badges).
-  accent: "#D99B3B",
+  // Violet vif — couleur principale de la marque.
+  primary: "#8A63F0",
+  primaryDark: "#6C46D9",
+  primaryLight: "#F0EAFE",
+  // Menthe éclatante — validations, santé, succès.
+  secondary: "#00B894",
+  // Orange chaud — moments précieux (accents, badges).
+  accent: "#FF8A3D",
   // Fonds : blanc chaud (jamais de blanc pur clinique).
-  background: "#FDFBF9",
-  surface: "#F7F4FB",
+  background: "#FCFBFF",
+  surface: "#F5F2FC",
   card: "#FFFFFF",
   // Encre adoucie (jamais de noir pur).
-  text: "#3D3A45",
-  textMuted: "#8E8899",
-  border: "#EFEAF2",
-  success: "#4FA379",
-  successSoft: "#EAF5EF",
-  // Rose pêche — destructif/règles, doux mais lisible.
-  danger: "#E36D8D",
-  dangerSoft: "#FBEAEF",
-  warning: "#D99B3B",
-  warningSoft: "#FDF3E3",
-  info: "#7C6BB8",
-  infoSoft: "#F1EDFA",
-  neutralSoft: "#F2EFF4",
+  text: "#332F3F",
+  textMuted: "#8B8599",
+  border: "#EDE9F5",
+  success: "#00B894",
+  successSoft: "#E2F8F1",
+  // Rose franc — destructif/règles, vif mais chaleureux.
+  danger: "#FF5C8A",
+  dangerSoft: "#FFE8EF",
+  warning: "#FFAD33",
+  warningSoft: "#FFF3DD",
+  info: "#8A63F0",
+  infoSoft: "#F0EAFE",
+  neutralSoft: "#F0EDF6",
   white: "#FFFFFF",
 } as const;
 
@@ -53,21 +53,21 @@ export const radius = {
 // Ombres teintées lavande (douces, jamais grises/dures).
 export const shadows = {
   sm: {
-    shadowColor: "#675C8C",
+    shadowColor: "#5C48A8",
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
   md: {
-    shadowColor: "#675C8C",
+    shadowColor: "#5C48A8",
     shadowOpacity: 0.13,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
     elevation: 5,
   },
   lg: {
-    shadowColor: "#675C8C",
+    shadowColor: "#5C48A8",
     shadowOpacity: 0.18,
     shadowRadius: 26,
     shadowOffset: { width: 0, height: 12 },
@@ -117,13 +117,13 @@ export const typography = {
 // Couleurs des phases du cycle — partagées par CycleRing (accueil) et le
 // calendrier, pour une convention cohérente. "Soft" = fond clair de pastille.
 export const phase = {
-  period: "#E89AAF", // Règles → rose pêche
-  periodSoft: "#FBEAEF", // Règles prévues → rose très clair
-  fertile: colors.primary, // Fenêtre fertile → lavande (#7C6BB8)
-  fertileSoft: colors.primaryLight, // → lavande claire (#F1EDFA)
-  ovulation: colors.accent, // Ovulation → or doux (#D99B3B)
-  ovulationSoft: colors.warningSoft, // → or très clair (#FDF3E3)
-  neutral: "#ECE8F0", // Reste du cycle → gris lavande clair
+  period: "#FF5C8A", // Règles → rose franc
+  periodSoft: "#FFE8EF", // Règles prévues → rose très clair
+  fertile: colors.primary, // Fenêtre fertile → violet vif (#8A63F0)
+  fertileSoft: colors.primaryLight, // → violet clair (#F0EAFE)
+  ovulation: "#FFAD33", // Ovulation → ambre lumineux
+  ovulationSoft: colors.warningSoft, // → ambre très clair (#FFF3DD)
+  neutral: "#ECE8F4", // Reste du cycle → gris violet clair
 } as const;
 
 export const theme = { colors, spacing, radius, shadows, durations, layout, typography, fonts, phase };
