@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -23,11 +23,12 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       await authService.resetPassword(email.trim(), "hygienaplus://reset-password");
+    } catch {
+      // Anti-énumération : on n'expose JAMAIS l'échec (ex. e-mail inexistant).
+      // On affiche toujours la même confirmation neutre, qu'un compte existe ou non.
+    } finally {
       hapticSuccess();
       setSent(true);
-    } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Erreur inconnue");
-    } finally {
       setLoading(false);
     }
   }
@@ -41,9 +42,9 @@ export default function ForgotPassword() {
             <View style={styles.badge}>
               <Ionicons name="mail-open-outline" size={34} color={colors.primaryDark} />
             </View>
-            <Text style={styles.successTitle}>E-mail envoyé</Text>
+            <Text style={styles.successTitle}>Vérifie ta boîte mail</Text>
             <Text style={styles.successText}>
-              Un lien de réinitialisation a été envoyé à {email.trim()}. Ouvre-le sur cet appareil pour choisir un nouveau mot de passe.
+              Si un compte est associé à {email.trim()}, un lien de réinitialisation vient d'être envoyé. Ouvre-le sur cet appareil pour choisir un nouveau mot de passe.
             </Text>
             <Button title="Retour à la connexion" onPress={() => router.replace("/(auth)/login")} />
           </View>

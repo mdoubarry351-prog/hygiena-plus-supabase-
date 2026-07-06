@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
@@ -8,8 +8,9 @@ import { PhoneInput } from "@/components/PhoneInput";
 import { Button } from "@/components/Button";
 import { AuthLogo } from "@/components/AuthLogo";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { onlyDigits, toE164 } from "@/lib/phone";
-import { isValidEmail, passwordStrength } from "@/lib/validation";
+import { isValidEmail, passwordStrength, passwordIssue, PASSWORD_MIN_LENGTH } from "@/lib/validation";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 import { colors, spacing, typography } from "@/theme";
 
@@ -17,6 +18,7 @@ const STRENGTH_COLORS = [colors.border, colors.danger, colors.accent, colors.suc
 
 export default function Register() {
   const { signUp } = useAuth();
+  const toast = useToast();
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -39,7 +41,7 @@ export default function Register() {
     firstName.trim().length > 0 &&
     lastName.trim().length > 0 &&
     isValidEmail(email) &&
-    password.length >= 6 &&
+    password.length >= PASSWORD_MIN_LENGTH &&
     confirm === password &&
     accepted;
 
@@ -55,17 +57,22 @@ export default function Register() {
       });
       hapticSuccess();
       if (needsEmailConfirmation) {
-        Alert.alert(
-          "Compte créé",
-          "Vérifie ta boîte mail pour confirmer ton adresse, puis connecte-toi.",
-          [{ text: "OK", onPress: () => router.replace("/(auth)/login") }]
-        );
+        toast.success("Compte créé — vérifie ta boîte mail pour confirmer ton adresse, puis connecte-toi.");
+        router.replace("/(auth)/login");
       }
       // Sinon, la session est active : l'aiguilleur racine redirige automatiquement.
     } catch (e) {
       hapticError();
-      const msg = e instanceof Error ? e.message : "Erreur inconnue";
-      Alert.alert("Inscription échouée", msg);
+      // Anti-énumération : message générique. On ne révèle pas si l'e-mail est
+      // déjà enregistré (Supabase obfusque déjà côté serveur si la confirmation
+      // e-mail est active). Les vraies erreurs réseau restent génériques.
+      const raw = e instanceof Error ? e.message.toLowerCase() : "";
+      if (raw.includes("already") || raw.includes("registered") || raw.includes("exists")) {
+        toast.success("Compte créé — vérifie ta boîte mail pour confirmer ton adresse, puis connecte-toi.");
+        router.replace("/(auth)/login");
+      } else {
+        toast.error("Inscription impossible pour le moment. Réessaie.");
+      }
     } finally {
       setLoading(false);
     }
@@ -138,11 +145,11 @@ export default function Register() {
         secureTextEntry
         secureToggle
         textContentType="newPassword"
-        placeholder="Au moins 6 caractères"
+        placeholder={`Au moins ${PASSWORD_MIN_LENGTH} caractères`}
         returnKeyType="next"
         onSubmitEditing={() => confirmRef.current?.focus()}
         blurOnSubmit={false}
-        validate={(v) => (v.length > 0 && v.length < 6 ? "Au moins 6 caractères." : null)}
+        validate={(v) => (v.length > 0 ? passwordIssue(v) : null)}
       />
 
       {/* Jauge de force du mot de passe */}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Image, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, StyleSheet, Text, TextInput, View } from "react-native";
 import { Link, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,9 +7,16 @@ import { Screen } from "@/components/Screen";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { isValidEmail } from "@/lib/validation";
 import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
+
+// Message d'échec de connexion GÉNÉRIQUE : ne révèle jamais si l'e-mail existe
+// (anti-énumération de comptes, OWASP). Seul le cas « compte suspendu » a un
+// message dédié, car il n'aide pas à énumérer (il faut déjà les bons identifiants).
+const GENERIC_LOGIN_ERROR = "E-mail ou mot de passe incorrect.";
+const SUSPENDED_MESSAGE = "Votre compte a été suspendu. Contactez l'administrateur.";
 
 const logo = require("../../assets/logo/hygiena-icon-drop.png");
 
@@ -22,6 +29,7 @@ const KEY_LOCK = "login_locked_until";
 
 export default function Login() {
   const { signIn } = useAuth();
+  const toast = useToast();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -73,8 +81,9 @@ export default function Login() {
         setNowTs(Date.now());
         AsyncStorage.setItem(KEY_LOCK, String(until)).catch(() => {});
       }
-      const msg = e instanceof Error ? e.message : "Erreur inconnue";
-      Alert.alert("Connexion échouée", msg);
+      // Anti-énumération : message générique, sauf compte explicitement suspendu.
+      const raw = e instanceof Error ? e.message : "";
+      toast.error(raw === SUSPENDED_MESSAGE ? SUSPENDED_MESSAGE : GENERIC_LOGIN_ERROR);
     } finally {
       setLoading(false);
     }
