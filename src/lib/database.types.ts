@@ -1468,6 +1468,27 @@ export type Database = {
           updated_at: string;
           // Score « Tendances » à décroissance temporelle (calculé côté SQL).
           hot_score: number;
+          // Vrai si la publication appartient à l'utilisatrice courante (calculé
+          // serveur) — permet de gérer ses propres posts anonymes sans exposer
+          // l'identité des autres.
+          is_mine: boolean;
+        };
+        Relationships: [];
+      };
+      // Vue sécurisée des commentaires : user_id renvoyé NULL pour un commentaire
+      // anonyme d'une autre personne (anonymat garanti côté SQL, comme les posts).
+      community_comments_safe: {
+        Row: {
+          id: string;
+          post_id: string;
+          content: string;
+          is_anonymous: boolean;
+          created_at: string;
+          updated_at: string;
+          parent_comment_id: string | null;
+          likes_count: number;
+          user_id: string | null;
+          is_mine: boolean;
         };
         Relationships: [];
       };
@@ -1481,6 +1502,19 @@ export type Database = {
       toggle_like: {
         Args: { p_post_id: string };
         Returns: { liked: boolean; likes_count: number }[];
+      };
+      // Checkout de confiance : total recalculé serveur + stock vérifié/décrémenté.
+      create_marketplace_order: {
+        Args: {
+          p_items: Json;
+          p_phone: string;
+          p_delivery_mode: string;
+          p_neighborhood: string | null;
+          p_instructions: string | null;
+          p_payment_method: string | null;
+          p_payment_phone: string | null;
+        };
+        Returns: Database["public"]["Tables"]["marketplace_orders"]["Row"];
       };
       // Suivre/ne plus suivre un membre en 1 appel.
       toggle_follow: {
@@ -1566,6 +1600,7 @@ export type DoctorReview = Tables<"doctor_reviews">;
 export type CommunityPost = Tables<"community_posts">;
 export type CommunityPostSafe = Database["public"]["Views"]["community_posts_safe"]["Row"];
 export type CommunityComment = Tables<"community_comments">;
+export type CommunityCommentSafe = Database["public"]["Views"]["community_comments_safe"]["Row"];
 export type CommunityLike = Tables<"community_likes">;
 export type UserFollow = Tables<"user_follows">;
 export type CommentLike = Tables<"comment_likes">;

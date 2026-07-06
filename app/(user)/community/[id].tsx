@@ -302,7 +302,7 @@ export default function PostDetail() {
       title: "Commentaire",
       options: [
         { label: "Signaler", icon: "flag-outline", onPress: () => reportReasonAlert("Signaler le commentaire", (r) => communityService.reportComment(c, r)) },
-        ...(canBlock ? [{ label: "Bloquer cet utilisateur", icon: "ban-outline" as const, destructive: true, onPress: () => confirmBlock(c.user_id, () => load()) }] : []),
+        ...(canBlock ? [{ label: "Bloquer cet utilisateur", icon: "ban-outline" as const, destructive: true, onPress: () => confirmBlock(c.user_id!, () => load()) }] : []),
       ],
     });
   }

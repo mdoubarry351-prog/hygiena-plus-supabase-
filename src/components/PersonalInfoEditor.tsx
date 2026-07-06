@@ -12,6 +12,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { authService } from "@/lib/auth-service";
 import { onlyDigits, toE164, isValidGuineaLocal, formatStoredPhone } from "@/lib/phone";
+import { passwordIssue, PASSWORD_MIN_LENGTH } from "@/lib/validation";
 import { hapticSuccess } from "@/lib/haptics";
 import type { Profile } from "@/lib/database.types";
 import { colors, spacing, typography } from "@/theme";
@@ -105,8 +106,9 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
   }
 
   async function savePassword() {
-    if (password.length < 6) {
-      toast.info("Minimum 6 caractères.");
+    const issue = passwordIssue(password);
+    if (issue) {
+      toast.info(issue);
       return;
     }
     if (password !== confirm) {
@@ -186,8 +188,8 @@ export function PersonalInfoEditor({ title = "Mes informations" }: { title?: str
             onChangeText={setPassword}
             secureTextEntry
             secureToggle
-            validate={(v) => (v.length > 0 && v.length < 6 ? "Au moins 6 caractères." : null)}
-            placeholder="Au moins 6 caractères"
+            validate={(v) => (v.length > 0 ? passwordIssue(v) : null)}
+            placeholder={`Au moins ${PASSWORD_MIN_LENGTH} caractères`}
           />
           <Input
             label="Confirmer le mot de passe"

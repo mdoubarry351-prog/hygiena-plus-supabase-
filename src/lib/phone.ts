@@ -53,3 +53,54 @@ export function formatStoredPhone(stored: string | null | undefined): string {
 export function isValidGuineaLocal(input: string | null | undefined): boolean {
   return clampLocal(input).length === PHONE_LOCAL_LENGTH;
 }
+
+// ============================================================
+// Garde-fous anti « SMS bombing » CÔTÉ UI (défense en profondeur), partagés par
+// l'écran de connexion par téléphone ET le renvoi de code sur l'écran de
+// vérification (sinon le renvoi contournerait le plafond quotidien).
+// Le vrai rate-limit reste SERVEUR (Supabase → Auth → Rate limits / SMS).
+// ============================================================
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { todayISO } from "@/lib/dates";
+
+const SMS_COOLDOWN_MS = 60_000; // 1 min entre deux envois
+const SMS_DAILY_CAP = 5;        // 5 SMS max / jour / appareil
+const KEY_SMS_LAST = "sms_last_send_ts";
+const KEY_SMS_DAY = "sms_send_day";
+const KEY_SMS_COUNT = "sms_send_count";
+
+// Vérifie cooldown + plafond quotidien. Renvoie un message si bloqué, sinon null.
+export async function smsThrottleBlock(): Promise<string | null> {
+  const now = Date.now();
+  const [lastRaw, dayRaw, countRaw] = await Promise.all([
+    AsyncStorage.getItem(KEY_SMS_LAST),
+    AsyncStorage.getItem(KEY_SMS_DAY),
+    AsyncStorage.getItem(KEY_SMS_COUNT),
+  ]);
+  const last = Number(lastRaw) || 0;
+  if (now - last < SMS_COOLDOWN_MS) {
+    const s = Math.ceil((SMS_COOLDOWN_MS - (now - last)) / 1000);
+    return `Patiente ${s}s avant de redemander un code.`;
+  }
+  const today = todayISO();
+  const count = dayRaw === today ? Number(countRaw) || 0 : 0;
+  if (count >= SMS_DAILY_CAP) {
+    return "Limite de SMS atteinte pour aujourd'hui. Réessaie demain ou connecte-toi par e-mail.";
+  }
+  return null;
+}
+
+// Enregistre un envoi (horodatage + compteur quotidien).
+export async function recordSmsSent(): Promise<void> {
+  const today = todayISO();
+  const [dayRaw, countRaw] = await Promise.all([
+    AsyncStorage.getItem(KEY_SMS_DAY),
+    AsyncStorage.getItem(KEY_SMS_COUNT),
+  ]);
+  const count = dayRaw === today ? Number(countRaw) || 0 : 0;
+  await AsyncStorage.multiSet([
+    [KEY_SMS_LAST, String(Date.now())],
+    [KEY_SMS_DAY, today],
+    [KEY_SMS_COUNT, String(count + 1)],
+  ]);
+}

@@ -39,21 +39,41 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-// Parse « 09:00 - 13:00 » (espaces optionnels) → { start, end } normalisés.
-function parseHours(hours: string): DayAvailability | null {
-  const m = hours.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
-  if (!m) return null;
-  return { start: `${pad2(+m[1])}:${m[2]}`, end: `${pad2(+m[3])}:${m[4]}` };
+// Parse TOUTES les plages « 09:00 - 12:00, 14:00 - 17:00 » d'une chaîne
+// (séparateur libre : virgule, « et », etc.) → liste normalisée { start, end }.
+function parseHoursAll(hours: string): DayAvailability[] {
+  const out: DayAvailability[] = [];
+  for (const m of hours.matchAll(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/g)) {
+    out.push({ start: `${pad2(+m[1])}:${m[2]}`, end: `${pad2(+m[3])}:${m[4]}` });
+  }
+  return out;
 }
 
-// Disponibilité d'un jour donné (null si non travaillé / mal formé).
+// Disponibilité d'un jour donné : PREMIÈRE plage (null si non travaillé / mal
+// formé). Sert aux tests « ce jour est-il ouvert ? » et à l'affichage.
+// Pour la génération réelle des créneaux, utiliser daySlots (toutes les plages).
 export function dayAvailability(availability: Json | null, dayKey: string): DayAvailability | null {
   if (!availability || typeof availability !== "object" || Array.isArray(availability)) return null;
   const day = (availability as Record<string, unknown>)[dayKey];
   if (!day || typeof day !== "object") return null;
   const obj = day as { enabled?: boolean; hours?: string };
   if (!obj.enabled || !obj.hours) return null;
-  return parseHours(obj.hours);
+  return parseHoursAll(obj.hours)[0] ?? null;
+}
+
+// Tous les créneaux réservables d'un jour, TOUTES plages confondues
+// (ex. matin + après-midi), triés et dédupliqués.
+export function daySlots(availability: Json | null, dayKey: string, stepMin = 30): string[] {
+  if (!availability || typeof availability !== "object" || Array.isArray(availability)) return [];
+  const day = (availability as Record<string, unknown>)[dayKey];
+  if (!day || typeof day !== "object") return [];
+  const obj = day as { enabled?: boolean; hours?: string };
+  if (!obj.enabled || !obj.hours) return [];
+  const seen = new Set<string>();
+  for (const r of parseHoursAll(obj.hours)) {
+    for (const t of generateSlots(r.start, r.end, stepMin)) seen.add(t);
+  }
+  return Array.from(seen).sort();
 }
 
 // Le médecin a-t-il au moins un jour de disponibilité défini ?
