@@ -18,7 +18,9 @@ import { colors, radius, spacing, typography } from "@/theme";
 
 const STRENGTH_COLORS = [colors.border, colors.danger, colors.accent, colors.success];
 
-const logo = require("../../assets/logo/hygiena-icon-drop.png");
+// Version blanche de la Goutte-cœur : le hero est violet, la marque violette
+// n'y contrasterait pas.
+const logo = require("../../assets/logo/hygiena-icon-drop-white.png");
 
 // Pastilles de la preuve sociale (initiales décoratives, teintes de la palette).
 const PROOF_AVATARS = [

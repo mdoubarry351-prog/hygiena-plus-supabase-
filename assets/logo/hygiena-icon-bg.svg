@@ -1,16 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="hgDropBg" x1="256" y1="72" x2="256" y2="444" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#10B981"/>
-      <stop offset="1" stop-color="#059669"/>
+    <linearGradient id="hgBg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8A63F0"/>
+      <stop offset="1" stop-color="#6C46D9"/>
     </linearGradient>
   </defs>
-  <!-- Tuile arrondie fond vert clair (le drop vert foncé ressort dessus) -->
-  <rect x="0" y="0" width="512" height="512" rx="112" fill="#D1FAE5"/>
-  <!-- Goutte centrée, ~58% de la tuile -->
-  <g transform="translate(56.3 54.8) scale(0.78)">
-    <path d="M256 72 C296 142 384 232 384 316 A128 128 0 1 1 128 316 C128 232 216 142 256 72 Z"
-          fill="url(#hgDropBg)"/>
-    <ellipse cx="212" cy="232" rx="34" ry="70" transform="rotate(-28 212 232)" fill="#FFFFFF" opacity="0.28"/>
-  </g>
+  <rect width="512" height="512" fill="url(#hgBg)"/>
 </svg>
