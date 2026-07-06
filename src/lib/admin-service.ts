@@ -603,6 +603,16 @@ export const adminService = {
     return data;
   },
 
+  // Supprime DÉFINITIVEMENT un produit (policy products_delete_admin). Les
+  // favoris et avis liés sont retirés en cascade côté serveur. Les commandes
+  // passées conservent leur copie du produit (pas de clé étrangère) → l'historique
+  // reste intact.
+  async deleteProduct(adminId: string, id: string): Promise<void> {
+    const { error } = await supabase.from("marketplace_products").delete().eq("id", id);
+    if (error) throw error;
+    await logAction(adminId, "delete_product", "marketplace_products", id);
+  },
+
   // ---------------- 6. Commandes ----------------
   async getOrders(): Promise<MarketplaceOrder[]> {
     const { data, error } = await supabase

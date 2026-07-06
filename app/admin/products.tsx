@@ -15,6 +15,8 @@ import { AppImage } from "@/components/AppImage";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { hapticWarning } from "@/lib/haptics";
 import { adminService } from "@/lib/admin-service";
 import { uploadProductImage } from "@/lib/storage";
 import { exportCsv } from "@/lib/csv-export";
@@ -27,6 +29,7 @@ type Editing = MarketplaceProduct | "new" | null;
 export default function AdminProducts() {
   const { session } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -122,6 +125,29 @@ export default function AdminProducts() {
     }
   }
 
+  // Suppression DÉFINITIVE (confirmation obligatoire). Alternative douce : le
+  // bouton « Inactif » masque le produit sans l'effacer.
+  async function deleteProduct(p: MarketplaceProduct) {
+    if (!session?.user) return;
+    const ok = await confirm({
+      title: "Supprimer définitivement ?",
+      message: `« ${p.name} » sera effacé de la boutique, avec ses favoris et avis. Les commandes déjà passées ne sont pas touchées. Cette action est irréversible.`,
+      confirmLabel: "Supprimer",
+      cancelLabel: "Annuler",
+      danger: true,
+    });
+    if (!ok) return;
+    hapticWarning();
+    try {
+      await adminService.deleteProduct(session.user.id, p.id);
+      setProducts((prev) => prev.filter((x) => x.id !== p.id));
+      toast.success("Produit supprimé.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Suppression échouée");
+      await load();
+    }
+  }
+
   if (loading && products.length === 0) return <Loading />;
 
   if (editing) {
@@ -203,6 +229,9 @@ export default function AdminProducts() {
                     trackColor={{ false: colors.border, true: colors.primary }}
                     thumbColor={colors.white}
                   />
+                  <Pressable onPress={() => deleteProduct(p)} hitSlop={8} style={styles.deleteBtn} accessibilityRole="button" accessibilityLabel={`Supprimer ${p.name}`}>
+                    <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                  </Pressable>
                 </View>
               </Card>
             ))}
@@ -385,6 +414,7 @@ const styles = StyleSheet.create({
   name: { ...typography.name },
   meta: { ...typography.caption, color: colors.textMuted },
   rowActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  deleteBtn: { padding: spacing.xs },
   badge: { ...typography.caption, color: colors.white, fontWeight: "700", paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, overflow: "hidden" },
   badgeOn: { backgroundColor: colors.success },
   badgeOff: { backgroundColor: colors.textMuted },
