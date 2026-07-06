@@ -81,7 +81,7 @@ export default function DoctorMessages() {
                 return (
                   <FadeInView key={c.patientId} fill={false} delay={Math.min(i, 6) * 50}>
                     <Card
-                      onPress={() => router.push({ pathname: "/(doctor)/chat", params: { patientId: c.patientId, patientName: c.patientName } })}
+                      onPress={() => router.push({ pathname: "/doctor/chat", params: { patientId: c.patientId, patientName: c.patientName } })}
                       haptic
                       accessibilityLabel={`Conversation avec ${c.patientName}`}
                       style={styles.row}

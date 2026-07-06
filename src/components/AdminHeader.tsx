@@ -42,7 +42,7 @@ export function AdminHeader({ title, right }: { title: string; right?: ReactNode
           <Pressable hitSlop={10} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Notifications">
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
           </Pressable>
-          <Pressable onPress={() => router.push("/(admin)/account")} hitSlop={6} accessibilityRole="button" accessibilityLabel="Mon compte">
+          <Pressable onPress={() => router.push("/admin/account")} hitSlop={6} accessibilityRole="button" accessibilityLabel="Mon compte">
             <Avatar name={profile?.full_name ?? "Admin"} size={36} />
           </Pressable>
         </View>

@@ -109,7 +109,7 @@ export default function Profile() {
         <FadeInView fill={false} delay={STEP * 2} style={styles.group}>
           <Text style={[typography.h3, styles.sectionTitle]}>Mon compte</Text>
           {role === "doctor" ? (
-            <MenuRow icon="medkit" tint={colors.secondary} title="Espace professionnel" sub="Tableau de bord, rendez-vous, disponibilité, fiche médecin" onPress={() => router.push("/(doctor)")} />
+            <MenuRow icon="medkit" tint={colors.secondary} title="Espace professionnel" sub="Tableau de bord, rendez-vous, disponibilité, fiche médecin" onPress={() => router.push("/doctor")} />
           ) : null}
           <MenuRow icon="person-outline" title="Modifier mes informations" sub="Nom, téléphone, email, mot de passe" onPress={() => router.push("/(user)/account")} />
           <MenuRow icon="heart-circle-outline" title="Informations de santé" sub="Âge, mesures, groupe sanguin, allergies — privé" onPress={() => router.push("/(user)/health")} />

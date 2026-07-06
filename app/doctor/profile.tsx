@@ -245,7 +245,7 @@ export default function DoctorProfile() {
 
         {/* Infos personnelles (distinctes de la fiche pro) */}
         <FadeInView fill={false} delay={STEP * 3}>
-        <Card onPress={() => router.push("/(doctor)/account")} haptic accessibilityLabel="Mes informations personnelles" style={styles.accountRow}>
+        <Card onPress={() => router.push("/doctor/account")} haptic accessibilityLabel="Mes informations personnelles" style={styles.accountRow}>
           <View style={styles.accountIcon}>
             <Ionicons name="person-outline" size={22} color={colors.primary} />
           </View>

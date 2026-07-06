@@ -21,7 +21,7 @@ export function Screen({ children, padded = true, keyboardAware = false, constra
   const { width } = useWindowDimensions();
   const segments = useSegments();
   // L'admin a sa propre mise en page desktop (sidebar) → on ne la contraint pas.
-  const isAdmin = segments[0] === "(admin)";
+  const isAdmin = segments[0] === "admin";
   const constrain = constrained && !isAdmin && width >= layout.tabletBreakpoint;
   const constrainStyle: ViewStyle | null = constrain
     ? { maxWidth: layout.maxContentWidth, alignSelf: "center", width: "100%" }

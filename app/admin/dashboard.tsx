@@ -15,18 +15,18 @@ import { colors, radius, spacing, typography } from "@/theme";
 type CardDef = { key: keyof DashboardRpc; label: string; icon: keyof typeof Ionicons.glyphMap; tint: string; href: Href; money?: boolean };
 
 const CARDS: CardDef[] = [
-  { key: "usersTotal", label: "Utilisateurs inscrits", icon: "people-outline", tint: colors.primary, href: "/(admin)/users" },
-  { key: "activeUsers", label: "Utilisateurs actifs", icon: "pulse-outline", tint: colors.secondary, href: "/(admin)/users" },
+  { key: "usersTotal", label: "Utilisateurs inscrits", icon: "people-outline", tint: colors.primary, href: "/admin/users" },
+  { key: "activeUsers", label: "Utilisateurs actifs", icon: "pulse-outline", tint: colors.secondary, href: "/admin/users" },
   // KPI Premium remplacé par les revenus consultations tant que le Premium est
   // retiré (PREMIUM_ENABLED=false) ; le KPI Premium reste réactivable.
   PREMIUM_ENABLED
-    ? { key: "premiumCount", label: "Abonnés Premium", icon: "star-outline", tint: colors.accent, href: "/(admin)/subscriptions" }
-    : { key: "revenueConsultation", label: "Revenus consultations", icon: "medkit-outline", tint: colors.accent, href: "/(admin)/subscriptions", money: true },
-  { key: "doctorsActive", label: "Médecins actifs", icon: "medkit-outline", tint: colors.secondary, href: "/(admin)/doctors" },
-  { key: "appointmentsToday", label: "RDV du jour", icon: "calendar-outline", tint: colors.primary, href: "/(admin)/appointments" },
-  { key: "ordersTotal", label: "Commandes Marketplace", icon: "receipt-outline", tint: colors.primary, href: "/(admin)/orders" },
-  { key: "postsCount", label: "Publications", icon: "chatbubbles-outline", tint: colors.secondary, href: "/(admin)/community" },
-  { key: "reportsPending", label: "Signalements à traiter", icon: "flag-outline", tint: colors.danger, href: "/(admin)/reports" },
+    ? { key: "premiumCount", label: "Abonnés Premium", icon: "star-outline", tint: colors.accent, href: "/admin/subscriptions" }
+    : { key: "revenueConsultation", label: "Revenus consultations", icon: "medkit-outline", tint: colors.accent, href: "/admin/subscriptions", money: true },
+  { key: "doctorsActive", label: "Médecins actifs", icon: "medkit-outline", tint: colors.secondary, href: "/admin/doctors" },
+  { key: "appointmentsToday", label: "RDV du jour", icon: "calendar-outline", tint: colors.primary, href: "/admin/appointments" },
+  { key: "ordersTotal", label: "Commandes Marketplace", icon: "receipt-outline", tint: colors.primary, href: "/admin/orders" },
+  { key: "postsCount", label: "Publications", icon: "chatbubbles-outline", tint: colors.secondary, href: "/admin/community" },
+  { key: "reportsPending", label: "Signalements à traiter", icon: "flag-outline", tint: colors.danger, href: "/admin/reports" },
 ];
 
 // Repli si la RPC échoue : on dérive ce qu'on peut de l'ancien getDashboardStats.
@@ -121,7 +121,7 @@ export default function AdminDashboard() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {/* Revenus estimés — carte mise en avant */}
-        <Card onPress={() => router.push("/(admin)/subscriptions")} style={styles.revenueCard}>
+        <Card onPress={() => router.push("/admin/subscriptions")} style={styles.revenueCard}>
           <View style={styles.revenueTop}>
             <View style={[styles.icon, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name="cash-outline" size={22} color={colors.primaryDark} />

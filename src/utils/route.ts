@@ -10,7 +10,7 @@ import type { UserRole } from "@/lib/database.types";
 export function homeRouteForRole(role: UserRole): Href {
   switch (role) {
     case "admin":
-      return "/(admin)";
+      return "/admin";
     case "doctor":
     case "user":
     default:

@@ -30,11 +30,11 @@ export function notificationRoute(data: NotifData, type: string | null): Href | 
     case "my_appointments":
       return "/(user)/appointments/mine";
     case "doctor_appointments":
-      return "/(doctor)/appointments";
+      return "/doctor/appointments";
     case "patient_chat":
       return data?.doctorId ? { pathname: "/(user)/appointments/chat", params: { doctorId: data.doctorId } } : null;
     case "doctor_chat":
-      return data?.patientId ? { pathname: "/(doctor)/chat", params: { patientId: data.patientId } } : null;
+      return data?.patientId ? { pathname: "/doctor/chat", params: { patientId: data.patientId } } : null;
     case "premium":
       return "/(user)/premium";
   }
