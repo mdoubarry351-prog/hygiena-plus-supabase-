@@ -123,12 +123,13 @@ export function DeleteAccountButton() {
 }
 
 const styles = StyleSheet.create({
-  // Conteneur calme : la couleur forte est réservée au repère + au bouton contour.
+  // Conteneur sobre mais signalé : fond carte + fine bordure rose (repère de
+  // zone sensible), la couleur forte restant un accent, pas un aplat.
   zone: {
     gap: spacing.sm,
     padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: colors.danger,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
   },
