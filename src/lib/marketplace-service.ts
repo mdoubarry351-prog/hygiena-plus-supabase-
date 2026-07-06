@@ -35,7 +35,6 @@ export type OrderInput = {
   totalAmount: number;
   paymentMethod: string | null;
   paymentPhone: string | null;
-  isPaid: boolean;
 };
 
 // Réglages de paiement + livraison boutique utiles au checkout (lecture best-effort :
@@ -206,7 +205,11 @@ export const marketplaceService = {
     if (error) throw error;
   },
 
-  // Crée une commande dans marketplace_orders (avec infos de paiement).
+  // Crée une commande dans marketplace_orders. La commande est TOUJOURS créée
+  // « non payée » : is_paid / paid_at ne sont jamais fournis par le client
+  // (le trigger serveur les refuserait, cf. P0-1). Le passage à « payé » est
+  // décidé côté serveur : par l'admin à la validation, ou par un webhook de
+  // paiement vérifié cryptographiquement (Orange Money / MTN) à venir.
   async createOrder(input: OrderInput): Promise<MarketplaceOrder> {
     const payload: TablesInsert<"marketplace_orders"> = {
       user_id: input.userId,
@@ -218,8 +221,6 @@ export const marketplaceService = {
       total_amount: input.totalAmount,
       payment_method: input.paymentMethod,
       payment_phone: input.paymentPhone,
-      is_paid: input.isPaid,
-      paid_at: input.isPaid ? new Date().toISOString() : null,
     };
     const { data, error } = await supabase
       .from("marketplace_orders")

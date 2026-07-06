@@ -13,19 +13,12 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { hapticSuccess } from "@/lib/haptics";
-import { authService } from "@/lib/auth-service";
 import { premiumService } from "@/lib/premium-service";
 import { PREMIUM_ENABLED } from "@/lib/app-config";
 import { formatPrice } from "@/lib/marketplace-service";
 import type { SubscriptionPayment } from "@/lib/database.types";
 import { colors, fonts, radius, spacing, typography } from "@/theme";
 
-function toISODate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d); r.setDate(r.getDate() + n); return r;
-}
 function formatPaidAt(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 }
@@ -70,25 +63,14 @@ export default function Premium() {
     if (!session?.user) return;
     setSaving(true);
     try {
-      await authService.updateProfile(session.user.id, { is_premium: next });
+      // L'abonnement est accordé côté serveur (Edge Function de confiance) : la
+      // cliente ne peut plus falsifier is_premium ni le paiement. L'historique
+      // de paiement est également écrit côté serveur (paiement simulé).
+      await premiumService.setPremium(next ? "subscribe" : "unsubscribe");
       await refreshProfile();
       if (next) {
         hapticSuccess();
-        // Paiement SIMULÉ : on consigne aussi un paiement d'abonnement.
-        const today = new Date();
-        try {
-          await premiumService.recordSubscriptionPayment({
-            userId: session.user.id,
-            amount: premium_price,
-            method: "Mobile Money (simulé)",
-            plan: "Premium",
-            periodStart: toISODate(today),
-            periodEnd: toISODate(addDays(today, premium_duration_days)),
-          });
-          await loadPayments();
-        } catch {
-          // l'échec d'enregistrement du paiement ne bloque pas l'abonnement
-        }
+        await loadPayments();
       }
       toast.success(next ? "Bienvenue en Premium 🌿" : "Premium désactivé.");
     } catch (e) {

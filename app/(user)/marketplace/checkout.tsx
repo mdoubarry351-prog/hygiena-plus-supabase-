@@ -142,11 +142,12 @@ export default function Checkout() {
         totalAmount: grandTotal,
         paymentMethod: method,
         paymentPhone: isMobileMoney ? toE164(onlyDigits(payPhone)) : null,
-        isPaid: isMobileMoney,
       });
       clear();
       hapticSuccess();
-      toast.success(isMobileMoney ? "Paiement réussi 🎉 Commande créée." : "Commande confirmée — paiement à la livraison.");
+      // La commande est enregistrée « non payée » : le paiement est confirmé
+      // côté serveur (admin ou webhook vérifié), jamais depuis le client.
+      toast.success(isMobileMoney ? "Commande enregistrée 🎉 Paiement en cours de validation." : "Commande confirmée — paiement à la livraison.");
       router.replace("/(user)/marketplace");
     } catch (e) {
       hapticError();
