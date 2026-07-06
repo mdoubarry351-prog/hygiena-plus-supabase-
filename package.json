@@ -69,5 +69,9 @@
     "@types/react": "~19.1.10",
     "typescript": "~5.9.2"
   },
+  "_overridesNote": "Sécurité (npm audit HIGH) : undici forcé en 6.x corrigé. Dép. CLI/build Expo, non embarquée dans l'app, non-breaking.",
+  "overrides": {
+    "undici": "^6.27.0"
+  },
   "private": true
 }

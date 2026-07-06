@@ -1,0 +1,25 @@
+# Configuration gitleaks — Hygiena+
+# Étend les règles par défaut et neutralise les FAUX POSITIFS connus.
+#
+# La clé anon/publishable Supabase (préfixe `sb_publishable_`) est PUBLIQUE par
+# conception : elle est embarquée dans le client (variable EXPO_PUBLIC_*) et la
+# sécurité repose sur la RLS. Elle n'est donc PAS un secret. En revanche la clé
+# `service_role` (préfixe `sb_secret_` ou JWT au rôle service_role) ne doit
+# JAMAIS être committée — elle N'EST PAS allowlistée ici et sera bien détectée.
+
+title = "Hygiena+ gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Clés publiques par conception + fichiers d'env locaux"
+regexTarget = "match"
+regexes = [
+  # Clé publishable/anon Supabase (publique).
+  '''sb_publishable_[A-Za-z0-9_-]{10,}''',
+]
+paths = [
+  '''(^|/)\.env$''',
+  '''(^|/)\.env\.example$''',
+]
