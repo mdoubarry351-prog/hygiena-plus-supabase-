@@ -56,7 +56,7 @@ export function SkeletonLines({ lines = 2, lineHeight = 10 }: { lines?: number; 
   );
 }
 
-type Variant = "post" | "product" | "order" | "doctor" | "notification" | "article";
+type Variant = "post" | "product" | "order" | "doctor" | "notification";
 
 // Une carte fantôme représentative d'un type de contenu.
 function GhostCard({ variant }: { variant: Variant }) {
@@ -95,15 +95,6 @@ function GhostCard({ variant }: { variant: Variant }) {
             <Skeleton width="80%" height={12} />
             <Skeleton width="55%" height={10} />
           </View>
-        </Card>
-      );
-    case "article":
-      return (
-        <Card style={styles.articleCard}>
-          <Skeleton width="100%" height={150} radius={radius.md} />
-          <Skeleton width="35%" height={10} />
-          <Skeleton width="85%" height={16} />
-          <SkeletonLines lines={2} />
         </Card>
       );
     case "post":
@@ -149,5 +140,4 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1, gap: spacing.xs },
   block: { gap: spacing.sm },
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  articleCard: { gap: spacing.sm },
 });

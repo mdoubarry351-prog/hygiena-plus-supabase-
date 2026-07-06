@@ -3,7 +3,6 @@ import { supabase } from "@/lib/supabase";
 
 const BUCKET = "product-images";
 const AVATAR_BUCKET = "avatars";
-const ARTICLE_BUCKET = "article-images";
 const COMMUNITY_BUCKET = "community-images";
 const KYC_BUCKET = "doctor-kyc";
 
@@ -59,20 +58,6 @@ export async function uploadAvatar(base64: string): Promise<string> {
     .upload(path, decodeCheckedJpeg(base64, MAX_IMAGE_BYTES), { contentType: "image/jpeg", upsert: true });
   if (error) throw error;
   return supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path).data.publicUrl;
-}
-
-/**
- * Uploade une image de couverture d'article (base64 JPEG fourni par
- * expo-image-picker) dans le bucket public `article-images` et renvoie son URL
- * publique (à stocker dans articles.cover_image_url).
- */
-export async function uploadArticleImage(base64: string): Promise<string> {
-  const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-  const { error } = await supabase.storage
-    .from(ARTICLE_BUCKET)
-    .upload(path, decodeCheckedJpeg(base64, MAX_IMAGE_BYTES), { contentType: "image/jpeg", upsert: true });
-  if (error) throw error;
-  return supabase.storage.from(ARTICLE_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
 /**

@@ -18,7 +18,6 @@ import { useAppSettings, SERVICE_UNAVAILABLE_MSG } from "@/hooks/useAppSettings"
 import { useToast } from "@/providers/ToastProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { notificationsService } from "@/lib/notifications-service";
-import { SHOW_ARTICLES } from "@/lib/app-config";
 import { appointmentsService, doctorDisplayName, formatAppointmentTime, type AppointmentWithDoctor } from "@/lib/appointments-service";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, formatOrderDate, orderItemCount } from "@/lib/order-display";
@@ -166,9 +165,6 @@ export default function CycleHome() {
     ...(!isDoctor ? [{ icon: "pulse" as const, bg: colors.successSoft, fg: colors.secondary, title: "Consultations", sub: "Gynéco & thérapie", href: "/(user)/appointments/hub" as Href, module: "doctors" as const }] : []),
     { icon: "bag-handle", bg: colors.warningSoft, fg: colors.accent, title: "Boutique", sub: "Produits santé", href: "/(user)/marketplace", module: "marketplace" },
     { icon: "chatbubbles", bg: colors.primaryLight, fg: colors.primary, title: "Forum", sub: "Communauté", href: "/(user)/community" },
-    // « Conseils & infos » masqué de l'accueil (réversible via SHOW_ARTICLES).
-    // La bibliothèque /(user)/library et l'admin Articles restent accessibles.
-    ...(SHOW_ARTICLES ? [{ icon: "book" as const, bg: colors.neutralSoft, fg: colors.textMuted, title: "Conseils & infos", sub: "Articles santé", href: "/(user)/library" as Href }] : []),
   ];
 
   // Bloque la navigation vers un module désactivé par l'admin (message au tap).
