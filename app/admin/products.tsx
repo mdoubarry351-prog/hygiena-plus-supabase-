@@ -222,7 +222,7 @@ export default function AdminProducts() {
                   </View>
                 </Pressable>
                 <View style={styles.rowActions}>
-                  <Badge label={p.is_active ? "Actif" : "Inactif"} tone={p.is_active ? "success" : "neutral"} />
+                  <Badge label={p.is_active ? "Actif" : "Inactif"} tone={p.is_active ? "success" : "neutral"} soft />
                   <Switch
                     value={p.is_active}
                     onValueChange={() => toggleActive(p)}
