@@ -51,7 +51,6 @@ export type Database = {
           phone: string | null;
           avatar_url: string | null;
           role: UserRole;
-          is_premium: boolean;
           date_of_birth: string | null;
           onboarding_completed: boolean;
           community_rules_accepted: boolean;
@@ -67,7 +66,6 @@ export type Database = {
           phone?: string | null;
           avatar_url?: string | null;
           role?: UserRole;
-          is_premium?: boolean;
           date_of_birth?: string | null;
           onboarding_completed?: boolean;
           community_rules_accepted?: boolean;
@@ -83,7 +81,6 @@ export type Database = {
           phone?: string | null;
           avatar_url?: string | null;
           role?: UserRole;
-          is_premium?: boolean;
           date_of_birth?: string | null;
           onboarding_completed?: boolean;
           community_rules_accepted?: boolean;
@@ -314,7 +311,7 @@ export type Database = {
       };
 
       // =================================================
-      // 4b. doctor_messages (messagerie premium patient ↔ médecin)
+      // 4b. doctor_messages (messagerie patient ↔ médecin)
       // =================================================
       doctor_messages: {
         Row: {
@@ -881,13 +878,10 @@ export type Database = {
           id: string;
           marketplace_enabled: boolean;
           doctors_enabled: boolean;
-          premium_enabled: boolean;
           appointments_enabled: boolean;
           messaging_enabled: boolean;
           cycle_enabled: boolean;
           community_enabled: boolean;
-          premium_price: number;
-          premium_duration_days: number;
           updated_by: string | null;
           created_at: string;
           updated_at: string;
@@ -896,13 +890,10 @@ export type Database = {
           id?: string;
           marketplace_enabled?: boolean;
           doctors_enabled?: boolean;
-          premium_enabled?: boolean;
           appointments_enabled?: boolean;
           messaging_enabled?: boolean;
           cycle_enabled?: boolean;
           community_enabled?: boolean;
-          premium_price?: number;
-          premium_duration_days?: number;
           updated_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -911,13 +902,10 @@ export type Database = {
           id?: string;
           marketplace_enabled?: boolean;
           doctors_enabled?: boolean;
-          premium_enabled?: boolean;
           appointments_enabled?: boolean;
           messaging_enabled?: boolean;
           cycle_enabled?: boolean;
           community_enabled?: boolean;
-          premium_price?: number;
-          premium_duration_days?: number;
           updated_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -1313,52 +1301,6 @@ export type Database = {
         ];
       };
 
-      // =================================================
-      // subscription_payments (historique paiements Premium)
-      // =================================================
-      subscription_payments: {
-        Row: {
-          id: string;
-          user_id: string;
-          amount: number;
-          method: string | null;
-          plan: string | null;
-          period_start: string | null;
-          period_end: string | null;
-          paid_at: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          amount: number;
-          method?: string | null;
-          plan?: string | null;
-          period_start?: string | null;
-          period_end?: string | null;
-          paid_at?: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          amount?: number;
-          method?: string | null;
-          plan?: string | null;
-          period_start?: string | null;
-          period_end?: string | null;
-          paid_at?: string;
-          created_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "subscription_payments_user_id_fkey";
-            columns: ["user_id"];
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
 
       // =================================================
       // push_tokens — jetons Expo pour le push serveur.
@@ -1478,7 +1420,7 @@ export type Database = {
           reference: string;
           status: string;
           amount: number;
-          target_type: "premium" | "order";
+          target_type: "order";
           target_id: string | null;
           raw: Json | null;
           created_at: string;
@@ -1489,7 +1431,7 @@ export type Database = {
           reference: string;
           status: string;
           amount: number;
-          target_type: "premium" | "order";
+          target_type: "order";
           target_id?: string | null;
           raw?: Json | null;
           created_at?: string;
@@ -1500,7 +1442,7 @@ export type Database = {
           reference?: string;
           status?: string;
           amount?: number;
-          target_type?: "premium" | "order";
+          target_type?: "order";
           target_id?: string | null;
           raw?: Json | null;
           created_at?: string;
@@ -1636,4 +1578,3 @@ export type UserReport = Tables<"user_reports">;
 export type UserSuspension = Tables<"user_suspensions">;
 export type Notification = Tables<"notifications">;
 export type HealthProfile = Tables<"health_profiles">;
-export type SubscriptionPayment = Tables<"subscription_payments">;

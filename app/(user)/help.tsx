@@ -10,7 +10,6 @@ import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { FadeInView } from "@/components/FadeInView";
 import { TrustRow } from "@/components/TrustRow";
-import { PREMIUM_ENABLED } from "@/lib/app-config";
 import { useAppSettings, SERVICE_UNAVAILABLE_MSG } from "@/hooks/useAppSettings";
 import { marketplaceService } from "@/lib/marketplace-service";
 import { colors, durations, radius, spacing, typography } from "@/theme";
@@ -60,13 +59,6 @@ const FAQ_CATEGORIES: FaqCategory[] = [
       { q: "Comment prendre ou annuler un rendez-vous ?", a: "Depuis « Consultations », choisis une médecin, une date et un créneau réellement disponibles, puis confirme. Dans « Mes rendez-vous », tu peux annuler ou reporter un RDV tant qu'il n'est pas passé." },
       { q: "Où ont lieu les consultations ?", a: "Les consultations se déroulent physiquement à la clinique de la médecin. Les modalités (tarif, lieu) sont indiquées sur sa fiche." },
       { q: "Les médecins sont-elles vérifiées ?", a: "Oui. Chaque médecin est validée par notre équipe avant d'apparaître : tu vois le badge « Médecin vérifié » sur sa fiche." },
-    ],
-  },
-  {
-    key: "premium", title: "Premium", icon: "star-outline",
-    items: [
-      { q: "À quoi sert le mode Premium ?", a: "Le Premium débloque la messagerie de conseils avec les médecins vérifiées : tu peux poser tes questions en ligne et partager ton suivi de cycle pour donner du contexte." },
-      { q: "Comment me désabonner ?", a: "Depuis l'écran Premium, tu peux te désabonner à tout moment. L'abonnement est sans engagement (paiement simulé, aucun débit réel dans cette version)." },
     ],
   },
   {
@@ -143,8 +135,7 @@ export default function Help() {
     setOpenId((cur) => (cur === id ? null : id));
   }
 
-  // Catégorie Premium retirée tant que le Premium est désactivé (réversible).
-  const baseCategories = PREMIUM_ENABLED ? FAQ_CATEGORIES : FAQ_CATEGORIES.filter((c) => c.key !== "premium");
+  const baseCategories = FAQ_CATEGORIES;
   const q = query.trim().toLowerCase();
   const categories = q
     ? baseCategories.map((c) => ({ ...c, items: c.items.filter((it) => (it.q + " " + it.a).toLowerCase().includes(q)) })).filter((c) => c.items.length > 0)

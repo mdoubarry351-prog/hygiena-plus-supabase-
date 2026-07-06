@@ -105,7 +105,6 @@ export default function AdminStats() {
         <View style={styles.grid}>
           <StatCard icon="bag-handle-outline" label="Revenus marketplace" value={formatPrice(revenue?.marketplaceRevenue ?? 0)} tint={colors.primary} />
           <StatCard icon="medkit-outline" label="Revenus consultations" value={formatPrice(revenue?.consultationRevenue ?? 0)} tint={colors.secondary} />
-          <StatCard icon="star-outline" label="Abonnées Premium" value={String(revenue?.premiumCount ?? 0)} tint={colors.accent} />
           <StatCard icon="people-outline" label="Utilisatrices" value={String(counts?.users ?? 0)} tint={colors.primary} />
           <StatCard icon="receipt-outline" label="Commandes totales" value={String(counts?.orders ?? 0)} tint={colors.primary} />
           <StatCard icon="calendar-outline" label="Consultations totales" value={String(counts?.appointments ?? 0)} tint={colors.secondary} />

@@ -6,7 +6,7 @@ type Icon = keyof typeof Ionicons.glyphMap;
 // =====================================================
 // Catégories de notifications (segmentation / filtre de l'écran)
 // =====================================================
-export type NotifCategoryKey = "cycle" | "appointments" | "doctor" | "community" | "marketplace" | "premium" | "system";
+export type NotifCategoryKey = "cycle" | "appointments" | "doctor" | "community" | "marketplace" | "system";
 
 export const NOTIF_CATEGORIES: { key: NotifCategoryKey; label: string; icon: Icon }[] = [
   { key: "cycle", label: "Cycle", icon: "water-outline" },
@@ -14,7 +14,6 @@ export const NOTIF_CATEGORIES: { key: NotifCategoryKey; label: string; icon: Ico
   { key: "doctor", label: "Messages médecins", icon: "chatbubbles-outline" },
   { key: "community", label: "Communauté", icon: "people-outline" },
   { key: "marketplace", label: "Marketplace", icon: "bag-handle-outline" },
-  { key: "premium", label: "Premium", icon: "star-outline" },
   { key: "system", label: "Système", icon: "megaphone-outline" },
 ];
 
@@ -40,8 +39,6 @@ const TYPE_TO_CATEGORY: Record<string, NotifCategoryKey> = {
   community_reply: "community",
   community_like: "community",
   order_status: "marketplace",
-  premium_payment: "premium",
-  premium_expiring: "premium",
   admin_broadcast: "system",
   general: "system",
 };
@@ -69,8 +66,6 @@ const TYPE_META: Record<string, NotifTypeMeta> = {
   community_reply: { icon: "arrow-undo", color: colors.primary },
   community_like: { icon: "heart", color: colors.danger },
   order_status: { icon: "cube", color: colors.primary },
-  premium_payment: { icon: "card", color: colors.accent },
-  premium_expiring: { icon: "time", color: colors.accent },
   admin_broadcast: { icon: "megaphone", color: colors.primary },
   general: { icon: "notifications", color: colors.primary },
 };

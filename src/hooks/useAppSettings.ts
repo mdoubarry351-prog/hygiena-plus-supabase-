@@ -1,40 +1,32 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { supabase } from "@/lib/supabase";
-import { PREMIUM_PRICE, PREMIUM_PERIOD_DAYS } from "@/lib/premium-service";
 
 /**
  * Disponibilité des modules, pilotée par l'admin (table app_settings,
  * lisible par tout utilisateur authentifié via la policy settings_select_all).
- * Inclut aussi le prix et la durée du Premium (modifiables par l'admin).
  */
 export type AppFlags = {
   marketplace_enabled: boolean;
   doctors_enabled: boolean;
   appointments_enabled: boolean;
-  premium_enabled: boolean;
   messaging_enabled: boolean;
   cycle_enabled: boolean;
   community_enabled: boolean;
-  premium_price: number;
-  premium_duration_days: number;
 };
 
-// Défaut prudent : tout activé + prix/durée de repli (50000 GNF / 30 j).
+// Défaut prudent : tout activé.
 const ALL_ON: AppFlags = {
   marketplace_enabled: true,
   doctors_enabled: true,
   appointments_enabled: true,
-  premium_enabled: true,
   messaging_enabled: true,
   cycle_enabled: true,
   community_enabled: true,
-  premium_price: PREMIUM_PRICE,
-  premium_duration_days: PREMIUM_PERIOD_DAYS,
 };
 
 /**
- * Lit l'unique ligne de app_settings et expose les 4 booléens.
+ * Lit l'unique ligne de app_settings et expose les booléens de modules.
  * Se recharge à chaque focus de l'écran pour refléter vite un changement admin.
  */
 export function useAppSettings(): AppFlags & { loading: boolean; reload: () => Promise<void> } {
@@ -45,7 +37,7 @@ export function useAppSettings(): AppFlags & { loading: boolean; reload: () => P
     try {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("marketplace_enabled, doctors_enabled, appointments_enabled, premium_enabled, messaging_enabled, cycle_enabled, community_enabled, premium_price, premium_duration_days")
+        .select("marketplace_enabled, doctors_enabled, appointments_enabled, messaging_enabled, cycle_enabled, community_enabled")
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -55,12 +47,9 @@ export function useAppSettings(): AppFlags & { loading: boolean; reload: () => P
           marketplace_enabled: data.marketplace_enabled ?? true,
           doctors_enabled: data.doctors_enabled ?? true,
           appointments_enabled: data.appointments_enabled ?? true,
-          premium_enabled: data.premium_enabled ?? true,
           messaging_enabled: data.messaging_enabled ?? true,
           cycle_enabled: data.cycle_enabled ?? true,
           community_enabled: data.community_enabled ?? true,
-          premium_price: data.premium_price ?? PREMIUM_PRICE,
-          premium_duration_days: data.premium_duration_days ?? PREMIUM_PERIOD_DAYS,
         });
       } else {
         // Ligne absente → on n'empêche rien par erreur.

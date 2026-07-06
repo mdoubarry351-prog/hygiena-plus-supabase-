@@ -7,13 +7,17 @@
 # superuser et contourne la RLS).
 #
 # Critère de réussite (audit) : les 4 requêtes échouent avec un code HTTP 4xx.
+# (Le mode Premium ayant été supprimé, les anciens tests is_premium /
+# subscription_payments sont remplacés par l'escalade de rôle et le paiement
+# de rendez-vous — mêmes garanties serveur.)
 #
 # Utilisation :
 #   export SUPABASE_URL="https://<ref>.supabase.co"
 #   export ANON_KEY="<clé anon>"
 #   export USER_JWT="<access_token d'une utilisatrice connectée, role=user>"
 #   export USER_ID="<son id>"
-#   export ORDER_ID="<id d'une de ses commandes existantes>"   # pour le test 4
+#   export ORDER_ID="<id d'une de ses commandes existantes>"       # pour le test 4
+#   export APPOINTMENT_ID="<id d'un de ses rendez-vous existants>" # pour le test 2
 #   bash supabase/tests/p0-1-falsification.sh
 # =====================================================
 set -u
@@ -30,20 +34,21 @@ check() { # $1=label  $2=http_code
   fi
 }
 
-echo "== 1) profiles.is_premium auto-accordé =="
+echo "== 1) profiles.role auto-promu en admin =="
 code=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH \
   "$API/profiles?id=eq.$USER_ID" \
   -H "$H_ANON" -H "$H_AUTH" -H "Content-Type: application/json" \
   -H "Prefer: return=representation" \
-  -d '{"is_premium": true}')
-check "PATCH profiles is_premium=true" "$code"
+  -d '{"role": "admin"}')
+check "PATCH profiles role=admin" "$code"
 
-echo "== 2) subscription_payments inséré par la cliente =="
-code=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-  "$API/subscription_payments" \
+echo "== 2) appointments : la patiente se marque « payée » =="
+code=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH \
+  "$API/appointments?id=eq.$APPOINTMENT_ID" \
   -H "$H_ANON" -H "$H_AUTH" -H "Content-Type: application/json" \
-  -d "{\"user_id\":\"$USER_ID\",\"amount\":1,\"plan\":\"Premium\"}")
-check "POST subscription_payments" "$code"
+  -H "Prefer: return=representation" \
+  -d '{"is_paid": true, "amount_paid": 1}')
+check "PATCH appointments is_paid=true" "$code"
 
 echo "== 3) marketplace_orders créée déjà payée =="
 code=$(curl -s -o /dev/null -w "%{http_code}" -X POST \

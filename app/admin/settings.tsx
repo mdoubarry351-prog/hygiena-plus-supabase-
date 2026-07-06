@@ -3,32 +3,25 @@ import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
-import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
 import { Loading } from "@/components/Loading";
 import { AdminHeader } from "@/components/AdminHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { adminService } from "@/lib/admin-service";
-import { PREMIUM_ENABLED } from "@/lib/app-config";
 import type { AppSettings } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
 
-type ToggleKey = "marketplace_enabled" | "cycle_enabled" | "community_enabled" | "doctors_enabled" | "premium_enabled" | "appointments_enabled" | "messaging_enabled";
+type ToggleKey = "marketplace_enabled" | "cycle_enabled" | "community_enabled" | "doctors_enabled" | "appointments_enabled" | "messaging_enabled";
 
-const ALL_TOGGLES: { key: ToggleKey; label: string; sub: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+const TOGGLES: { key: ToggleKey; label: string; sub: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: "marketplace_enabled", label: "Marketplace", sub: "Boutique et commandes pour les utilisatrices.", icon: "bag-handle-outline" },
   { key: "cycle_enabled", label: "Suivi du cycle", sub: "Calendrier, prédictions et journal du cycle.", icon: "water-outline" },
   { key: "community_enabled", label: "Communauté", sub: "Forum, publications et commentaires.", icon: "people-outline" },
   { key: "doctors_enabled", label: "Accès médecin", sub: "Annuaire des médecins et fiches publiques.", icon: "medkit-outline" },
   { key: "appointments_enabled", label: "Rendez-vous", sub: "Prise de rendez-vous payante avec les médecins.", icon: "calendar-outline" },
   { key: "messaging_enabled", label: "Téléconsultation / Messagerie", sub: "Messagerie en ligne patiente ↔ médecin.", icon: "chatbubbles-outline" },
-  { key: "premium_enabled", label: "Premium", sub: "Abonnement premium et avantages associés.", icon: "star-outline" },
 ];
-
-// Toggle Premium retiré de l'UI tant que le Premium est désactivé (réversible).
-const TOGGLES = PREMIUM_ENABLED ? ALL_TOGGLES : ALL_TOGGLES.filter((t) => t.key !== "premium_enabled");
 
 export default function AdminSettings() {
   const { session } = useAuth();
@@ -36,9 +29,6 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<ToggleKey | null>(null);
-  const [priceStr, setPriceStr] = useState("");
-  const [durationStr, setDurationStr] = useState("");
-  const [savingPrice, setSavingPrice] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,37 +42,6 @@ export default function AdminSettings() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  // Pré-remplit les champs de tarification dès que les réglages sont chargés.
-  useEffect(() => {
-    if (settings) {
-      setPriceStr(String(settings.premium_price ?? 50000));
-      setDurationStr(String(settings.premium_duration_days ?? 30));
-    }
-  }, [settings]);
-
-  // Enregistre le prix + la durée du Premium (même mécanisme que les toggles).
-  async function savePricing() {
-    if (!session?.user || !settings) return;
-    const price = Number(priceStr.replace(/\s/g, ""));
-    const days = Number(durationStr.replace(/\s/g, ""));
-    if (Number.isNaN(price) || price < 0) { toast.info("Le prix doit être un nombre positif ou nul."); return; }
-    if (Number.isNaN(days) || days < 1 || !Number.isInteger(days)) { toast.info("La durée doit être un entier supérieur ou égal à 1."); return; }
-    setSavingPrice(true);
-    try {
-      const updated = await adminService.updateSettings(session.user.id, settings.id, {
-        premium_price: price,
-        premium_duration_days: days,
-        updated_by: session.user.id,
-      });
-      setSettings(updated);
-      toast.success("La tarification Premium a été mise à jour.");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Mise à jour échouée");
-    } finally {
-      setSavingPrice(false);
-    }
-  }
 
   async function toggle(key: ToggleKey) {
     if (!session?.user || !settings) return;
@@ -150,25 +109,6 @@ export default function AdminSettings() {
                 </Card>
               );
             })}
-
-            {/* Tarification Premium (modifiable par l'admin) — masquée tant que
-                le Premium est retiré (PREMIUM_ENABLED=false, réversible). */}
-            {PREMIUM_ENABLED ? (
-              <Card style={styles.priceCard}>
-                <View style={styles.priceHead}>
-                  <View style={[styles.moduleIcon, { backgroundColor: colors.primaryLight }]}>
-                    <Ionicons name="cash-outline" size={22} color={colors.primaryDark} />
-                  </View>
-                  <View style={styles.moduleInfo}>
-                    <Text style={styles.moduleTitle}>Tarification Premium</Text>
-                    <Text style={styles.moduleSub}>Prix et durée de l'abonnement (paiement simulé).</Text>
-                  </View>
-                </View>
-                <Input label="Prix de l'abonnement Premium (GNF)" value={priceStr} onChangeText={setPriceStr} keyboardType="numeric" placeholder="Ex. 50000" />
-                <Input label="Durée (jours)" value={durationStr} onChangeText={setDurationStr} keyboardType="numeric" placeholder="Ex. 30" />
-                <Button title="Enregistrer la tarification" onPress={savePricing} loading={savingPrice} />
-              </Card>
-            ) : null}
           </>
         )}
       </ScrollView>
@@ -190,6 +130,4 @@ const styles = StyleSheet.create({
   statusLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.5 },
   statusOn: { color: colors.primaryDark },
   statusOff: { color: colors.textMuted },
-  priceCard: { gap: spacing.sm },
-  priceHead: { flexDirection: "row", alignItems: "center", gap: spacing.md },
 });

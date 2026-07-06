@@ -16,7 +16,6 @@ import { ExportButton } from "@/components/ExportButton";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, type UserActivity } from "@/lib/admin-service";
-import { PREMIUM_ENABLED } from "@/lib/app-config";
 import { exportCsv } from "@/lib/csv-export";
 import type { Profile, UserRole } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -264,7 +263,6 @@ export default function AdminUsers() {
                   {open && (
                     <Card style={styles.detail}>
                       <Text style={styles.detailLine}>Téléphone : {u.phone ?? "—"}</Text>
-                      {PREMIUM_ENABLED ? <Text style={styles.detailLine}>Premium : {u.is_premium ? "Oui" : "Non"}</Text> : null}
                       <Text style={styles.detailLine}>Inscrit le {new Date(u.created_at).toLocaleDateString("fr-FR")}</Text>
 
                       {/* Activité */}

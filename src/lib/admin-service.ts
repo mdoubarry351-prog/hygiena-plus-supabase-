@@ -166,26 +166,10 @@ export type AdminAppointmentRow = {
   created_at: string;
 };
 
-// Paiement d'abonnement enrichi (nom de l'abonné) pour la vue admin.
-export type AdminSubscriptionPayment = {
-  id: string;
-  userName: string | null;
-  amount: number;
-  method: string | null;
-  plan: string | null;
-  paid_at: string;
-  period_start: string | null;
-  period_end: string | null;
-};
-
-// Synthèse abonnements & paiements (vue admin).
-export type SubscriptionsSummary = {
-  activeCount: number;
-  expiredCount: number;
-  revenuePremium: number;
+// Synthèse consultations & paiements (vue admin).
+export type ConsultationsSummary = {
   revenueConsultation: number;
   paidConsultationCount: number;
-  payments: AdminSubscriptionPayment[];
 };
 
 // Statistiques du tableau de bord renvoyées par la RPC `admin_dashboard_stats`.
@@ -193,7 +177,6 @@ export type DashboardRpc = {
   ok: boolean;
   usersTotal: number;
   activeUsers: number;
-  premiumCount: number;
   doctorsActive: number;
   appointmentsToday: number;
   ordersTotal: number;
@@ -202,7 +185,6 @@ export type DashboardRpc = {
   reportsPending: number;
   revenueMarketplace: number;
   revenueConsultation: number;
-  revenuePremium: number;
   revenueTotal: number;
 };
 // Avis enrichis pour la modération : nom de l'auteur + nom de la cible.
@@ -214,7 +196,6 @@ export type UserActivity = {
   orders: number;
   posts: number;
   appointments: number;
-  isPremium: boolean;
   createdAt: string | null;
 };
 export type DoctorActivity = {
@@ -253,7 +234,6 @@ export type RevenueStats = {
   marketplaceRevenue: number;
   consultationRevenue: number;
   totalRevenue: number;
-  premiumCount: number;
 };
 
 export type DashboardStats = {
@@ -359,57 +339,17 @@ export const adminService = {
     return (data ?? []) as AdminAppointmentRow[];
   },
 
-  // Abonnements & paiements (vue admin). État dérivé de subscription_payments :
-  // « actif » = période la plus récente d'un abonné dont period_end >= aujourd'hui.
-  // Paiement simulé = toujours réussi (pas de notion d'échec).
-  async getSubscriptionsAdmin(limit = 50): Promise<SubscriptionsSummary> {
-    const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const [payRes, apptRes] = await Promise.all([
-      supabase
-        .from("subscription_payments")
-        .select("id, user_id, amount, method, plan, period_start, period_end, paid_at, profile:profiles!subscription_payments_user_id_fkey(full_name)")
-        .order("paid_at", { ascending: false }),
-      supabase.from("appointments").select("amount_paid").eq("is_paid", true),
-    ]);
-    if (payRes.error) throw payRes.error;
-    if (apptRes.error) throw apptRes.error;
+  // Consultations & paiements (vue admin).
+  async getConsultationsAdmin(): Promise<ConsultationsSummary> {
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("amount_paid")
+      .eq("is_paid", true);
+    if (error) throw error;
 
-    const rows = (payRes.data ?? []) as unknown as {
-      id: string; user_id: string; amount: number; method: string | null; plan: string | null;
-      period_start: string | null; period_end: string | null; paid_at: string;
-      profile: { full_name: string | null } | null;
-    }[];
-
-    const revenuePremium = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
-    const revenueConsultation = (apptRes.data ?? []).reduce((s, a) => s + (a.amount_paid ?? 0), 0);
-    const paidConsultationCount = (apptRes.data ?? []).length;
-
-    // Période la plus récente par abonné → actif/expiré.
-    const latestByUser = new Map<string, string | null>();
-    for (const r of rows) {
-      const cur = latestByUser.get(r.user_id);
-      if (cur === undefined || (r.period_end ?? "") > (cur ?? "")) latestByUser.set(r.user_id, r.period_end ?? null);
-    }
-    let activeCount = 0;
-    let expiredCount = 0;
-    for (const end of latestByUser.values()) {
-      if (end && end >= today) activeCount += 1;
-      else expiredCount += 1;
-    }
-
-    const payments: AdminSubscriptionPayment[] = rows.slice(0, limit).map((r) => ({
-      id: r.id,
-      userName: r.profile?.full_name ?? null,
-      amount: r.amount,
-      method: r.method,
-      plan: r.plan,
-      paid_at: r.paid_at,
-      period_start: r.period_start,
-      period_end: r.period_end,
-    }));
-
-    return { activeCount, expiredCount, revenuePremium, revenueConsultation, paidConsultationCount, payments };
+    const revenueConsultation = (data ?? []).reduce((s, a) => s + (a.amount_paid ?? 0), 0);
+    const paidConsultationCount = (data ?? []).length;
+    return { revenueConsultation, paidConsultationCount };
   },
 
   // ---------------- 2. Statistiques ----------------
@@ -454,16 +394,14 @@ export const adminService = {
     return { months: buckets.map((b) => b.label), signups, orders, appointments };
   },
 
-  // Revenus (marketplace livré + consultations payées) + nb d'abonnées premium.
+  // Revenus (marketplace livré + consultations payées).
   async getRevenueStats(): Promise<RevenueStats> {
-    const [ordersRes, apptRes, premiumRes] = await Promise.all([
+    const [ordersRes, apptRes] = await Promise.all([
       supabase.from("marketplace_orders").select("total_amount").eq("status", "completed"),
       supabase.from("appointments").select("amount_paid").eq("is_paid", true),
-      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("is_premium", true),
     ]);
     if (ordersRes.error) throw ordersRes.error;
     if (apptRes.error) throw apptRes.error;
-    if (premiumRes.error) throw premiumRes.error;
 
     const marketplaceRevenue = (ordersRes.data ?? []).reduce((s, o) => s + (o.total_amount ?? 0), 0);
     const consultationRevenue = (apptRes.data ?? []).reduce((s, a) => s + (a.amount_paid ?? 0), 0);
@@ -471,7 +409,6 @@ export const adminService = {
       marketplaceRevenue,
       consultationRevenue,
       totalRevenue: marketplaceRevenue + consultationRevenue,
-      premiumCount: premiumRes.count ?? 0,
     };
   },
 
@@ -522,13 +459,12 @@ export const adminService = {
       supabase.from("marketplace_orders").select("id", { count: "exact", head: true }).eq("user_id", userId),
       supabase.from("community_posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
       supabase.from("appointments").select("id", { count: "exact", head: true }).eq("patient_id", userId),
-      supabase.from("profiles").select("is_premium, created_at").eq("id", userId).maybeSingle(),
+      supabase.from("profiles").select("created_at").eq("id", userId).maybeSingle(),
     ]);
     return {
       orders: ordersRes.count ?? 0,
       posts: postsRes.count ?? 0,
       appointments: apptRes.count ?? 0,
-      isPremium: profileRes.data?.is_premium ?? false,
       createdAt: profileRes.data?.created_at ?? null,
     };
   },

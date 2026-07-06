@@ -18,7 +18,7 @@ import { useAppSettings, SERVICE_UNAVAILABLE_MSG } from "@/hooks/useAppSettings"
 import { useToast } from "@/providers/ToastProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { notificationsService } from "@/lib/notifications-service";
-import { PREMIUM_ENABLED, SHOW_ARTICLES } from "@/lib/app-config";
+import { SHOW_ARTICLES } from "@/lib/app-config";
 import { appointmentsService, doctorDisplayName, formatAppointmentTime, type AppointmentWithDoctor } from "@/lib/appointments-service";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, formatOrderDate, orderItemCount } from "@/lib/order-display";
@@ -79,7 +79,7 @@ function apptShort(dateISO: string): string {
 export default function CycleHome() {
   const { profile, session, role } = useAuth();
   const { cycles, prediction, loading, reload, offline, cachedAt } = useCycles();
-  const { marketplace_enabled, doctors_enabled, premium_enabled } = useAppSettings();
+  const { marketplace_enabled, doctors_enabled } = useAppSettings();
   const toast = useToast();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
@@ -356,36 +356,6 @@ export default function CycleHome() {
             ))}
           </View>
         </FadeInView>
-
-        {/* 7 · Premium (surface retirée tant que PREMIUM_ENABLED=false — réversible) */}
-        {PREMIUM_ENABLED ? (
-        <FadeInView fill={false} delay={STEP * 7}>
-          {profile?.is_premium ? (
-            <View style={styles.premiumActive}>
-              <Ionicons name="checkmark-circle" size={16} color={colors.primaryDark} />
-              <Text style={styles.premiumActiveText}>Premium actif</Text>
-            </View>
-          ) : (
-            <Card
-              onPress={() => { if (!premium_enabled) return toast.info(SERVICE_UNAVAILABLE_MSG); router.push("/(user)/premium"); }}
-              haptic
-              accessibilityLabel="Passer au mode premium"
-              style={styles.premiumCard}
-            >
-              <View style={styles.premiumIcon}>
-                <Ionicons name="sparkles" size={20} color={colors.accent} />
-              </View>
-              <View style={styles.premiumText}>
-                <Text style={styles.premiumTitle}>Passer au mode premium</Text>
-                <Text style={styles.premiumSub}>
-                  Messagerie illimitée avec les médecins • Conseils à tout moment • Suivi prioritaire
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.primaryDark} />
-            </Card>
-          )}
-        </FadeInView>
-        ) : null}
       </ScrollView>
     </Screen>
   );
@@ -433,14 +403,6 @@ const styles = StyleSheet.create({
   ctaTitle: { color: colors.white, fontSize: 16, fontFamily: fonts.bodyBold, fontWeight: "700" },
   ctaSub: { ...typography.caption, color: colors.white, opacity: 0.9, fontFamily: fonts.body },
 
-  // Promotion premium
-  premiumCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  premiumIcon: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
-  premiumText: { flex: 1, gap: 2 },
-  premiumTitle: { ...typography.name, color: colors.primaryDark },
-  premiumSub: { ...typography.caption, color: colors.textMuted },
-  premiumActive: { flexDirection: "row", alignItems: "center", gap: spacing.xs, alignSelf: "flex-start", backgroundColor: colors.primaryLight, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill },
-  premiumActiveText: { ...typography.caption, color: colors.primaryDark, fontFamily: fonts.bodySemiBold },
 
   // Cartes contextuelles (prochain RDV, commande en cours)
   contextStack: { gap: spacing.sm },

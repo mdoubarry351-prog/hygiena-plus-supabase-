@@ -60,7 +60,7 @@ export default function BookAppointment() {
   const router = useRouter();
   const { session, profile, role } = useAuth();
   const toast = useToast();
-  const { appointments_enabled, premium_enabled, messaging_enabled } = useAppSettings();
+  const { appointments_enabled, messaging_enabled } = useAppSettings();
 
   const [doctor, setDoctor] = useState<DoctorWithProfile | null>(null);
   const [loading, setLoading] = useState(true);

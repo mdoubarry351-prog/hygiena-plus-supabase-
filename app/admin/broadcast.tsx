@@ -11,19 +11,15 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/providers/ToastProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService } from "@/lib/admin-service";
-import { PREMIUM_ENABLED } from "@/lib/app-config";
 import { hapticSuccess } from "@/lib/haptics";
 import { colors, radius, spacing, typography } from "@/theme";
 
-// Publics ciblables (alignés sur la RPC admin_broadcast). Le segment « Premium »
-// est retiré tant que le Premium est désactivé (réversible) ; l'envoi reste intact.
-const ALL_AUDIENCES: { value: string; label: string }[] = [
+// Publics ciblables (alignés sur la RPC admin_broadcast).
+const AUDIENCES: { value: string; label: string }[] = [
   { value: "all", label: "Tout le monde" },
   { value: "user", label: "Utilisatrices" },
-  { value: "premium", label: "Abonnées Premium" },
   { value: "doctor", label: "Médecins" },
 ];
-const AUDIENCES = PREMIUM_ENABLED ? ALL_AUDIENCES : ALL_AUDIENCES.filter((a) => a.value !== "premium");
 
 // Au-delà de ce seuil, on insiste sur la confirmation (gros envoi).
 const LARGE_THRESHOLD = 50;

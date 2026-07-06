@@ -12,8 +12,7 @@ import { FadeInView } from "@/components/FadeInView";
 import { MenuRow } from "@/components/MenuRow";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { useAuth } from "@/providers/AuthProvider";
-import { PREMIUM_ENABLED } from "@/lib/app-config";
-import { colors, fonts, radius, shadows, spacing, typography } from "@/theme";
+import { colors, fonts, shadows, spacing, typography } from "@/theme";
 
 const STEP = 55; // pas de l'apparition échelonnée (cohérent Vagues 1-5)
 
@@ -51,7 +50,7 @@ export default function Profile() {
     <Screen>
       <View style={styles.fill}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {/* En-tête : avatar + identité + statut Premium */}
+        {/* En-tête : avatar + identité */}
         <FadeInView fill={false} delay={0} style={styles.group}>
           <Text style={typography.h2}>Mon profil</Text>
 
@@ -74,30 +73,6 @@ export default function Profile() {
             ) : null}
           </View>
 
-          {PREMIUM_ENABLED ? (
-            <Card onPress={() => router.push("/(user)/premium")} haptic accessibilityLabel="Mon abonnement" style={[styles.statusCard, profile.is_premium && styles.statusCardPremium]}>
-              <View style={styles.statusLeft}>
-                <View style={[styles.statusIcon, profile.is_premium && styles.statusIconPremium]}>
-                  <Ionicons name={profile.is_premium ? "star" : "star-outline"} size={20} color={profile.is_premium ? colors.accent : colors.textMuted} />
-                </View>
-                <View style={styles.statusTextWrap}>
-                  <Text style={styles.statusTitle}>
-                    {profile.is_premium ? "Compte Premium" : "Compte gratuit"}
-                  </Text>
-                  <Text style={styles.statusSub}>
-                    {profile.is_premium
-                      ? "Messagerie médecins illimitée. Gérer mon abonnement."
-                      : "Passe Premium pour écrire aux médecins."}
-                  </Text>
-                </View>
-              </View>
-              {profile.is_premium ? (
-                <Text style={styles.badge}>PREMIUM</Text>
-              ) : (
-                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-              )}
-            </Card>
-          ) : null}
         </FadeInView>
 
         {/* Mes activités */}
@@ -154,23 +129,5 @@ const styles = StyleSheet.create({
   contactLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   contactText: { ...typography.caption, color: colors.textMuted },
   email: { ...typography.caption },
-  statusCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
-  statusCardPremium: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  statusLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 },
-  statusIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
-  statusIconPremium: { backgroundColor: colors.white },
-  statusTextWrap: { flex: 1 },
-  statusTitle: { ...typography.name },
-  statusSub: { ...typography.caption, marginTop: 2, flexShrink: 1 },
-  badge: {
-    ...typography.caption,
-    color: colors.white,
-    backgroundColor: colors.accent,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-    overflow: "hidden",
-    fontWeight: "700",
-  },
   sectionTitle: { marginTop: spacing.sm },
 });
