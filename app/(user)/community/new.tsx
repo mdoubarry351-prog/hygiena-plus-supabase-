@@ -35,7 +35,9 @@ export default function NewPost() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   // En mode édition, `id` est l'id du post à modifier (sinon création).
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  // `anonymous` / `photo` : raccourcis du composeur du fil (mode anonyme
+  // pré-coché / sélecteur de photos ouvert à l'arrivée).
+  const { id, anonymous, photo } = useLocalSearchParams<{ id?: string; anonymous?: string; photo?: string }>();
   const isEdit = !!id;
   const toast = useToast();
   const confirm = useConfirm();
@@ -110,6 +112,17 @@ export default function NewPost() {
     })();
     return () => { alive = false; };
   }, [isEdit]);
+
+  // Raccourcis du composeur (création uniquement) : « Anonyme » pré-coche le
+  // mode anonyme ; « Photo » ouvre directement le sélecteur d'images.
+  const shortcutDone = useRef(false);
+  useEffect(() => {
+    if (isEdit || needsRules || shortcutDone.current) return;
+    shortcutDone.current = true;
+    if (anonymous === "1") setIsAnonymous(true);
+    if (photo === "1") pickImages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, needsRules, anonymous, photo]);
 
   // Sauvegarde locale auto (debounce léger). Texte vide → on efface le brouillon.
   useEffect(() => {

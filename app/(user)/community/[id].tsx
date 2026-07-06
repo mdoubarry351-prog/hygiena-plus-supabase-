@@ -184,7 +184,7 @@ export default function PostDetail() {
       title: "Ma publication",
       options: [
         { label: "Modifier", icon: "create-outline", onPress: () => router.push({ pathname: "/(user)/community/new", params: { id: post.id } }) },
-        { label: "Partager", icon: "share-social-outline", onPress: sharePost },
+        { label: "Partager", icon: "arrow-redo-outline", onPress: sharePost },
         { label: "Supprimer", icon: "trash-outline", destructive: true, onPress: deleteMyPost },
       ],
     });
@@ -288,7 +288,7 @@ export default function PostDetail() {
     setSheet({
       title: "Publication",
       options: [
-        { label: "Partager", icon: "share-social-outline", onPress: sharePost },
+        { label: "Partager", icon: "arrow-redo-outline", onPress: sharePost },
         { label: "Signaler", icon: "flag-outline", onPress: () => reportReasonAlert("Signaler la publication", (r) => communityService.reportPost(post.id, post.user_id ?? null, r)) },
         ...(canBlock ? [{ label: "Bloquer cet utilisateur", icon: "ban-outline" as const, destructive: true, onPress: () => confirmBlock(post.user_id!, () => router.back()) }] : []),
       ],
