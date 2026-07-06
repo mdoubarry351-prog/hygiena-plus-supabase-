@@ -10,7 +10,7 @@ export const NOTIF_PREF_DEFS: { key: string; label: string; sub: string; icon: s
   { key: "appointments", label: "Rappels de rendez-vous", sub: "Demandes, statuts et rappels", icon: "calendar-outline", types: ["appointment_new", "appointment_status", "appointment_reminder"] },
   { key: "community", label: "Notifications communautaires", sub: "Commentaires, réponses et réactions", icon: "people-outline", types: ["community_comment", "community_reply", "community_like"] },
   { key: "doctor_messages", label: "Messages des médecins", sub: "Réponses des médecins en messagerie", icon: "chatbubbles-outline", types: ["doctor_message"] },
-  { key: "marketplace", label: "Notifications Marketplace", sub: "Suivi de vos commandes", icon: "bag-handle-outline", types: ["order_status"] },
+  { key: "marketplace", label: "Notifications Marketplace", sub: "Suivi de vos commandes et demandes d'avis", icon: "bag-handle-outline", types: ["order_status", "order_review"] },
   { key: "system", label: "Notifications système", sub: "Annonces et messages généraux", icon: "megaphone-outline", types: ["admin_broadcast", "general"] },
 ];
 

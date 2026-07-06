@@ -133,6 +133,8 @@ export default function PostDetail() {
       setReplyTo(null);
       const c = await communityService.getComments(post.id);
       setComments(c);
+      // Garde le compteur de la carte cohérent avec le nombre réel de commentaires.
+      setPost((prev) => (prev ? { ...prev, comments_count: c.length } : prev));
       hapticSuccess();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Commentaire échoué");

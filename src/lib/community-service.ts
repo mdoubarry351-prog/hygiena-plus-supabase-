@@ -275,10 +275,12 @@ export const communityService = {
   // Fil d'actualité : lecture via la vue sécurisée community_posts_safe
   // (anonymat garanti côté SQL), puis fusion des auteurs côté JS.
   async getPosts(): Promise<CommunityPostWithAuthor[]> {
+    // Borné : la modération admin ne charge jamais toute la table d'un coup.
     const { data, error } = await supabase
       .from("community_posts_safe")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (error) throw error;
     return enrichSafePosts(data ?? []);
   },
@@ -354,7 +356,8 @@ export const communityService = {
     const { data, error } = await supabase
       .from("doctors")
       .select("id, specialty, profile:profiles!doctors_user_id_fkey(full_name, avatar_url)")
-      .eq("is_validated", true);
+      .eq("is_validated", true)
+      .limit(200); // plafond de sécurité (le filtre par nom est fait ensuite côté client)
     if (error) throw error;
     const rows = (data ?? []) as {
       id: string;
@@ -477,7 +480,8 @@ export const communityService = {
       .from("community_posts")
       .select("*")
       .eq("user_id", me)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (error) throw error;
     return data ?? [];
   },
@@ -490,7 +494,8 @@ export const communityService = {
       .from("community_comments")
       .select("*")
       .eq("user_id", me)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (error) throw error;
     const rows = (data ?? []) as CommunityComment[];
     const postIds = Array.from(new Set(rows.map((r) => r.post_id)));
@@ -510,7 +515,8 @@ export const communityService = {
       .from("community_likes")
       .select("post_id, created_at")
       .eq("user_id", me)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (error) throw error;
     const ids = (likes ?? []).map((l) => l.post_id);
     if (ids.length === 0) return [];
@@ -543,7 +549,8 @@ export const communityService = {
       .from("community_comments_safe")
       .select("*")
       .eq("post_id", postId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .limit(500); // borne de sécurité sur un fil très commenté
     if (error) throw error;
     const rows = (data ?? []) as CommunityCommentSafe[];
     // Likes de l'utilisatrice sur ces commentaires (requête séparée).

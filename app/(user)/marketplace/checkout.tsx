@@ -12,6 +12,7 @@ import { TrustRow } from "@/components/TrustRow";
 import { onlyDigits, toE164, isValidGuineaLocal, formatStoredPhone } from "@/lib/phone";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
+import { useAppSettings, SERVICE_UNAVAILABLE_MSG } from "@/hooks/useAppSettings";
 import { useCart } from "@/providers/CartProvider";
 import {
   marketplaceService,
@@ -36,6 +37,7 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 
 export default function Checkout() {
   const { session, profile } = useAuth();
+  const { marketplace_enabled } = useAppSettings();
   const { items, total, clear } = useCart();
   const router = useRouter();
   const toast = useToast();
@@ -107,6 +109,8 @@ export default function Checkout() {
 
   async function handleSubmit() {
     if (!session?.user) return;
+    // La boutique peut avoir été coupée par l'admin pendant que le panier était ouvert.
+    if (!marketplace_enabled) { toast.info(SERVICE_UNAVAILABLE_MSG); return; }
     if (items.length === 0) { toast.info("Ajoutez des produits avant de commander."); return; }
     if (!isValidGuineaLocal(phone)) { toast.info("Saisissez un numéro guinéen à 9 chiffres."); return; }
     if (deliveryMode === "delivery" && !neighborhood.trim()) {

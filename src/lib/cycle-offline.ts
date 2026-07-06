@@ -174,13 +174,35 @@ export async function addCycleSmart(
   }
 }
 
+// Clé d'identification d'une op (pour comparer par id de ligne).
+function opId(op: PendingOp): string {
+  return op.kind === "add" ? op.row.id : op.id;
+}
+
 export async function updateCycleSmart(
   userId: string,
   id: string,
   patch: TablesUpdate<"menstrual_cycles">
 ): Promise<{ queued: boolean }> {
+  // RÉCONCILIATION : si la ligne a été créée hors-ligne et n'est pas encore
+  // synchronisée (un `add` en attente), le serveur ne la connaît pas → on fusionne
+  // la modification dans l'`add` en file (au lieu de partir au réseau et d'échouer).
+  const ops = await readPending(userId);
+  const addIdx = ops.findIndex((o) => o.kind === "add" && o.row.id === id);
+  if (addIdx >= 0) {
+    const add = ops[addIdx];
+    if (add.kind === "add") add.row = { ...add.row, ...patch } as MenstrualCycle;
+    await writePending(userId, ops);
+    const cache = await readCyclesCache(userId);
+    if (cache) {
+      await writeCyclesCache(userId, cache.cycles.map((c) => (c.id === id ? ({ ...c, ...patch } as MenstrualCycle) : c)));
+    }
+    return { queued: true };
+  }
+
   try {
-    const { error } = await supabase.from("menstrual_cycles").update(patch).eq("id", id).select("id").single();
+    // Pas de .single() : un 0-ligne (bord de course) ne doit pas lever d'erreur.
+    const { error } = await supabase.from("menstrual_cycles").update(patch).eq("id", id);
     if (error) throw error;
     return { queued: false };
   } catch (e) {
@@ -191,9 +213,25 @@ export async function updateCycleSmart(
 }
 
 export async function deleteCycleSmart(userId: string, id: string): Promise<{ queued: boolean }> {
+  // RÉCONCILIATION : si la ligne n'est qu'un `add` en attente (jamais montée au
+  // serveur), supprimer = retirer l'`add` (et toute `update`) de la file. Sinon
+  // le `add` serait rejoué plus tard et la suppression annulée toute seule.
+  const ops = await readPending(userId);
+  const hasPendingAdd = ops.some((o) => o.kind === "add" && o.row.id === id);
+  if (hasPendingAdd) {
+    await writePending(userId, ops.filter((o) => opId(o) !== id));
+    const cache = await readCyclesCache(userId);
+    if (cache) await writeCyclesCache(userId, cache.cycles.filter((c) => c.id !== id));
+    return { queued: false };
+  }
+
   try {
     const { error } = await supabase.from("menstrual_cycles").delete().eq("id", id);
     if (error) throw error;
+    // Purge d'éventuelles `update` en attente pour cet id (deviendraient orphelines).
+    if (ops.some((o) => o.kind !== "add" && o.id === id)) {
+      await writePending(userId, ops.filter((o) => opId(o) !== id));
+    }
     return { queued: false };
   } catch (e) {
     if (!isNetworkError(e)) throw e;

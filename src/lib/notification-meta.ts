@@ -39,6 +39,7 @@ const TYPE_TO_CATEGORY: Record<string, NotifCategoryKey> = {
   community_reply: "community",
   community_like: "community",
   order_status: "marketplace",
+  order_review: "marketplace",
   admin_broadcast: "system",
   general: "system",
 };
@@ -66,6 +67,7 @@ const TYPE_META: Record<string, NotifTypeMeta> = {
   community_reply: { icon: "arrow-undo", color: colors.primary },
   community_like: { icon: "heart", color: colors.danger },
   order_status: { icon: "cube", color: colors.primary },
+  order_review: { icon: "star", color: colors.secondary },
   admin_broadcast: { icon: "megaphone", color: colors.primary },
   general: { icon: "notifications", color: colors.primary },
 };

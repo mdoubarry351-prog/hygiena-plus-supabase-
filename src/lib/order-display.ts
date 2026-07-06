@@ -33,6 +33,13 @@ export const ORDER_STATUS_TONE: Record<OrderStatus, BadgeTone> = {
   cancelled: "danger",
 };
 
+// Libellé de statut tenant compte du mode : pour une commande en RETRAIT,
+// « delivering » signifie « prête à retirer », pas « expédiée ».
+export function orderStatusLabel(status: OrderStatus, deliveryMode?: MarketplaceOrder["delivery_mode"] | null): string {
+  if (status === "delivering" && deliveryMode === "pickup") return "Prête pour le retrait";
+  return ORDER_STATUS_LABELS[status];
+}
+
 export const PAYMENT_LABELS: Record<string, string> = {
   orange_money: "Orange Money",
   mtn: "MTN Money",

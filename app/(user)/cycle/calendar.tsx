@@ -14,7 +14,7 @@ import { useCycles } from "@/hooks/useCycles";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import {  } from "@/lib/app-config";
 import { hapticLight } from "@/lib/haptics";
-import { toISODate } from "@/lib/dates";
+import { toISODate, parseISODate } from "@/lib/dates";
 import type { MenstrualCycle } from "@/lib/database.types";
 import { colors, durations, fonts, phase, radius, spacing, typography } from "@/theme";
 
@@ -86,8 +86,8 @@ export default function CalendarScreen() {
 
     // Jours de règles réels
     for (const c of cycles) {
-      const start = new Date(c.period_start);
-      const end = c.period_end ? new Date(c.period_end) : start;
+      const start = parseISODate(c.period_start);
+      const end = c.period_end ? parseISODate(c.period_end) : start;
       const cur = new Date(start);
       while (cur <= end) {
         map.set(dayKey(cur), "period");
@@ -124,7 +124,7 @@ export default function CalendarScreen() {
   const entriesByDay = useMemo(() => {
     const map = new Map<string, MenstrualCycle>();
     for (const c of cycles) {
-      if (hasEntry(c)) map.set(dayKey(new Date(c.period_start)), c);
+      if (hasEntry(c)) map.set(dayKey(parseISODate(c.period_start)), c);
     }
     return map;
   }, [cycles]);

@@ -66,7 +66,7 @@ export default function CommunityHome() {
   const toast = useToast();
   const confirm = useConfirm();
   const isSearching = !!search.trim();
-  const isFiltering = isSearching || activeCat !== "all" || doctorsOnly;
+  const isFiltering = isSearching || activeCat !== "all" || doctorsOnly || followedOnly || sortMode === "trending";
   // Prénom pour l'invitation du composeur (« Quoi de neuf, Mariam ? »).
   const firstName = (profile?.first_name || profile?.full_name?.trim().split(/\s+/)[0] || "").trim();
 
@@ -304,7 +304,7 @@ export default function CommunityHome() {
           </Pressable>
           <View style={styles.composerDivider} />
           <Pressable
-            onPress={() => { hapticLight(); router.push("/(user)/community/new"); }}
+            onPress={() => { hapticLight(); router.push({ pathname: "/(user)/community/new", params: { category: "1" } }); }}
             style={({ pressed }) => [styles.composerQuick, pressed && styles.chipPressed]}
             accessibilityRole="button"
             accessibilityLabel="Publier dans une catégorie"

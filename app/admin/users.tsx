@@ -53,7 +53,7 @@ export default function AdminUsers() {
     try {
       const [us, sus] = await Promise.all([
         adminService.getUsersPage(PAGE, 0, { search: searchRef.current || null }),
-        adminService.getSuspensions(),
+        adminService.getSuspensions(true),
       ]);
       setUsers(us);
       offsetRef.current = PAGE;

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { parseISODate, todayISO } from "@/lib/dates";
 import type { MenstrualCycle, TablesInsert, TablesUpdate } from "@/lib/database.types";
 
 export const SYMPTOMS = [
@@ -73,7 +74,7 @@ export const cycleService = {
 
   computePrediction(cycles: MenstrualCycle[]): CyclePrediction {
     const sorted = [...cycles].sort(
-      (a, b) => new Date(a.period_start).getTime() - new Date(b.period_start).getTime()
+      (a, b) => parseISODate(a.period_start).getTime() - parseISODate(b.period_start).getTime()
     );
     const DEFAULT_CYCLE = 28;
     const DEFAULT_PERIOD = 5;
@@ -82,14 +83,14 @@ export const cycleService = {
     // les saisies de test et les cycles irréguliers, en ignorant les doublons (0 j).
     const cycleLengths: number[] = [];
     for (let i = 1; i < sorted.length; i++) {
-      const len = daysBetween(new Date(sorted[i - 1].period_start), new Date(sorted[i].period_start));
+      const len = daysBetween(parseISODate(sorted[i - 1].period_start), parseISODate(sorted[i].period_start));
       if (len >= 5 && len <= 90) cycleLengths.push(len);
     }
 
     const periodLengths: number[] = [];
     for (const c of sorted) {
       if (c.period_end) {
-        const len = daysBetween(new Date(c.period_start), new Date(c.period_end)) + 1;
+        const len = daysBetween(parseISODate(c.period_start), parseISODate(c.period_end)) + 1;
         if (len > 0 && len < 15) periodLengths.push(len);
       }
     }
@@ -114,13 +115,24 @@ export const cycleService = {
       };
     }
 
-    const lastStart = new Date(last.period_start);
-    const nextPeriodStart = addDays(lastStart, averageCycleLength);
+    // Parse à midi local (parseISODate) : évite le décalage d'un jour hors UTC.
+    const lastStart = parseISODate(last.period_start);
+    const today = parseISODate(todayISO());
+
+    // Prochaines règles : on part du dernier cycle et on AVANCE de cycles entiers
+    // jusqu'à obtenir une date ≥ aujourd'hui (sinon, sans saisie récente, la
+    // prédiction resterait bloquée dans le passé).
+    let nextPeriodStart = addDays(lastStart, averageCycleLength);
+    const guard = Math.max(averageCycleLength, 1);
+    let safety = 0;
+    while (nextPeriodStart < today && safety < 500) {
+      nextPeriodStart = addDays(nextPeriodStart, guard);
+      safety += 1;
+    }
     const nextOvulation = addDays(nextPeriodStart, -14);
     const fertileWindowStart = addDays(nextOvulation, -5);
     const fertileWindowEnd = addDays(nextOvulation, 1);
 
-    const today = new Date(); today.setHours(0, 0, 0, 0);
     const currentDay = daysBetween(lastStart, today) + 1;
 
     return {
@@ -153,13 +165,13 @@ function fmtISODate(iso: string): string {
 export function buildCycleSummary(cycles: MenstrualCycle[], prediction: CyclePrediction | null): string | null {
   if (cycles.length < 2) return null;
   const sorted = [...cycles].sort(
-    (a, b) => new Date(a.period_start).getTime() - new Date(b.period_start).getTime()
+    (a, b) => parseISODate(a.period_start).getTime() - parseISODate(b.period_start).getTime()
   );
 
   // Régularité (écarts entre débuts consécutifs).
   const gaps: number[] = [];
   for (let i = 1; i < sorted.length; i++) {
-    const len = daysBetween(new Date(sorted[i - 1].period_start), new Date(sorted[i].period_start));
+    const len = daysBetween(parseISODate(sorted[i - 1].period_start), parseISODate(sorted[i].period_start));
     if (len >= 5 && len <= 90) gaps.push(len);
   }
   const periodLengthsCount = sorted.filter((c) => !!c.period_end).length;

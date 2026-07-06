@@ -37,7 +37,7 @@ export default function NewPost() {
   // En mode édition, `id` est l'id du post à modifier (sinon création).
   // `anonymous` / `photo` : raccourcis du composeur du fil (mode anonyme
   // pré-coché / sélecteur de photos ouvert à l'arrivée).
-  const { id, anonymous, photo } = useLocalSearchParams<{ id?: string; anonymous?: string; photo?: string }>();
+  const { id, anonymous, photo, category: categoryParam } = useLocalSearchParams<{ id?: string; anonymous?: string; photo?: string; category?: string }>();
   const isEdit = !!id;
   const toast = useToast();
   const confirm = useConfirm();
@@ -114,15 +114,17 @@ export default function NewPost() {
   }, [isEdit]);
 
   // Raccourcis du composeur (création uniquement) : « Anonyme » pré-coche le
-  // mode anonyme ; « Photo » ouvre directement le sélecteur d'images.
+  // mode anonyme ; « Photo » ouvre le sélecteur d'images ; « Catégorie » ouvre
+  // directement le sélecteur de catégorie.
   const shortcutDone = useRef(false);
   useEffect(() => {
     if (isEdit || needsRules || shortcutDone.current) return;
     shortcutDone.current = true;
     if (anonymous === "1") setIsAnonymous(true);
     if (photo === "1") pickImages();
+    if (categoryParam === "1") setShowCatSheet(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEdit, needsRules, anonymous, photo]);
+  }, [isEdit, needsRules, anonymous, photo, categoryParam]);
 
   // Sauvegarde locale auto (debounce léger). Texte vide → on efface le brouillon.
   useEffect(() => {

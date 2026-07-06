@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import * as FileSystem from "expo-file-system/legacy";
+import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
 export type CsvColumn = { key: string; label: string };
@@ -45,13 +45,15 @@ export async function exportCsv(
     return;
   }
 
-  const uri = `${FileSystem.cacheDirectory}${name}`;
-  await FileSystem.writeAsStringAsync(uri, csv);
+  // Natif : nouvelle API expo-file-system (File/Paths), alignée sur image-download.
+  const file = new File(Paths.cache, name);
+  try { file.create({ overwrite: true }); } catch { /* déjà présent : on écrase via write */ }
+  file.write(csv);
 
   if (!(await Sharing.isAvailableAsync())) {
     throw new Error("Le partage n'est pas disponible sur cet appareil.");
   }
-  await Sharing.shareAsync(uri, {
+  await Sharing.shareAsync(file.uri, {
     mimeType: "text/csv",
     dialogTitle: name,
     UTI: "public.comma-separated-values-text",

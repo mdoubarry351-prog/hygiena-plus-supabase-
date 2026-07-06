@@ -882,11 +882,17 @@ export const adminService = {
   },
 
   // ---------------- 9. Suspensions ----------------
-  async getSuspensions(): Promise<SuspensionRow[]> {
-    const { data, error } = await supabase
+  // `activeOnly` : ne renvoie que les suspensions ACTIVES (utilisé par les écrans
+  // Utilisateurs/Comptes qui n'ont besoin que de la carte des suspendus — évite
+  // de rapatrier tout l'historique des suspensions levées à chaque chargement).
+  async getSuspensions(activeOnly = false): Promise<SuspensionRow[]> {
+    let query = supabase
       .from("user_suspensions")
       .select("*, user:profiles!user_suspensions_user_id_fkey(full_name, email)")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (activeOnly) query = query.eq("is_active", true);
+    const { data, error } = await query;
     if (error) throw error;
     return (data ?? []) as SuspensionRow[];
   },

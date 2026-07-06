@@ -55,7 +55,7 @@ export default function AdminAccounts() {
       const [us, docs, sus] = await Promise.all([
         adminService.getUsersPage(PAGE, 0),
         adminService.getDoctors(),
-        adminService.getSuspensions(),
+        adminService.getSuspensions(true),
       ]);
       setProfiles(us);
       offsetRef.current = PAGE;
