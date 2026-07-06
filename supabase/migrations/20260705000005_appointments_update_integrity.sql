@@ -46,8 +46,9 @@ declare
   is_patient boolean;
   is_doctor  boolean;
 begin
-  -- Service de confiance / admin : tout autorisé (confirmation de paiement, etc.).
-  if auth.role() = 'service_role' or public.is_admin() then
+  -- Service de confiance / contexte serveur / admin : tout autorisé
+  -- (confirmation de paiement, fonctions SECURITY DEFINER, cascades).
+  if current_user not in ('authenticated', 'anon') or public.is_admin() then
     return new;
   end if;
 

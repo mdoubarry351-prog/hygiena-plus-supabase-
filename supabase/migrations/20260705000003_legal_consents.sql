@@ -39,7 +39,8 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if auth.role() = 'service_role' then
+  -- Contextes serveur autorisés (service_role, cascade suppression de compte).
+  if current_user not in ('authenticated', 'anon') then
     return coalesce(new, old);
   end if;
   raise exception 'legal_consents est append-only' using errcode = '42501';

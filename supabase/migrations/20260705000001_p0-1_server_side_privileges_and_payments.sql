@@ -29,8 +29,11 @@ security definer
 set search_path = public
 as $$
 begin
-  -- Le service_role (Edge Functions de confiance) et les admins passent.
-  if auth.role() = 'service_role' or public.is_admin() then
+  -- Seules les requêtes API CLIENTES (rôles authenticated/anon) sont
+  -- contraintes. Les contextes serveur passent : service_role (Edge Functions),
+  -- fonctions SECURITY DEFINER (exécutées en tant que propriétaire) et
+  -- cascades auth (supabase_auth_admin, sans JWT).
+  if current_user not in ('authenticated', 'anon') or public.is_admin() then
     return new;
   end if;
 
@@ -88,8 +91,10 @@ returns trigger
 language plpgsql
 as $$
 begin
-  if auth.role() = 'service_role' then
-    return coalesce(new, old);  -- cascade delete / correction serveur autorisée
+  -- Contextes serveur autorisés (service_role, cascade de suppression de
+  -- compte via supabase_auth_admin) ; requêtes API clientes refusées.
+  if current_user not in ('authenticated', 'anon') then
+    return coalesce(new, old);
   end if;
   raise exception 'subscription_payments est append-only (historique financier)'
     using errcode = '42501';
@@ -111,9 +116,9 @@ security definer
 set search_path = public
 as $$
 begin
-  -- Service de confiance / admin : intégralité autorisée (validation paiement,
-  -- changement de statut, etc.).
-  if auth.role() = 'service_role' or public.is_admin() then
+  -- Service de confiance / contexte serveur / admin : intégralité autorisée
+  -- (validation paiement, changement de statut, cascades, etc.).
+  if current_user not in ('authenticated', 'anon') or public.is_admin() then
     return new;
   end if;
 
