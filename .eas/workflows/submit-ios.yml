@@ -1,0 +1,12 @@
+name: Submit iOS to App Store
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  submit_ios:
+    name: Submit latest iOS build
+    type: submit
+    params:
+      platform: ios
+      profile: production
