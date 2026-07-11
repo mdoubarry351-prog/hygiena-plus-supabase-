@@ -133,6 +133,8 @@ export default function PostDetail() {
       setReplyTo(null);
       const c = await communityService.getComments(post.id);
       setComments(c);
+      // Garde le compteur de la carte cohérent avec le nombre réel de commentaires.
+      setPost((prev) => (prev ? { ...prev, comments_count: c.length } : prev));
       hapticSuccess();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Commentaire échoué");
@@ -184,7 +186,7 @@ export default function PostDetail() {
       title: "Ma publication",
       options: [
         { label: "Modifier", icon: "create-outline", onPress: () => router.push({ pathname: "/(user)/community/new", params: { id: post.id } }) },
-        { label: "Partager", icon: "share-social-outline", onPress: sharePost },
+        { label: "Partager", icon: "arrow-redo-outline", onPress: sharePost },
         { label: "Supprimer", icon: "trash-outline", destructive: true, onPress: deleteMyPost },
       ],
     });
@@ -288,7 +290,7 @@ export default function PostDetail() {
     setSheet({
       title: "Publication",
       options: [
-        { label: "Partager", icon: "share-social-outline", onPress: sharePost },
+        { label: "Partager", icon: "arrow-redo-outline", onPress: sharePost },
         { label: "Signaler", icon: "flag-outline", onPress: () => reportReasonAlert("Signaler la publication", (r) => communityService.reportPost(post.id, post.user_id ?? null, r)) },
         ...(canBlock ? [{ label: "Bloquer cet utilisateur", icon: "ban-outline" as const, destructive: true, onPress: () => confirmBlock(post.user_id!, () => router.back()) }] : []),
       ],
@@ -302,7 +304,7 @@ export default function PostDetail() {
       title: "Commentaire",
       options: [
         { label: "Signaler", icon: "flag-outline", onPress: () => reportReasonAlert("Signaler le commentaire", (r) => communityService.reportComment(c, r)) },
-        ...(canBlock ? [{ label: "Bloquer cet utilisateur", icon: "ban-outline" as const, destructive: true, onPress: () => confirmBlock(c.user_id, () => load()) }] : []),
+        ...(canBlock ? [{ label: "Bloquer cet utilisateur", icon: "ban-outline" as const, destructive: true, onPress: () => confirmBlock(c.user_id!, () => load()) }] : []),
       ],
     });
   }

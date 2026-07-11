@@ -1,16 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <!-- Icône pleine : fond dégradé violet + Goutte-cœur blanche. -->
   <defs>
-    <linearGradient id="hgDropFull" x1="256" y1="72" x2="256" y2="444" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#10B981"/>
-      <stop offset="1" stop-color="#059669"/>
+    <linearGradient id="hgBg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8A63F0"/>
+      <stop offset="1" stop-color="#6C46D9"/>
     </linearGradient>
   </defs>
-  <!-- Fond mint PLEIN CADRE (sans transparence, jusqu'aux bords) -->
-  <rect x="0" y="0" width="512" height="512" fill="#D1FAE5"/>
-  <!-- Goutte centrée, ~58% -->
-  <g transform="translate(56.3 54.8) scale(0.78)">
-    <path d="M256 72 C296 142 384 232 384 316 A128 128 0 1 1 128 316 C128 232 216 142 256 72 Z"
-          fill="url(#hgDropFull)"/>
-    <ellipse cx="212" cy="232" rx="34" ry="70" transform="rotate(-28 212 232)" fill="#FFFFFF" opacity="0.28"/>
+  <rect width="512" height="512" fill="url(#hgBg)"/>
+  <circle cx="430" cy="70" r="120" fill="rgba(255,255,255,0.08)"/>
+  <circle cx="80" cy="440" r="150" fill="rgba(255,255,255,0.06)"/>
+  <g transform="translate(87 87) scale(0.66)">
+    <path fill="#FFFFFF" fill-rule="evenodd" clip-rule="evenodd" d="M256 60 C298 134 388 228 388 316 A132 132 0 1 1 124 316 C124 228 214 134 256 60 Z M256 388 C218 358 196 336 196 310 C196 288 212 274 230 274 C242 274 252 281 256 291 C260 281 270 274 282 274 C300 274 316 288 316 310 C316 336 294 358 256 388 Z"/>
   </g>
 </svg>

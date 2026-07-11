@@ -60,13 +60,15 @@ export default function CommunityHome() {
     followedOnly,
   });
   const { savedIds, toggle: toggleSave } = useBookmarks();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const router = useRouter();
   const meId = session?.user?.id;
   const toast = useToast();
   const confirm = useConfirm();
   const isSearching = !!search.trim();
-  const isFiltering = isSearching || activeCat !== "all" || doctorsOnly;
+  const isFiltering = isSearching || activeCat !== "all" || doctorsOnly || followedOnly || sortMode === "trending";
+  // Prénom pour l'invitation du composeur (« Quoi de neuf, Mariam ? »).
+  const firstName = (profile?.first_name || profile?.full_name?.trim().split(/\s+/)[0] || "").trim();
 
   // Recherche de médecins (identités publiques) — section en tête du fil quand on
   // recherche. Débounce ~350 ms, alignée sur le rechargement des publications.
@@ -153,11 +155,11 @@ export default function CommunityHome() {
     const options: ActionSheetOption[] = isMine
       ? [
           { label: "Modifier", icon: "create-outline", onPress: () => router.push({ pathname: "/(user)/community/new", params: { id: post.id } }) },
-          { label: "Partager", icon: "share-social-outline", onPress: () => sharePost(post) },
+          { label: "Partager", icon: "arrow-redo-outline", onPress: () => sharePost(post) },
           { label: "Supprimer", icon: "trash-outline", destructive: true, onPress: () => deleteMyPost(post.id) },
         ]
       : [
-          { label: "Partager", icon: "share-social-outline", onPress: () => sharePost(post) },
+          { label: "Partager", icon: "arrow-redo-outline", onPress: () => sharePost(post) },
           { label: "Signaler", icon: "flag-outline", onPress: () => reportPost(post) },
           ...(canBlock ? [{ label: "Bloquer cet utilisateur", icon: "ban-outline" as const, destructive: true, onPress: () => post.user_id && blockAuthor(post.user_id) }] : []),
         ];
@@ -260,6 +262,56 @@ export default function CommunityHome() {
           <PressableScale onPress={() => router.push("/(user)/community/saved")} haptic hitSlop={10} scaleTo={0.86} style={styles.iconBtn} accessibilityLabel="Publications enregistrées">
             <Ionicons name="bookmark-outline" size={22} color={colors.text} />
           </PressableScale>
+        </View>
+      </View>
+
+      {/* Composeur « Salon » (façon Facebook) : avatar + invitation à publier,
+          puis raccourcis Photo / Anonyme / Catégorie. Chaque zone ouvre l'écran
+          de création, pré-configuré pour les raccourcis. */}
+      <View style={styles.composer}>
+        <View style={styles.composerRow}>
+          <Avatar uri={profile?.avatar_url} name={profile?.full_name || profile?.email || "?"} size={38} />
+          <Pressable
+            onPress={() => { hapticLight(); router.push("/(user)/community/new"); }}
+            style={({ pressed }) => [styles.composerPrompt, pressed && styles.chipPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Écrire une publication"
+          >
+            <Text style={styles.composerPromptText} numberOfLines={1}>
+              {firstName ? `Quoi de neuf, ${firstName} ?` : "Quoi de neuf ?"}
+            </Text>
+          </Pressable>
+        </View>
+        <View style={styles.composerActions}>
+          <Pressable
+            onPress={() => { hapticLight(); router.push({ pathname: "/(user)/community/new", params: { photo: "1" } }); }}
+            style={({ pressed }) => [styles.composerQuick, pressed && styles.chipPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Publier une photo"
+          >
+            <Ionicons name="image" size={16} color={colors.secondary} />
+            <Text style={styles.composerQuickText}>Photo</Text>
+          </Pressable>
+          <View style={styles.composerDivider} />
+          <Pressable
+            onPress={() => { hapticLight(); router.push({ pathname: "/(user)/community/new", params: { anonymous: "1" } }); }}
+            style={({ pressed }) => [styles.composerQuick, pressed && styles.chipPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Publier anonymement"
+          >
+            <Ionicons name="flower" size={16} color={colors.danger} />
+            <Text style={styles.composerQuickText}>Anonyme</Text>
+          </Pressable>
+          <View style={styles.composerDivider} />
+          <Pressable
+            onPress={() => { hapticLight(); router.push({ pathname: "/(user)/community/new", params: { category: "1" } }); }}
+            style={({ pressed }) => [styles.composerQuick, pressed && styles.chipPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Publier dans une catégorie"
+          >
+            <Ionicons name="pricetag" size={15} color={colors.accent} />
+            <Text style={styles.composerQuickText}>Catégorie</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -371,11 +423,6 @@ export default function CommunityHome() {
         windowSize={11}
         keyboardShouldPersistTaps="handled"
       />
-
-      {/* FAB : publier — signature du design « fil épuré ». */}
-      <PressableScale onPress={() => router.push("/(user)/community/new")} haptic style={styles.fab} pressedStyle={styles.fabPressed} accessibilityLabel="Publier">
-        <Ionicons name="add" size={30} color={colors.white} />
-      </PressableScale>
 
       <ActionSheet
         visible={!!sheet}
@@ -501,8 +548,51 @@ const PostRow = memo(function PostRow({
 
         <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
-        {/* Aperçu du 1ᵉʳ commentaire (le plus aimé) : donne vie au fil et invite à
-            participer, façon Facebook. Un tap → commentaires du post. */}
+        {/* Ligne des compteurs (façon Facebook) : cœurs à gauche, commentaires à
+            droite. Masquée quand la publication n'a encore aucune réaction. */}
+        {post.likes_count > 0 || post.comments_count > 0 ? (
+          <View style={styles.countsRow}>
+            {post.likes_count > 0 ? (
+              <View style={styles.countsLeft}>
+                <View style={styles.likeBadge}>
+                  <Ionicons name="heart" size={10} color={colors.white} />
+                </View>
+                <Text style={styles.countsText}>{post.likes_count}</Text>
+              </View>
+            ) : <View />}
+            {post.comments_count > 0 ? (
+              <Pressable onPress={() => onOpenComments(post.id)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
+                <Text style={styles.countsText}>
+                  {post.comments_count} commentaire{post.comments_count > 1 ? "s" : ""}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* Barre d'actions « Salon » : 4 boutons égaux (J'aime / Commenter /
+            Partager / Garder). Le partage reprend la flèche courbe de Facebook. */}
+        <View style={styles.actionBar}>
+          <Pressable onPress={() => { hapticLight(); onLike(post.id); }} hitSlop={6} style={({ pressed }) => [styles.actionBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={liked ? "Je n'aime plus cette publication" : "J'aime cette publication"}>
+            <HeartButton active={liked} size={17} />
+            <Text style={[styles.actionLabel, liked && styles.actionLabelLiked]}>J'aime</Text>
+          </Pressable>
+          <Pressable onPress={() => onOpenComments(post.id)} hitSlop={6} style={({ pressed }) => [styles.actionBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel="Commenter la publication">
+            <Ionicons name="chatbubble-outline" size={16} color={colors.textMuted} />
+            <Text style={styles.actionLabel}>Commenter</Text>
+          </Pressable>
+          <Pressable onPress={() => { hapticLight(); onShare(post); }} hitSlop={6} style={({ pressed }) => [styles.actionBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel="Partager la publication">
+            <Ionicons name="arrow-redo-outline" size={17} color={colors.textMuted} />
+            <Text style={styles.actionLabel}>Partager</Text>
+          </Pressable>
+          <Pressable onPress={() => { hapticLight(); onToggleSave(post.id); }} hitSlop={6} style={({ pressed }) => [styles.actionBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
+            <BouncyIcon name={saved ? "bookmark" : "bookmark-outline"} size={16} color={saved ? colors.primary : colors.textMuted} popKey={saved} />
+            <Text style={[styles.actionLabel, saved && styles.actionLabelSaved]}>Garder</Text>
+          </Pressable>
+        </View>
+
+        {/* Aperçu du 1ᵉʳ commentaire (le plus aimé), sous la barre d'actions
+            comme sur Facebook. Un tap → commentaires du post. */}
         {post.firstComment ? (
           <Pressable onPress={() => onOpenComments(post.id)} style={({ pressed }) => [styles.cPreview, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
             <View style={styles.cPreviewAvatar}>
@@ -519,28 +609,6 @@ const PostRow = memo(function PostRow({
             </View>
           </Pressable>
         ) : null}
-
-        {/* Barre d'engagement en pilules : like + commenter à gauche, partage + signet à droite. */}
-        <View style={styles.postFoot}>
-          <View style={styles.footLeft}>
-            <Pressable onPress={() => { hapticLight(); onLike(post.id); }} hitSlop={6} style={({ pressed }) => [styles.pill, liked && styles.pillActive, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={liked ? "Je n'aime plus cette publication" : "J'aime cette publication"}>
-              <HeartButton active={liked} size={18} />
-              <Text style={[styles.pillCount, liked && styles.pillCountActive]}>{post.likes_count}</Text>
-            </Pressable>
-            <Pressable onPress={() => onOpenComments(post.id)} hitSlop={6} style={({ pressed }) => [styles.pill, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel="Voir les commentaires">
-              <Ionicons name="chatbubble-outline" size={17} color={colors.textMuted} />
-              <Text style={styles.pillCount}>{post.comments_count}</Text>
-            </Pressable>
-          </View>
-          <View style={styles.footRight}>
-            <Pressable onPress={() => { hapticLight(); onShare(post); }} hitSlop={6} style={({ pressed }) => [styles.roundBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel="Partager la publication">
-              <Ionicons name="share-social-outline" size={18} color={colors.textMuted} />
-            </Pressable>
-            <Pressable onPress={() => { hapticLight(); onToggleSave(post.id); }} hitSlop={6} style={({ pressed }) => [styles.roundBtn, saved && styles.roundBtnActive, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={saved ? "Retirer des enregistrements" : "Enregistrer la publication"}>
-              <BouncyIcon name={saved ? "bookmark" : "bookmark-outline"} size={18} color={saved ? colors.primary : colors.textMuted} popKey={saved} />
-            </Pressable>
-          </View>
-        </View>
     </Card>
     </FadeInView>
   );
@@ -585,8 +653,25 @@ const styles = StyleSheet.create({
   cPreviewAvatar: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
   cPreviewAvatarText: { fontSize: 10, fontWeight: "900", color: colors.primaryDark, fontFamily: typography.caption.fontFamily },
   cPreviewBody: { flex: 1 },
-  fab: { position: "absolute", right: spacing.md, bottom: spacing.lg, width: 58, height: 58, borderRadius: 29, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", ...shadows.lg },
-  fabPressed: { backgroundColor: colors.primaryDark },
+  // Composeur « Salon » (façon Facebook) en tête du fil.
+  composer: {
+    backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2, marginTop: spacing.md,
+    gap: spacing.sm, ...shadows.sm,
+  },
+  composerRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  composerPrompt: {
+    flex: 1, backgroundColor: colors.surface, borderRadius: radius.pill,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 1,
+  },
+  composerPromptText: { ...typography.body, fontSize: 13.5, color: colors.textMuted, fontWeight: "600" },
+  composerActions: {
+    flexDirection: "row", alignItems: "center",
+    borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm,
+  },
+  composerQuick: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 2 },
+  composerQuickText: { fontSize: 12, fontWeight: "800", color: colors.textMuted, fontFamily: typography.caption.fontFamily },
+  composerDivider: { width: 1, height: 16, backgroundColor: colors.border },
   topActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   iconBtn: { padding: spacing.xs },
   chipPressed: { opacity: 0.7 },
@@ -660,26 +745,27 @@ const styles = StyleSheet.create({
   docName: { ...typography.name },
   docSpec: { ...typography.caption, color: colors.primaryDark, fontWeight: "600" },
   body: { ...typography.body, color: colors.text, lineHeight: 22 },
-  // Séparateur discret entre le contenu et les actions.
-  postFoot: {
+  // Ligne des compteurs (cœurs / commentaires), au-dessus de la barre d'actions.
+  countsRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    marginTop: spacing.xs, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border,
+    marginTop: spacing.xs,
   },
-  footLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  footRight: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  // Pilules « like » / « commenter » : fond léger, arrondi plein.
-  pill: {
-    flexDirection: "row", alignItems: "center", gap: spacing.xs,
-    paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-  },
-  pillActive: { backgroundColor: colors.primaryLight },
-  pillCount: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
-  pillCountActive: { color: colors.primary },
-  // Boutons ronds « partager » / « signet » à droite.
-  roundBtn: {
-    width: 38, height: 38, borderRadius: radius.pill, backgroundColor: colors.surface,
+  countsLeft: { flexDirection: "row", alignItems: "center", gap: 5 },
+  likeBadge: {
+    width: 17, height: 17, borderRadius: radius.pill, backgroundColor: colors.danger,
     alignItems: "center", justifyContent: "center",
   },
-  roundBtnActive: { backgroundColor: colors.primaryLight },
+  countsText: { ...typography.caption, fontSize: 12.5, color: colors.textMuted, fontWeight: "600" },
+  // Barre d'actions « Salon » : 4 boutons égaux séparés du contenu par un filet.
+  actionBar: {
+    flexDirection: "row", alignItems: "center",
+    paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  actionBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 5, paddingVertical: 4, borderRadius: radius.sm,
+  },
+  actionLabel: { fontSize: 12, fontWeight: "800", color: colors.textMuted, fontFamily: typography.caption.fontFamily },
+  actionLabelLiked: { color: colors.danger },
+  actionLabelSaved: { color: colors.primary },
 });

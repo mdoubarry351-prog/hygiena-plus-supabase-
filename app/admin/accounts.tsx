@@ -21,9 +21,11 @@ const ROLE_LABELS: Record<UserRole, string> = { user: "Utilisateur", doctor: "M�
 // Couleur (boutons sélecteurs) + ton de badge par rôle (badge tonal).
 const ROLE_COLORS: Record<UserRole, string> = { user: colors.secondary, doctor: colors.primary, admin: colors.danger };
 const ROLE_TONE: Record<UserRole, BadgeTone> = { user: "info", doctor: "primary", admin: "danger" };
-const ROLES: UserRole[] = ["user", "doctor", "admin"];
+// Rôles ASSIGNABLES depuis le sélecteur : « Médecin » exclu. La création d'un
+// médecin passe UNIQUEMENT par « Ajouter un médecin » (écran Médecins).
+const ASSIGNABLE_ROLES: UserRole[] = ["user", "admin"];
 
-// Onglets = filtre par rôle.
+// Onglets = filtre par rôle (affichage seulement — on peut toujours FILTRER par médecin).
 const TABS: { key: UserRole; label: string }[] = [
   { key: "user", label: "Utilisateurs" },
   { key: "doctor", label: "Médecins" },
@@ -55,7 +57,7 @@ export default function AdminAccounts() {
       const [us, docs, sus] = await Promise.all([
         adminService.getUsersPage(PAGE, 0),
         adminService.getDoctors(),
-        adminService.getSuspensions(),
+        adminService.getSuspensions(true),
       ]);
       setProfiles(us);
       offsetRef.current = PAGE;
@@ -99,6 +101,11 @@ export default function AdminAccounts() {
   // Confirmations destructives → ConfirmDialog ; retours → Toast (logique inchangée).
   async function changeRole(p: Profile, role: UserRole) {
     if (!session?.user || role === p.role) return;
+    // Les médecins se gèrent EXCLUSIVEMENT depuis l'écran Médecins.
+    if (p.role === "doctor" || role === "doctor") {
+      toast.info("Les médecins se gèrent depuis l'écran Médecins.");
+      return;
+    }
     const ok = await confirm({ title: "Changer le rôle", message: `Définir ${label(p)} comme « ${ROLE_LABELS[role]} » ?`, confirmLabel: "Confirmer" });
     if (!ok) return;
     try {
@@ -274,17 +281,22 @@ export default function AdminAccounts() {
                       <>
                         {/* Rôle */}
                         <Text style={styles.detailLabel}>Rôle</Text>
-                        <View style={styles.roleRow}>
-                          {ROLES.map((r) => (
-                            <Pressable
-                              key={r}
-                              onPress={() => changeRole(p, r)}
-                              style={[styles.roleBtn, p.role === r && { backgroundColor: ROLE_COLORS[r], borderColor: ROLE_COLORS[r] }]}
-                            >
-                              <Text style={[styles.roleBtnText, p.role === r && styles.roleBtnTextActive]}>{ROLE_LABELS[r]}</Text>
-                            </Pressable>
-                          ))}
-                        </View>
+                        {p.role === "doctor" ? (
+                          // Un médecin se gère via les actions médecin ci-dessous, pas par re-rôle.
+                          <Text style={styles.detailLine}>Médecin · utilisez les actions médecin ci-dessous</Text>
+                        ) : (
+                          <View style={styles.roleRow}>
+                            {ASSIGNABLE_ROLES.map((r) => (
+                              <Pressable
+                                key={r}
+                                onPress={() => changeRole(p, r)}
+                                style={[styles.roleBtn, p.role === r && { backgroundColor: ROLE_COLORS[r], borderColor: ROLE_COLORS[r] }]}
+                              >
+                                <Text style={[styles.roleBtnText, p.role === r && styles.roleBtnTextActive]}>{ROLE_LABELS[r]}</Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                        )}
 
                         {/* Actions médecin (si fiche doctors) */}
                         {doctor ? (

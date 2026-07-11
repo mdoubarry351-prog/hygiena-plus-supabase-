@@ -9,6 +9,7 @@ import { ChatThread, type ChatMessage } from "@/components/ChatThread";
 import { MedicalDisclaimer } from "@/components/MedicalDisclaimer";
 import { ConsultationCall } from "@/components/ConsultationCall";
 import { useAuth } from "@/providers/AuthProvider";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { useCycles } from "@/hooks/useCycles";
 import { messagesService } from "@/lib/messages-service";
 import { appointmentsService, formatAppointmentDate } from "@/lib/appointments-service";
@@ -25,6 +26,8 @@ export default function PatientChat() {
   const toast = useToast();
   const confirm = useConfirm();
   const { cycles, prediction } = useCycles();
+  // Réglage admin : la messagerie/téléconsultation peut être coupée globalement.
+  const { messaging_enabled } = useAppSettings();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -69,6 +72,9 @@ export default function PatientChat() {
   if (role === "doctor") return <Redirect href="/(user)" />;
   // Salle conservée mais inaccessible si la messagerie est désactivée (réversible).
   if (!DOCTOR_MESSAGING_ENABLED) return <Redirect href="/(user)/appointments" />;
+  // Point de passage UNIQUE de la messagerie : on y applique le réglage admin
+  // `messaging_enabled` (sinon la salle resterait joignable par d'autres entrées).
+  if (!messaging_enabled) return <Redirect href="/(user)/appointments" />;
 
   async function handleSend(content: string) {
     if (!session?.user || !doctorId) return;

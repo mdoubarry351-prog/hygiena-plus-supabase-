@@ -70,7 +70,7 @@ export function AppointmentContact({
           </Pressable>
           <Text style={styles.note}>
             {mode === "remote"
-              ? `Échangez par messages avec votre ${noun} — l'appel audio/vidéo arrive bientôt.`
+              ? `Échangez par messages et par appel audio/vidéo avec votre ${noun}.`
               : `Échangez avant et après votre rendez-vous avec votre ${noun}.`}
           </Text>
         </>

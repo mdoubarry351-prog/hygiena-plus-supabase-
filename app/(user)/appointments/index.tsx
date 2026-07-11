@@ -46,7 +46,7 @@ export default function AppointmentsHome() {
   const headerTitle = isTherapy ? "Trouver un·e thérapeute" : "Trouver une médecin";
 
   const { doctors, loading, error, reload } = useDoctors(ptype);
-  const { doctors_enabled, premium_enabled } = useAppSettings();
+  const { doctors_enabled } = useAppSettings();
   const router = useRouter();
   const confirm = useConfirm();
 

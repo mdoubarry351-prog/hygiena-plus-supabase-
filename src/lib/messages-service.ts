@@ -63,7 +63,7 @@ export const messagesService = {
     return data ?? [];
   },
 
-  // Le patient écrit (RLS : autorisé seulement si profiles.is_premium = true).
+  // Le patient écrit (RLS : autorisé si une relation patient ↔ médecin existe).
   async sendPatientMessage(patientId: string, doctorId: string, content: string): Promise<DoctorMessage> {
     const { data, error } = await supabase
       .from("doctor_messages")

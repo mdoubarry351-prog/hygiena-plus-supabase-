@@ -74,10 +74,11 @@ function CartRow({
 }) {
   const { product, quantity } = item;
   const maxReached = quantity >= product.stock;
+  const thumb = product.image_urls?.[0] ?? product.image_url;
   return (
     <Card style={styles.row}>
-      {product.image_url ? (
-        <AppImage source={product.image_url} style={styles.thumb} />
+      {thumb ? (
+        <AppImage source={thumb} style={styles.thumb} />
       ) : (
         <View style={[styles.thumb, styles.thumbPlaceholder]}>
           <Ionicons name="bag-outline" size={24} color={colors.textMuted} />
@@ -91,7 +92,7 @@ function CartRow({
             <Ionicons name="remove" size={18} color={colors.text} />
           </Pressable>
           <Text style={styles.qtyValue}>{quantity}</Text>
-          <Pressable onPress={() => { hapticLight(); onIncrease(); }} style={({ pressed }) => [styles.stepBtn, maxReached && styles.stepBtnDisabled, pressed && !maxReached && styles.stepBtnPressed]} hitSlop={8} accessibilityRole="button" accessibilityLabel="Augmenter la quantité">
+          <Pressable disabled={maxReached} onPress={() => { hapticLight(); onIncrease(); }} style={({ pressed }) => [styles.stepBtn, maxReached && styles.stepBtnDisabled, pressed && !maxReached && styles.stepBtnPressed]} hitSlop={8} accessibilityRole="button" accessibilityState={{ disabled: maxReached }} accessibilityLabel="Augmenter la quantité">
             <Ionicons name="add" size={18} color={maxReached ? colors.textMuted : colors.text} />
           </Pressable>
         </View>

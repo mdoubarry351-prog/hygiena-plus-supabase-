@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Card } from "@/components/Card";
-import { Badge } from "@/components/Badge";
+import { Badge, type BadgeTone } from "@/components/Badge";
 import { formatAppointmentDate, formatAppointmentTime, CONSULTATION_MODE_LABEL } from "@/lib/appointments-service";
 import { formatPrice } from "@/lib/marketplace-service";
 import type { AdminAppointmentRow } from "@/lib/admin-service";
@@ -14,11 +14,13 @@ const STATUS_LABELS: Record<AppointmentStatus, string> = {
   cancelled: "Annulé",
   completed: "Terminé",
 };
-const STATUS_COLORS: Record<AppointmentStatus, string> = {
-  pending: colors.accent,
-  confirmed: colors.secondary,
-  cancelled: colors.danger,
-  completed: colors.success,
+// Tons de chips « Le Cockpit » (soft) — cohérents avec les Commandes :
+// en attente=ambre, confirmé=violet, annulé=rose, terminé=menthe.
+const STATUS_TONE: Record<AppointmentStatus, BadgeTone> = {
+  pending: "warning",
+  confirmed: "primary",
+  cancelled: "danger",
+  completed: "success",
 };
 
 // Carte RDV pour les écrans admin (lecture seule, aucune donnée médicale) :
@@ -38,8 +40,9 @@ export function AdminAppointmentCard({ a }: { a: AdminAppointmentRow }) {
           </View>
         </View>
         <View style={styles.badges}>
-          <Badge label={STATUS_LABELS[a.status]} color={STATUS_COLORS[a.status]} />
-          <Badge label={CONSULTATION_MODE_LABEL[a.consultation_mode]} color={modeColor} />
+          <Badge label={STATUS_LABELS[a.status]} tone={STATUS_TONE[a.status]} soft />
+          {/* Mode = attribut secondaire → chip discrète, texte teinté sur fond neutre */}
+          <Badge label={CONSULTATION_MODE_LABEL[a.consultation_mode]} tone="neutral" color={modeColor} soft />
         </View>
       </View>
       <View style={styles.foot}>

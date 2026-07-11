@@ -35,6 +35,7 @@ export const favoritesService = {
     const { data: prods, error: pErr } = await supabase
       .from("marketplace_products")
       .select("*")
+      .eq("is_active", true) // un produit favorisé puis désactivé ne doit plus s'afficher
       .in("id", ids);
     if (pErr) throw pErr;
     const byId = new Map((prods ?? []).map((p) => [p.id, p]));

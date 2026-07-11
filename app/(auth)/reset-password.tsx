@@ -10,7 +10,7 @@ import { Loading } from "@/components/Loading";
 import { FadeInView } from "@/components/FadeInView";
 import { supabase } from "@/lib/supabase";
 import { authService } from "@/lib/auth-service";
-import { passwordStrength } from "@/lib/validation";
+import { passwordStrength, passwordIssue, PASSWORD_MIN_LENGTH } from "@/lib/validation";
 import { hapticSuccess } from "@/lib/haptics";
 import { colors, spacing, typography } from "@/theme";
 
@@ -84,7 +84,7 @@ export default function ResetPassword() {
 
   const strength = passwordStrength(password);
   const passwordsMatch = confirm.length === 0 || confirm === password;
-  const canSubmit = password.length >= 6 && confirm === password;
+  const canSubmit = password.length >= PASSWORD_MIN_LENGTH && confirm === password;
 
   async function handleSave() {
     if (!canSubmit) return;
@@ -141,12 +141,12 @@ export default function ResetPassword() {
           secureTextEntry
           secureToggle
           textContentType="newPassword"
-          placeholder="Au moins 6 caractères"
+          placeholder={`Au moins ${PASSWORD_MIN_LENGTH} caractères`}
           autoFocus
           returnKeyType="next"
           onSubmitEditing={() => confirmRef.current?.focus()}
           blurOnSubmit={false}
-          validate={(v) => (v.length > 0 && v.length < 6 ? "Au moins 6 caractères." : null)}
+          validate={(v) => (v.length > 0 ? passwordIssue(v) : null)}
         />
 
         {password.length > 0 ? (

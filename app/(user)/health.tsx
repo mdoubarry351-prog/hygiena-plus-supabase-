@@ -46,9 +46,15 @@ export default function HealthInfo() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Synchronise la date de naissance si le profil arrive APRÈS le montage
+  // (l'initialiseur du useState ne se rejoue pas).
+  useEffect(() => {
+    if (profile?.date_of_birth) setDob(parseISODate(profile.date_of_birth));
+  }, [profile?.date_of_birth]);
+
   // Charge la fiche santé existante (peut être vide → champs vides, sans erreur).
   useEffect(() => {
-    if (!session?.user) return;
+    if (!session?.user) { setLoading(false); return; }
     let alive = true;
     (async () => {
       try {

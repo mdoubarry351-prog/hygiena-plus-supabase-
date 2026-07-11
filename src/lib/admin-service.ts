@@ -10,7 +10,6 @@ import type {
   AppSettings,
   StoreSettings,
   BannedWord,
-  Article,
   ProductReview,
   DoctorReview,
   UserRole,
@@ -24,7 +23,6 @@ import type {
   TablesInsert,
   TablesUpdate,
 } from "@/lib/database.types";
-import type { ArticleInput } from "@/lib/articles-service";
 
 // =====================================================
 // Logging centralisé de toute action sensible dans admin_logs.
@@ -166,26 +164,10 @@ export type AdminAppointmentRow = {
   created_at: string;
 };
 
-// Paiement d'abonnement enrichi (nom de l'abonné) pour la vue admin.
-export type AdminSubscriptionPayment = {
-  id: string;
-  userName: string | null;
-  amount: number;
-  method: string | null;
-  plan: string | null;
-  paid_at: string;
-  period_start: string | null;
-  period_end: string | null;
-};
-
-// Synthèse abonnements & paiements (vue admin).
-export type SubscriptionsSummary = {
-  activeCount: number;
-  expiredCount: number;
-  revenuePremium: number;
+// Synthèse consultations & paiements (vue admin).
+export type ConsultationsSummary = {
   revenueConsultation: number;
   paidConsultationCount: number;
-  payments: AdminSubscriptionPayment[];
 };
 
 // Statistiques du tableau de bord renvoyées par la RPC `admin_dashboard_stats`.
@@ -193,7 +175,6 @@ export type DashboardRpc = {
   ok: boolean;
   usersTotal: number;
   activeUsers: number;
-  premiumCount: number;
   doctorsActive: number;
   appointmentsToday: number;
   ordersTotal: number;
@@ -202,7 +183,6 @@ export type DashboardRpc = {
   reportsPending: number;
   revenueMarketplace: number;
   revenueConsultation: number;
-  revenuePremium: number;
   revenueTotal: number;
 };
 // Avis enrichis pour la modération : nom de l'auteur + nom de la cible.
@@ -214,7 +194,6 @@ export type UserActivity = {
   orders: number;
   posts: number;
   appointments: number;
-  isPremium: boolean;
   createdAt: string | null;
 };
 export type DoctorActivity = {
@@ -253,7 +232,6 @@ export type RevenueStats = {
   marketplaceRevenue: number;
   consultationRevenue: number;
   totalRevenue: number;
-  premiumCount: number;
 };
 
 export type DashboardStats = {
@@ -359,57 +337,17 @@ export const adminService = {
     return (data ?? []) as AdminAppointmentRow[];
   },
 
-  // Abonnements & paiements (vue admin). État dérivé de subscription_payments :
-  // « actif » = période la plus récente d'un abonné dont period_end >= aujourd'hui.
-  // Paiement simulé = toujours réussi (pas de notion d'échec).
-  async getSubscriptionsAdmin(limit = 50): Promise<SubscriptionsSummary> {
-    const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const [payRes, apptRes] = await Promise.all([
-      supabase
-        .from("subscription_payments")
-        .select("id, user_id, amount, method, plan, period_start, period_end, paid_at, profile:profiles!subscription_payments_user_id_fkey(full_name)")
-        .order("paid_at", { ascending: false }),
-      supabase.from("appointments").select("amount_paid").eq("is_paid", true),
-    ]);
-    if (payRes.error) throw payRes.error;
-    if (apptRes.error) throw apptRes.error;
+  // Consultations & paiements (vue admin).
+  async getConsultationsAdmin(): Promise<ConsultationsSummary> {
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("amount_paid")
+      .eq("is_paid", true);
+    if (error) throw error;
 
-    const rows = (payRes.data ?? []) as unknown as {
-      id: string; user_id: string; amount: number; method: string | null; plan: string | null;
-      period_start: string | null; period_end: string | null; paid_at: string;
-      profile: { full_name: string | null } | null;
-    }[];
-
-    const revenuePremium = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
-    const revenueConsultation = (apptRes.data ?? []).reduce((s, a) => s + (a.amount_paid ?? 0), 0);
-    const paidConsultationCount = (apptRes.data ?? []).length;
-
-    // Période la plus récente par abonné → actif/expiré.
-    const latestByUser = new Map<string, string | null>();
-    for (const r of rows) {
-      const cur = latestByUser.get(r.user_id);
-      if (cur === undefined || (r.period_end ?? "") > (cur ?? "")) latestByUser.set(r.user_id, r.period_end ?? null);
-    }
-    let activeCount = 0;
-    let expiredCount = 0;
-    for (const end of latestByUser.values()) {
-      if (end && end >= today) activeCount += 1;
-      else expiredCount += 1;
-    }
-
-    const payments: AdminSubscriptionPayment[] = rows.slice(0, limit).map((r) => ({
-      id: r.id,
-      userName: r.profile?.full_name ?? null,
-      amount: r.amount,
-      method: r.method,
-      plan: r.plan,
-      paid_at: r.paid_at,
-      period_start: r.period_start,
-      period_end: r.period_end,
-    }));
-
-    return { activeCount, expiredCount, revenuePremium, revenueConsultation, paidConsultationCount, payments };
+    const revenueConsultation = (data ?? []).reduce((s, a) => s + (a.amount_paid ?? 0), 0);
+    const paidConsultationCount = (data ?? []).length;
+    return { revenueConsultation, paidConsultationCount };
   },
 
   // ---------------- 2. Statistiques ----------------
@@ -454,16 +392,14 @@ export const adminService = {
     return { months: buckets.map((b) => b.label), signups, orders, appointments };
   },
 
-  // Revenus (marketplace livré + consultations payées) + nb d'abonnées premium.
+  // Revenus (marketplace livré + consultations payées).
   async getRevenueStats(): Promise<RevenueStats> {
-    const [ordersRes, apptRes, premiumRes] = await Promise.all([
+    const [ordersRes, apptRes] = await Promise.all([
       supabase.from("marketplace_orders").select("total_amount").eq("status", "completed"),
       supabase.from("appointments").select("amount_paid").eq("is_paid", true),
-      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("is_premium", true),
     ]);
     if (ordersRes.error) throw ordersRes.error;
     if (apptRes.error) throw apptRes.error;
-    if (premiumRes.error) throw premiumRes.error;
 
     const marketplaceRevenue = (ordersRes.data ?? []).reduce((s, o) => s + (o.total_amount ?? 0), 0);
     const consultationRevenue = (apptRes.data ?? []).reduce((s, a) => s + (a.amount_paid ?? 0), 0);
@@ -471,7 +407,6 @@ export const adminService = {
       marketplaceRevenue,
       consultationRevenue,
       totalRevenue: marketplaceRevenue + consultationRevenue,
-      premiumCount: premiumRes.count ?? 0,
     };
   },
 
@@ -511,6 +446,11 @@ export const adminService = {
   },
 
   async updateUserRole(adminId: string, userId: string, role: UserRole): Promise<void> {
+    // Le rôle « doctor » ne s'attribue pas ici : un médecin se crée via
+    // « Ajouter un médecin » (compte + fiche) et se retire via demoteDoctor.
+    if (role === "doctor") {
+      throw new Error("Les médecins se gèrent depuis l'écran Médecins.");
+    }
     const { error } = await supabase.from("profiles").update({ role }).eq("id", userId);
     if (error) throw error;
     await logAction(adminId, "update_user_role", "profiles", userId, { role });
@@ -522,13 +462,12 @@ export const adminService = {
       supabase.from("marketplace_orders").select("id", { count: "exact", head: true }).eq("user_id", userId),
       supabase.from("community_posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
       supabase.from("appointments").select("id", { count: "exact", head: true }).eq("patient_id", userId),
-      supabase.from("profiles").select("is_premium, created_at").eq("id", userId).maybeSingle(),
+      supabase.from("profiles").select("created_at").eq("id", userId).maybeSingle(),
     ]);
     return {
       orders: ordersRes.count ?? 0,
       posts: postsRes.count ?? 0,
       appointments: apptRes.count ?? 0,
-      isPremium: profileRes.data?.is_premium ?? false,
       createdAt: profileRes.data?.created_at ?? null,
     };
   },
@@ -667,6 +606,16 @@ export const adminService = {
     if (error) throw error;
     await logAction(adminId, "update_product", "marketplace_products", id, patch as Json);
     return data;
+  },
+
+  // Supprime DÉFINITIVEMENT un produit (policy products_delete_admin). Les
+  // favoris et avis liés sont retirés en cascade côté serveur. Les commandes
+  // passées conservent leur copie du produit (pas de clé étrangère) → l'historique
+  // reste intact.
+  async deleteProduct(adminId: string, id: string): Promise<void> {
+    const { error } = await supabase.from("marketplace_products").delete().eq("id", id);
+    if (error) throw error;
+    await logAction(adminId, "delete_product", "marketplace_products", id);
   },
 
   // ---------------- 6. Commandes ----------------
@@ -859,64 +808,6 @@ export const adminService = {
     await logAction(adminId, "delete_review", "doctor_reviews", id);
   },
 
-  // ---------------- 7c. Articles (bibliothèque de contenu) ----------------
-  // Admin : voit TOUS les articles (publiés + brouillons).
-  async getAllArticles(): Promise<Article[]> {
-    const { data, error } = await supabase
-      .from("articles")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200);
-    if (error) throw error;
-    return data ?? [];
-  },
-
-  async createArticle(adminId: string, input: ArticleInput): Promise<Article> {
-    const payload: TablesInsert<"articles"> = {
-      title: input.title,
-      category: input.category,
-      excerpt: input.excerpt,
-      content: input.content,
-      cover_image_url: input.coverImageUrl,
-      is_published: input.isPublished,
-      created_by: adminId,
-    };
-    const { data, error } = await supabase.from("articles").insert(payload).select("*").single();
-    if (error) throw error;
-    await logAction(adminId, "create_article", "articles", data.id, { title: input.title });
-    return data;
-  },
-
-  async updateArticle(adminId: string, id: string, input: ArticleInput): Promise<Article> {
-    const patch: TablesUpdate<"articles"> = {
-      title: input.title,
-      category: input.category,
-      excerpt: input.excerpt,
-      content: input.content,
-      cover_image_url: input.coverImageUrl,
-      is_published: input.isPublished,
-      updated_at: new Date().toISOString(),
-    };
-    const { data, error } = await supabase.from("articles").update(patch).eq("id", id).select("*").single();
-    if (error) throw error;
-    await logAction(adminId, "update_article", "articles", id, { title: input.title });
-    return data;
-  },
-
-  async setArticlePublished(adminId: string, id: string, published: boolean): Promise<void> {
-    const { error } = await supabase
-      .from("articles")
-      .update({ is_published: published, updated_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) throw error;
-    await logAction(adminId, "publish_article", "articles", id, { is_published: published });
-  },
-
-  async deleteArticle(adminId: string, id: string): Promise<void> {
-    const { error } = await supabase.from("articles").delete().eq("id", id);
-    if (error) throw error;
-    await logAction(adminId, "delete_article", "articles", id);
-  },
 
   // ---------------- 8. Signalements ----------------
   async getReports(): Promise<ReportRow[]> {
@@ -946,11 +837,17 @@ export const adminService = {
   },
 
   // ---------------- 9. Suspensions ----------------
-  async getSuspensions(): Promise<SuspensionRow[]> {
-    const { data, error } = await supabase
+  // `activeOnly` : ne renvoie que les suspensions ACTIVES (utilisé par les écrans
+  // Utilisateurs/Comptes qui n'ont besoin que de la carte des suspendus — évite
+  // de rapatrier tout l'historique des suspensions levées à chaque chargement).
+  async getSuspensions(activeOnly = false): Promise<SuspensionRow[]> {
+    let query = supabase
       .from("user_suspensions")
       .select("*, user:profiles!user_suspensions_user_id_fkey(full_name, email)")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (activeOnly) query = query.eq("is_active", true);
+    const { data, error } = await query;
     if (error) throw error;
     return (data ?? []) as SuspensionRow[];
   },
@@ -1030,39 +927,9 @@ export const adminService = {
     if (error) throw error;
   },
 
-  // Promeut un compte EXISTANT en médecin : role='doctor' puis création de la fiche (validée).
-  async addDoctor(
-    adminId: string,
-    targetUserId: string,
-    input: {
-      specialty: string;
-      bio?: string | null;
-      consultation_fee?: number | null;
-      clinic_name?: string | null;
-    }
-  ): Promise<Doctor> {
-    const { error: roleErr } = await supabase
-      .from("profiles")
-      .update({ role: "doctor" })
-      .eq("id", targetUserId);
-    if (roleErr) throw roleErr;
-    await logAction(adminId, "update_user_role", "profiles", targetUserId, { role: "doctor" });
-
-    const payload: TablesInsert<"doctors"> = {
-      user_id: targetUserId,
-      specialty: input.specialty,
-      bio: input.bio ?? null,
-      consultation_fee: input.consultation_fee ?? null,
-      clinic_name: input.clinic_name ?? null,
-      is_validated: true,
-      validated_by: adminId,
-      validated_at: new Date().toISOString(),
-    };
-    const { data, error } = await supabase.from("doctors").insert(payload).select("*").single();
-    if (error) throw error;
-    await logAction(adminId, "add_doctor", "doctors", data.id, { user_id: targetUserId });
-    return data;
-  },
+  // (Retirée) La promotion d'un utilisateur existant en médecin n'est plus
+  // proposée : un médecin se crée UNIQUEMENT via createDoctor (« Ajouter un
+  // médecin »), qui met en place le compte de connexion ET la fiche cohérente.
 
   // Retire le statut médecin : supprime la fiche doctors et repasse le compte en 'user'.
   async demoteDoctor(adminId: string, doctor: { id: string; user_id: string }): Promise<void> {

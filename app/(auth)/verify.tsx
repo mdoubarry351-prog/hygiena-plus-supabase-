@@ -6,6 +6,7 @@ import { Screen } from "@/components/Screen";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
+import { smsThrottleBlock, recordSmsSent } from "@/lib/phone";
 import { colors, radius, spacing, typography } from "@/theme";
 
 const CODE_LENGTH = 6;
@@ -35,8 +36,9 @@ export default function VerifyOtp() {
     try {
       await verifyPhoneOtp(phone, code);
       // Succès : la session s'ouvre, (auth)/_layout redirige automatiquement.
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Vérifiez le code et réessayez.");
+    } catch {
+      // Message générique (anti-énumération, cohérent avec login/phone/register).
+      toast.error("Code incorrect ou expiré. Réessaie.");
       setCode("");
     } finally {
       setVerifying(false);
@@ -45,13 +47,18 @@ export default function VerifyOtp() {
 
   async function handleResend() {
     if (countdown > 0 || !phone) return;
+    // Le renvoi honore le MÊME throttle que l'envoi initial (cooldown + plafond
+    // quotidien), sinon il contournerait le plafond de 5 SMS/jour.
+    const blocked = await smsThrottleBlock();
+    if (blocked) { toast.error(blocked); return; }
     try {
       await signInWithPhone(phone);
+      await recordSmsSent();
       setCountdown(RESEND_SECONDS);
       setCode("");
       toast.success("Un nouveau code vous a été envoyé par SMS.");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erreur inconnue");
+    } catch {
+      toast.error("Envoi impossible pour le moment. Réessaie.");
     }
   }
 

@@ -18,7 +18,8 @@ function daysBetween(a: string, b: string): number {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
 }
 function formatDay(iso: string): string {
-  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+  // Midi local (comme les autres écrans) → pas de décalage d'un jour hors UTC.
+  return new Date(`${iso}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 }
 function stddev(arr: number[]): number {
   if (arr.length < 2) return 0;

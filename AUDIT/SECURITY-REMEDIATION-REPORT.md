@@ -3,6 +3,12 @@
 **Date :** 2026-07-05 · **Branche :** `main` (19 commits locaux, non poussés) ·
 **Périmètre :** vulnérabilités P0→P3 du brief d'audit · **Projet Supabase :** `iideovxddiytiqxdlwlt` (us-east-2)
 
+> **ADDENDUM 2026-07-06 — Mise en production + suppression du Premium (voir §6 en fin de document).**
+> Les 9 migrations et les Edge Functions sont désormais **appliquées/déployées en prod** ;
+> le mode Premium a été **définitivement supprimé** ; un **correctif critique**
+> (triggers SECURITY DEFINER inopérants) a été découvert par le test de
+> falsification et corrigé ; les tests de falsification **passent** désormais.
+
 Légende : ✅ fait & vérifié · 🔴 action PROPRIÉTAIRE requise · ⏳ planifié (tâche à part)
 
 ---
@@ -104,3 +110,51 @@ Vérifications transverses effectuées à chaque lot : type-check TypeScript, sc
 - `consultation-room` (v1) est **saine côté SSRF** : salle dérivée de l'appointmentId après vérification du participant, appels sortants limités à `api.daily.co`, domaine Daily fixe. Le client re-vérifie par whitelist `*.daily.co`. ✅
 - Failles trouvées et corrigées par migration : patiente pouvant se marquer « payée » sur un RDV (`appointments_update_patient` par-ligne) ; médecin pouvant **s'auto-valider** et truquer sa note ; compteurs communauté falsifiables ; buckets publics listables ; RPC exécutables par `anon` ; aucun plafond taille/MIME sur le Storage.
 - Les triggers de protection utilisent la garde `current_user NOT IN ('authenticated','anon')` (et non `auth.role()`) afin de ne bloquer **ni** les fonctions `refresh_*` SECURITY DEFINER **ni** les cascades de suppression de compte (`supabase_auth_admin`).
+
+---
+
+## 6. ADDENDUM — 2026-07-06 : mise en production, suppression du Premium, correctif critique
+
+### A. Mise en production effectuée (via MCP Supabase)
+- ✅ Les **9 migrations** `20260705000001` → `...000009` sont **appliquées** sur la base live.
+- ✅ Edge Functions **déployées** : `admin-user-actions` (v5, CORS/_shared), `consultation-room` (v2, CORS/_shared), `payment-webhook` (v1, nouvelle).
+- ⚠️ `payment-webhook` est déployée avec « Enforce JWT » actif (défaut). À l'intégration réelle
+  Orange Money / MTN, **désactiver la vérification JWT** pour cette fonction (dashboard →
+  Functions → payment-webhook → Enforce JWT OFF) : les fournisseurs n'envoient pas de JWT
+  Supabase ; l'authentification est assurée par la signature HMAC.
+
+### B. Suppression COMPLÈTE et DÉFINITIVE du mode Premium (décision produit)
+- Migration `20260706000010_remove_premium.sql` (appliquée en prod) : table
+  `subscription_payments`, colonne `profiles.is_premium`, colonnes `premium_*` de
+  `app_settings`, audience « premium » des broadcasts, métriques premium du dashboard,
+  rappels d'expiration, notifications premium, cible « premium » de `payment_events` —
+  tout est supprimé. État vérifié avant : 0 abonnée, 0 paiement → aucune perte de données.
+- Edge Function `premium-subscribe` **supprimée du dépôt** (elle n'avait jamais été déployée).
+- Code client purgé : écran premium, service, écrans admin (abonnements → « Consultations &
+  paiements »), réglages, notifications, types. Type-check et bundle web vérifiés.
+- Le test 1 (`is_premium`) et le test 2 (`subscription_payments`) du contrôle de
+  falsification sont remplacés par : escalade de rôle (`role=admin`) et paiement de RDV
+  (`appointments.is_paid`).
+
+### C. 🔴→✅ CORRECTIF CRITIQUE découvert par le test de falsification
+En exécutant enfin le test P0-1 sur la base live (simulation du rôle `authenticated` +
+claims JWT), la **création d'une commande déjà « payée » a RÉUSSI** : les fonctions
+trigger de protection étaient déclarées `SECURITY DEFINER`, or dans une telle fonction
+`current_user` devient le propriétaire (`postgres`) — la garde
+`current_user not in ('authenticated','anon')` était donc toujours vraie et **aucune des
+protections P0-1/P1/P2 par trigger ne s'appliquait réellement**.
+
+Correctif `20260706000011_fix_trigger_security_invoker.sql` (appliqué en prod) : les 6
+fonctions trigger (`enforce_profile_privileged_columns`, `enforce_order_payment_integrity`,
+`enforce_appointment_update_integrity`, `enforce_doctor_privileged_columns`,
+`enforce_doctor_insert_not_validated`, `enforce_content_counters`) passent en
+`SECURITY INVOKER`.
+
+**Re-vérification (simulation `authenticated` en SQL, avec rollback)** :
+- Falsifications REFUSÉES (42501 → 403) : commande créée payée ; montant/is_paid modifiés ;
+  RDV auto-payé ; RDV auto-confirmé par la patiente ; compteur de likes gonflé ;
+  escalade de rôle (bloquée aussi par `prevent_role_self_change`).
+- Parcours légitimes INTACTS : annulation de RDV par la patiente, modification de son profil.
+
+Il reste recommandé de rejouer `supabase/tests/p0-1-falsification.sh` via l'API REST avec
+un vrai JWT utilisateur (chemin PostgREST complet).

@@ -15,6 +15,7 @@ import { FadeInView } from "@/components/FadeInView";
 import { marketplaceService, formatPrice } from "@/lib/marketplace-service";
 import {
   ORDER_STATUS_LABELS,
+  orderStatusLabel,
   ORDER_STATUS_TONE,
   PAYMENT_LABELS,
   orderItems,
@@ -96,6 +97,11 @@ export default function OrderDetail() {
       .channel(`order-track-${id}`)
       .on("postgres_changes",
         { event: "INSERT", schema: "public", table: "order_events", filter: `order_id=eq.${id}` },
+        () => { refresh(); })
+      // Aussi les UPDATE de la commande elle-même (is_paid, annulation admin…) :
+      // certaines transitions ne génèrent pas forcément d'order_event.
+      .on("postgres_changes",
+        { event: "UPDATE", schema: "public", table: "marketplace_orders", filter: `id=eq.${id}` },
         () => { refresh(); })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -198,7 +204,7 @@ export default function OrderDetail() {
               <Text style={styles.orderId}>Commande #{shortId}</Text>
               <Text style={styles.date}>{formatOrderDate(order.created_at)}</Text>
             </View>
-            <Badge label={ORDER_STATUS_LABELS[order.status]} tone={ORDER_STATUS_TONE[order.status]} soft />
+            <Badge label={orderStatusLabel(order.status, order.delivery_mode)} tone={ORDER_STATUS_TONE[order.status]} soft />
           </View>
           <View style={styles.timelineWrap}>
             <OrderTimeline status={order.status} deliveryMode={order.delivery_mode} createdAt={order.created_at} updatedAt={order.updated_at} events={events} />

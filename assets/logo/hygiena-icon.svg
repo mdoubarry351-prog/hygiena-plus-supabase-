@@ -1,11 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <!-- Hygiena+ — « Goutte-cœur » : goutte violette, cœur en réserve. -->
   <defs>
-    <linearGradient id="hgDrop" x1="256" y1="72" x2="256" y2="444" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#10B981"/>
-      <stop offset="1" stop-color="#059669"/>
+    <linearGradient id="hgDrop" x1="256" y1="60" x2="256" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8A63F0"/>
+      <stop offset="1" stop-color="#6C46D9"/>
     </linearGradient>
   </defs>
-  <path d="M256 72 C296 142 384 232 384 316 A128 128 0 1 1 128 316 C128 232 216 142 256 72 Z"
-        fill="url(#hgDrop)"/>
-  <ellipse cx="212" cy="232" rx="34" ry="70" transform="rotate(-28 212 232)" fill="#D1FAE5" opacity="0.22"/>
+  <path fill="url(#hgDrop)" fill-rule="evenodd" clip-rule="evenodd" d="M256 60 C298 134 388 228 388 316 A132 132 0 1 1 124 316 C124 228 214 134 256 60 Z M256 388 C218 358 196 336 196 310 C196 288 212 274 230 274 C242 274 252 281 256 291 C260 281 270 274 282 274 C300 274 316 288 316 310 C316 336 294 358 256 388 Z"/>
 </svg>

@@ -9,7 +9,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAdminBadges, badgeForSeg } from "@/hooks/useAdminBadges";
 import { ADMIN_TABS, isActiveSeg, isTabActive, tabSegments } from "@/lib/admin-nav";
-import { colors, fonts, radius, spacing, typography } from "@/theme";
+import { adminRail, colors, fonts, radius, spacing, typography } from "@/theme";
 
 // =====================================================
 // Contexte d'UI admin : état du menu latéral (drawer).
@@ -96,7 +96,7 @@ export function AdminDrawer() {
               return (
                 <View key={tab.seg}>
                   <Pressable onPress={() => go(tab.href)} style={[styles.item, active && styles.itemActive]}>
-                    <Ionicons name={tab.icon} size={20} color={active ? colors.primaryDark : colors.textMuted} />
+                    <Ionicons name={tab.icon} size={20} color={active ? adminRail.textActive : adminRail.text} />
                     <Text style={[styles.itemText, active && styles.itemTextActive]} numberOfLines={1}>{tab.label}</Text>
                     {count > 0 ? (
                       <View style={styles.badge}><Text style={styles.badgeText}>{count > 99 ? "99+" : count}</Text></View>
@@ -145,31 +145,31 @@ const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
   panel: {
     position: "absolute", top: 0, bottom: 0, left: 0,
-    backgroundColor: colors.card, borderRightWidth: 1, borderRightColor: colors.border,
-    shadowColor: colors.text, shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 4, height: 0 }, elevation: 12,
+    backgroundColor: adminRail.bg,
+    shadowColor: colors.text, shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 4, height: 0 }, elevation: 12,
   },
   panelSafe: { flex: 1, paddingHorizontal: spacing.md },
   brandBlock: { paddingTop: spacing.md, paddingBottom: spacing.md, paddingHorizontal: spacing.sm, gap: 2 },
-  brand: { fontSize: 24, fontFamily: fonts.titleBold, fontWeight: "700", color: colors.primaryDark },
+  brand: { fontSize: 24, fontFamily: fonts.titleBold, fontWeight: "700", color: adminRail.brand },
   plus: { color: colors.accent },
-  brandSub: { ...typography.caption, color: colors.textMuted, fontWeight: "700", letterSpacing: 0.5 },
+  brandSub: { ...typography.caption, color: adminRail.textMuted, fontWeight: "700", letterSpacing: 0.5 },
   nav: { gap: spacing.xs, paddingBottom: spacing.lg },
   item: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, borderRadius: radius.md },
-  itemActive: { backgroundColor: colors.primaryLight },
-  itemText: { ...typography.body, color: colors.text, fontWeight: "500", flex: 1 },
-  itemTextActive: { color: colors.primaryDark, fontWeight: "700" },
+  itemActive: { backgroundColor: adminRail.itemActiveBg },
+  itemText: { ...typography.body, color: adminRail.text, fontWeight: "600", flex: 1 },
+  itemTextActive: { color: adminRail.textActive, fontWeight: "800" },
   subList: { gap: 2, paddingLeft: spacing.lg, marginTop: 2, marginBottom: spacing.xs },
   subItem: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.sm },
-  subItemActive: { backgroundColor: colors.surface },
-  subText: { ...typography.caption, color: colors.textMuted, fontWeight: "600", flex: 1 },
-  subTextActive: { color: colors.primaryDark, fontWeight: "700" },
+  subItemActive: { backgroundColor: adminRail.subActiveBg },
+  subText: { ...typography.caption, color: adminRail.textMuted, fontWeight: "600", flex: 1 },
+  subTextActive: { color: adminRail.textActive, fontWeight: "700" },
   badge: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
   badgeText: { color: colors.white, fontSize: 11, fontFamily: fonts.bodyBold, fontWeight: "700" },
-  footer: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
+  footer: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.sm, borderTopWidth: 1, borderTopColor: adminRail.border },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
   avatarText: { ...typography.name, color: colors.primaryDark },
   footerInfo: { flex: 1 },
-  footerName: { ...typography.name },
-  footerRole: { ...typography.caption, color: colors.textMuted },
+  footerName: { ...typography.name, color: adminRail.brand },
+  footerRole: { ...typography.caption, color: adminRail.textMuted },
   signOut: { padding: spacing.xs },
 });

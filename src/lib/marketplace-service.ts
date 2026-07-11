@@ -50,6 +50,17 @@ export type StorePaymentSettings = {
   delivery_zones: Json | null;
 };
 
+// Rend lisibles les erreurs du RPC de commande : nos `raise` serveur sont déjà
+// en français clair (« Stock insuffisant pour … », « Produit indisponible »,
+// « Panier vide ») ; on masque seulement les messages techniques bruts.
+function cleanRpcError(message: string): string {
+  const m = (message || "").trim();
+  if (!m || /permission denied|violates|jwt|rls|row-level|function .* does not exist/i.test(m)) {
+    return "Commande impossible pour le moment. Réessaie.";
+  }
+  return m;
+}
+
 // Formatage prix en francs guinéens, ex. "50 000GNF".
 export function formatPrice(amount: number): string {
   return `${Math.round(amount).toLocaleString("fr-FR")}GNF`;
@@ -206,30 +217,25 @@ export const marketplaceService = {
     if (error) throw error;
   },
 
-  // Crée une commande dans marketplace_orders. La commande est TOUJOURS créée
-  // « non payée » : is_paid / paid_at ne sont jamais fournis par le client
-  // (le trigger serveur les refuserait, cf. P0-1). Le passage à « payé » est
-  // décidé côté serveur : par l'admin à la validation, ou par un webhook de
-  // paiement vérifié cryptographiquement (Orange Money / MTN) à venir.
+  // Crée une commande via le RPC de confiance `create_marketplace_order` :
+  // le SERVEUR recalcule le total à partir des prix réels des produits (le
+  // `totalAmount` client n'est jamais utilisé), vérifie et décrémente le stock
+  // atomiquement, puis insère la commande « non payée ». Le passage à « payé »
+  // reste décidé côté serveur (admin ou webhook vérifié).
+  // Les erreurs métier remontées (stock insuffisant, produit indisponible) ont
+  // un message clair, réutilisable tel quel côté UI.
   async createOrder(input: OrderInput): Promise<MarketplaceOrder> {
-    const payload: TablesInsert<"marketplace_orders"> = {
-      user_id: input.userId,
-      phone: input.phone,
-      neighborhood: input.neighborhood,
-      delivery_mode: input.deliveryMode,
-      instructions: input.instructions,
-      items: input.items,
-      total_amount: input.totalAmount,
-      payment_method: input.paymentMethod,
-      payment_phone: input.paymentPhone,
-    };
-    const { data, error } = await supabase
-      .from("marketplace_orders")
-      .insert(payload)
-      .select("*")
-      .single();
-    if (error) throw error;
-    return data;
+    const { data, error } = await supabase.rpc("create_marketplace_order", {
+      p_items: input.items.map((it) => ({ product_id: it.product_id, quantity: it.quantity })),
+      p_phone: input.phone,
+      p_delivery_mode: input.deliveryMode,
+      p_neighborhood: input.neighborhood,
+      p_instructions: input.instructions,
+      p_payment_method: input.paymentMethod,
+      p_payment_phone: input.paymentPhone,
+    });
+    if (error) throw new Error(cleanRpcError(error.message));
+    return data as MarketplaceOrder;
   },
 
   // Réglages de paiement boutique (best-effort ; null si non lisible/absent).

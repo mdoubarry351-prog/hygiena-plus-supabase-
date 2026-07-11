@@ -25,12 +25,15 @@ export default function Favorites() {
   const toast = useToast();
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
+    setError(false);
     try {
       setProducts(await favoritesService.getFavoriteProducts());
     } catch {
+      setError(true);
       setProducts([]);
     } finally {
       setLoading(false);
@@ -67,7 +70,15 @@ export default function Favorites() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        {products.length === 0 ? (
+        {error && products.length === 0 ? (
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Connexion impossible"
+            message="Impossible de charger tes favoris. Vérifie ta connexion, puis réessaie."
+            actionLabel="Réessayer"
+            onAction={load}
+          />
+        ) : products.length === 0 ? (
           <EmptyState
             icon="heart-outline"
             title="Aucun favori pour le moment"

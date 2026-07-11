@@ -26,8 +26,8 @@ import {
   generateReceiptNumber,
   dayKeyForDate,
   dayAvailability,
+  daySlots,
   hasAnyAvailability,
-  generateSlots,
   isSlotConflict,
   WEEK_DAYS,
   type DoctorWithProfile,
@@ -60,7 +60,7 @@ export default function BookAppointment() {
   const router = useRouter();
   const { session, profile, role } = useAuth();
   const toast = useToast();
-  const { appointments_enabled, premium_enabled, messaging_enabled } = useAppSettings();
+  const { appointments_enabled, messaging_enabled } = useAppSettings();
 
   const [doctor, setDoctor] = useState<DoctorWithProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,9 +106,7 @@ export default function BookAppointment() {
   // Créneaux d'une date : disponibilité du jour − occupés − passés (logique inchangée).
   const slotsForDate = useCallback((dateISO: string): string[] => {
     if (!doctor) return [];
-    const avail = dayAvailability(doctor.availability, dayKeyForDate(dateISO));
-    if (!avail) return [];
-    let slots = generateSlots(avail.start, avail.end).filter((t) => !bookedSet.has(`${dateISO}|${t}`));
+    let slots = daySlots(doctor.availability, dayKeyForDate(dateISO)).filter((t) => !bookedSet.has(`${dateISO}|${t}`));
     if (dateISO === todayISO) {
       const now = new Date();
       const nowMin = now.getHours() * 60 + now.getMinutes();

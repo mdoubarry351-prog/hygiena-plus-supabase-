@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/EmptyState";
 import { AdminHeader } from "@/components/AdminHeader";
 import { adminService, type DashboardRpc } from "@/lib/admin-service";
 import { formatPrice } from "@/lib/marketplace-service";
-import { PREMIUM_ENABLED } from "@/lib/app-config";
 import { colors, radius, spacing, typography } from "@/theme";
 
 type CardDef = { key: keyof DashboardRpc; label: string; icon: keyof typeof Ionicons.glyphMap; tint: string; href: Href; money?: boolean };
@@ -17,11 +16,7 @@ type CardDef = { key: keyof DashboardRpc; label: string; icon: keyof typeof Ioni
 const CARDS: CardDef[] = [
   { key: "usersTotal", label: "Utilisateurs inscrits", icon: "people-outline", tint: colors.primary, href: "/admin/users" },
   { key: "activeUsers", label: "Utilisateurs actifs", icon: "pulse-outline", tint: colors.secondary, href: "/admin/users" },
-  // KPI Premium remplacé par les revenus consultations tant que le Premium est
-  // retiré (PREMIUM_ENABLED=false) ; le KPI Premium reste réactivable.
-  PREMIUM_ENABLED
-    ? { key: "premiumCount", label: "Abonnés Premium", icon: "star-outline", tint: colors.accent, href: "/admin/subscriptions" }
-    : { key: "revenueConsultation", label: "Revenus consultations", icon: "medkit-outline", tint: colors.accent, href: "/admin/subscriptions", money: true },
+  { key: "revenueConsultation", label: "Revenus consultations", icon: "medkit-outline", tint: colors.accent, href: "/admin/subscriptions", money: true },
   { key: "doctorsActive", label: "Médecins actifs", icon: "medkit-outline", tint: colors.secondary, href: "/admin/doctors" },
   { key: "appointmentsToday", label: "RDV du jour", icon: "calendar-outline", tint: colors.primary, href: "/admin/appointments" },
   { key: "ordersTotal", label: "Commandes Marketplace", icon: "receipt-outline", tint: colors.primary, href: "/admin/orders" },
@@ -36,7 +31,6 @@ async function fallbackStats(): Promise<DashboardRpc> {
     ok: true,
     usersTotal: s.users,
     activeUsers: 0,
-    premiumCount: 0,
     doctorsActive: s.doctors,
     appointmentsToday: 0,
     ordersTotal: s.ordersThisMonth,
@@ -45,7 +39,6 @@ async function fallbackStats(): Promise<DashboardRpc> {
     reportsPending: 0,
     revenueMarketplace: s.revenueThisMonth,
     revenueConsultation: 0,
-    revenuePremium: 0,
     revenueTotal: s.revenueThisMonth,
   };
 }
@@ -130,7 +123,7 @@ export default function AdminDashboard() {
           </View>
           <Text style={styles.revenueValue}>{formatPrice(stats.revenueTotal)}</Text>
           <Text style={styles.revenueBreak}>
-            Marketplace {formatPrice(stats.revenueMarketplace)} · Consultations {formatPrice(stats.revenueConsultation)}{PREMIUM_ENABLED ? ` · Premium ${formatPrice(stats.revenuePremium)}` : ""}
+            Marketplace {formatPrice(stats.revenueMarketplace)} · Consultations {formatPrice(stats.revenueConsultation)}
           </Text>
         </Card>
 

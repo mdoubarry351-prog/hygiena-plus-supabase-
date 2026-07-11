@@ -16,7 +16,6 @@ import { ExportButton } from "@/components/ExportButton";
 import { LoadMoreFooter, isNearBottom } from "@/components/LoadMoreFooter";
 import { useAuth } from "@/providers/AuthProvider";
 import { adminService, type UserActivity } from "@/lib/admin-service";
-import { PREMIUM_ENABLED } from "@/lib/app-config";
 import { exportCsv } from "@/lib/csv-export";
 import type { Profile, UserRole } from "@/lib/database.types";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -25,7 +24,11 @@ const ROLE_LABELS: Record<UserRole, string> = { user: "Utilisateur", doctor: "M�
 const ROLE_COLORS: Record<UserRole, string> = { user: colors.secondary, doctor: colors.primary, admin: colors.danger };
 // Tons de badge par rôle (badge tonal ; ROLE_COLORS reste utilisé par les boutons).
 const ROLE_TONE: Record<UserRole, BadgeTone> = { user: "info", doctor: "primary", admin: "danger" };
-const ROLES: UserRole[] = ["user", "doctor", "admin"];
+// Rôles ASSIGNABLES depuis ce sélecteur : plus de « Médecin » ici. La création
+// d'un médecin passe UNIQUEMENT par « Ajouter un médecin » (écran Médecins), qui
+// crée le compte + la fiche cohérente. Promouvoir un simple utilisateur en
+// médecin depuis ici laisserait un rôle « doctor » sans fiche → incohérent.
+const ASSIGNABLE_ROLES: UserRole[] = ["user", "admin"];
 
 export default function AdminUsers() {
   const { session } = useAuth();
@@ -54,7 +57,7 @@ export default function AdminUsers() {
     try {
       const [us, sus] = await Promise.all([
         adminService.getUsersPage(PAGE, 0, { search: searchRef.current || null }),
-        adminService.getSuspensions(),
+        adminService.getSuspensions(true),
       ]);
       setUsers(us);
       offsetRef.current = PAGE;
@@ -203,6 +206,12 @@ export default function AdminUsers() {
 
   async function changeRole(user: Profile, role: UserRole) {
     if (!session?.user || role === user.role) return;
+    // Les médecins se gèrent EXCLUSIVEMENT depuis l'écran Médecins (création via
+    // « Ajouter un médecin », retrait via « Retirer le statut »).
+    if (user.role === "doctor" || role === "doctor") {
+      toast.info("Les médecins se gèrent depuis l'écran Médecins.");
+      return;
+    }
     const ok = await confirm({ title: "Changer le rôle", message: `Définir ${user.full_name ?? user.email ?? "cet utilisateur"} comme « ${ROLE_LABELS[role]} » ?`, confirmLabel: "Confirmer" });
     if (!ok) return;
     try {
@@ -264,7 +273,6 @@ export default function AdminUsers() {
                   {open && (
                     <Card style={styles.detail}>
                       <Text style={styles.detailLine}>Téléphone : {u.phone ?? "—"}</Text>
-                      {PREMIUM_ENABLED ? <Text style={styles.detailLine}>Premium : {u.is_premium ? "Oui" : "Non"}</Text> : null}
                       <Text style={styles.detailLine}>Inscrit le {new Date(u.created_at).toLocaleDateString("fr-FR")}</Text>
 
                       {/* Activité */}
@@ -282,17 +290,22 @@ export default function AdminUsers() {
                       )}
 
                       <Text style={[styles.detailLine, styles.detailLabel]}>Rôle :</Text>
-                      <View style={styles.roleRow}>
-                        {ROLES.map((r) => (
-                          <Pressable
-                            key={r}
-                            onPress={() => changeRole(u, r)}
-                            style={[styles.roleBtn, u.role === r && { backgroundColor: ROLE_COLORS[r], borderColor: ROLE_COLORS[r] }]}
-                          >
-                            <Text style={[styles.roleBtnText, u.role === r && styles.roleBtnTextActive]}>{ROLE_LABELS[r]}</Text>
-                          </Pressable>
-                        ))}
-                      </View>
+                      {u.role === "doctor" ? (
+                        // Un médecin ne se re-rôle pas ici : géré dans l'écran Médecins.
+                        <Text style={styles.detailLine}>Médecin · géré depuis l'écran Médecins</Text>
+                      ) : (
+                        <View style={styles.roleRow}>
+                          {ASSIGNABLE_ROLES.map((r) => (
+                            <Pressable
+                              key={r}
+                              onPress={() => changeRole(u, r)}
+                              style={[styles.roleBtn, u.role === r && { backgroundColor: ROLE_COLORS[r], borderColor: ROLE_COLORS[r] }]}
+                            >
+                              <Text style={[styles.roleBtnText, u.role === r && styles.roleBtnTextActive]}>{ROLE_LABELS[r]}</Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      )}
 
                       {isSelf ? (
                         <Text style={styles.selfNote}>C'est votre compte : actions de suspension/suppression indisponibles.</Text>

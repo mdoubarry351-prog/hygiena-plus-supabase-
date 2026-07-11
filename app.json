@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/logo/hygiena-icon-drop.png",
       "resizeMode": "contain",
-      "backgroundColor": "#D1FAE5"
+      "backgroundColor": "#F0EAFE"
     },
     "web": {
       "bundler": "metro",
@@ -41,7 +41,7 @@
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo/hygiena-icon-adaptive.png",
-        "backgroundColor": "#D1FAE5"
+        "backgroundColor": "#8A63F0"
       }
     },
     "plugins": [
@@ -64,7 +64,7 @@
       [
         "expo-notifications",
         {
-          "color": "#10B981"
+          "color": "#8A63F0"
         }
       ],
       [

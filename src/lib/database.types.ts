@@ -51,7 +51,6 @@ export type Database = {
           phone: string | null;
           avatar_url: string | null;
           role: UserRole;
-          is_premium: boolean;
           date_of_birth: string | null;
           onboarding_completed: boolean;
           community_rules_accepted: boolean;
@@ -67,7 +66,6 @@ export type Database = {
           phone?: string | null;
           avatar_url?: string | null;
           role?: UserRole;
-          is_premium?: boolean;
           date_of_birth?: string | null;
           onboarding_completed?: boolean;
           community_rules_accepted?: boolean;
@@ -83,7 +81,6 @@ export type Database = {
           phone?: string | null;
           avatar_url?: string | null;
           role?: UserRole;
-          is_premium?: boolean;
           date_of_birth?: string | null;
           onboarding_completed?: boolean;
           community_rules_accepted?: boolean;
@@ -314,7 +311,7 @@ export type Database = {
       };
 
       // =================================================
-      // 4b. doctor_messages (messagerie premium patient ↔ médecin)
+      // 4b. doctor_messages (messagerie patient ↔ médecin)
       // =================================================
       doctor_messages: {
         Row: {
@@ -881,13 +878,10 @@ export type Database = {
           id: string;
           marketplace_enabled: boolean;
           doctors_enabled: boolean;
-          premium_enabled: boolean;
           appointments_enabled: boolean;
           messaging_enabled: boolean;
           cycle_enabled: boolean;
           community_enabled: boolean;
-          premium_price: number;
-          premium_duration_days: number;
           updated_by: string | null;
           created_at: string;
           updated_at: string;
@@ -896,13 +890,10 @@ export type Database = {
           id?: string;
           marketplace_enabled?: boolean;
           doctors_enabled?: boolean;
-          premium_enabled?: boolean;
           appointments_enabled?: boolean;
           messaging_enabled?: boolean;
           cycle_enabled?: boolean;
           community_enabled?: boolean;
-          premium_price?: number;
-          premium_duration_days?: number;
           updated_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -911,13 +902,10 @@ export type Database = {
           id?: string;
           marketplace_enabled?: boolean;
           doctors_enabled?: boolean;
-          premium_enabled?: boolean;
           appointments_enabled?: boolean;
           messaging_enabled?: boolean;
           cycle_enabled?: boolean;
           community_enabled?: boolean;
-          premium_price?: number;
-          premium_duration_days?: number;
           updated_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -1000,59 +988,6 @@ export type Database = {
         };
         Relationships: [];
       };
-
-      // =================================================
-      // 11c. articles (bibliothèque de contenu — « Conseils & infos »)
-      // =================================================
-      articles: {
-        Row: {
-          id: string;
-          title: string;
-          category: string;
-          excerpt: string | null;
-          content: string;
-          cover_image_url: string | null;
-          is_published: boolean;
-          created_by: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          title: string;
-          category: string;
-          excerpt?: string | null;
-          content: string;
-          cover_image_url?: string | null;
-          is_published?: boolean;
-          created_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          title?: string;
-          category?: string;
-          excerpt?: string | null;
-          content?: string;
-          cover_image_url?: string | null;
-          is_published?: boolean;
-          created_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "articles_created_by_fkey";
-            columns: ["created_by"];
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
-
-      // =================================================
-      // =================================================
 
       // =================================================
       // 11b. store_settings (paramètres de la boutique — ligne unique)
@@ -1313,52 +1248,6 @@ export type Database = {
         ];
       };
 
-      // =================================================
-      // subscription_payments (historique paiements Premium)
-      // =================================================
-      subscription_payments: {
-        Row: {
-          id: string;
-          user_id: string;
-          amount: number;
-          method: string | null;
-          plan: string | null;
-          period_start: string | null;
-          period_end: string | null;
-          paid_at: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          amount: number;
-          method?: string | null;
-          plan?: string | null;
-          period_start?: string | null;
-          period_end?: string | null;
-          paid_at?: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          amount?: number;
-          method?: string | null;
-          plan?: string | null;
-          period_start?: string | null;
-          period_end?: string | null;
-          paid_at?: string;
-          created_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "subscription_payments_user_id_fkey";
-            columns: ["user_id"];
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
 
       // =================================================
       // push_tokens — jetons Expo pour le push serveur.
@@ -1478,7 +1367,7 @@ export type Database = {
           reference: string;
           status: string;
           amount: number;
-          target_type: "premium" | "order";
+          target_type: "order";
           target_id: string | null;
           raw: Json | null;
           created_at: string;
@@ -1489,7 +1378,7 @@ export type Database = {
           reference: string;
           status: string;
           amount: number;
-          target_type: "premium" | "order";
+          target_type: "order";
           target_id?: string | null;
           raw?: Json | null;
           created_at?: string;
@@ -1500,7 +1389,7 @@ export type Database = {
           reference?: string;
           status?: string;
           amount?: number;
-          target_type?: "premium" | "order";
+          target_type?: "order";
           target_id?: string | null;
           raw?: Json | null;
           created_at?: string;
@@ -1526,6 +1415,27 @@ export type Database = {
           updated_at: string;
           // Score « Tendances » à décroissance temporelle (calculé côté SQL).
           hot_score: number;
+          // Vrai si la publication appartient à l'utilisatrice courante (calculé
+          // serveur) — permet de gérer ses propres posts anonymes sans exposer
+          // l'identité des autres.
+          is_mine: boolean;
+        };
+        Relationships: [];
+      };
+      // Vue sécurisée des commentaires : user_id renvoyé NULL pour un commentaire
+      // anonyme d'une autre personne (anonymat garanti côté SQL, comme les posts).
+      community_comments_safe: {
+        Row: {
+          id: string;
+          post_id: string;
+          content: string;
+          is_anonymous: boolean;
+          created_at: string;
+          updated_at: string;
+          parent_comment_id: string | null;
+          likes_count: number;
+          user_id: string | null;
+          is_mine: boolean;
         };
         Relationships: [];
       };
@@ -1539,6 +1449,19 @@ export type Database = {
       toggle_like: {
         Args: { p_post_id: string };
         Returns: { liked: boolean; likes_count: number }[];
+      };
+      // Checkout de confiance : total recalculé serveur + stock vérifié/décrémenté.
+      create_marketplace_order: {
+        Args: {
+          p_items: Json;
+          p_phone: string;
+          p_delivery_mode: string;
+          p_neighborhood: string | null;
+          p_instructions: string | null;
+          p_payment_method: string | null;
+          p_payment_phone: string | null;
+        };
+        Returns: Database["public"]["Tables"]["marketplace_orders"]["Row"];
       };
       // Suivre/ne plus suivre un membre en 1 appel.
       toggle_follow: {
@@ -1624,6 +1547,7 @@ export type DoctorReview = Tables<"doctor_reviews">;
 export type CommunityPost = Tables<"community_posts">;
 export type CommunityPostSafe = Database["public"]["Views"]["community_posts_safe"]["Row"];
 export type CommunityComment = Tables<"community_comments">;
+export type CommunityCommentSafe = Database["public"]["Views"]["community_comments_safe"]["Row"];
 export type CommunityLike = Tables<"community_likes">;
 export type UserFollow = Tables<"user_follows">;
 export type CommentLike = Tables<"comment_likes">;
@@ -1631,9 +1555,7 @@ export type AppSettings = Tables<"app_settings">;
 export type StoreSettings = Tables<"store_settings">;
 export type AdminLog = Tables<"admin_logs">;
 export type BannedWord = Tables<"banned_words">;
-export type Article = Tables<"articles">;
 export type UserReport = Tables<"user_reports">;
 export type UserSuspension = Tables<"user_suspensions">;
 export type Notification = Tables<"notifications">;
 export type HealthProfile = Tables<"health_profiles">;
-export type SubscriptionPayment = Tables<"subscription_payments">;

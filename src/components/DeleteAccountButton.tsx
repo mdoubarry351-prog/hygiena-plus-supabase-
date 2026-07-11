@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { Button } from "@/components/Button";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/providers/ToastProvider";
 import { useAuth } from "@/providers/AuthProvider";
@@ -97,22 +97,60 @@ export function DeleteAccountButton() {
 
   return (
     <View style={styles.zone}>
-      <Text style={styles.zoneLabel}>Zone de danger</Text>
-      <Button title="Supprimer mon compte" variant="danger" onPress={handleDelete} loading={deleting} disabled={deleting} />
-      <Text style={styles.zoneHint}>Action définitive et irréversible. Vos données seront effacées.</Text>
+      <View style={styles.zoneHead}>
+        <View style={styles.iconBubble}>
+          <Ionicons name="trash-outline" size={15} color={colors.danger} />
+        </View>
+        <Text style={styles.zoneTitle}>Supprimer mon compte</Text>
+      </View>
+      <Text style={styles.zoneHint}>Action définitive : ton profil et toutes tes données (cycles, commandes, messages) seront effacés et ne pourront pas être récupérés.</Text>
+      <Pressable
+        onPress={handleDelete}
+        disabled={deleting}
+        accessibilityRole="button"
+        accessibilityLabel="Supprimer mon compte"
+        accessibilityState={{ disabled: deleting, busy: deleting }}
+        style={[styles.deleteBtn, deleting && styles.deleteBtnBusy]}
+      >
+        {deleting ? (
+          <ActivityIndicator color={colors.danger} size="small" />
+        ) : (
+          <Text style={styles.deleteText}>Supprimer mon compte</Text>
+        )}
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Conteneur sobre mais signalé : fond carte + fine bordure rose (repère de
+  // zone sensible), la couleur forte restant un accent, pas un aplat.
   zone: {
-    gap: spacing.xs,
-    marginTop: spacing.lg,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    borderRadius: radius.md,
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.danger,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
   },
-  zoneLabel: { ...typography.caption, color: colors.danger, fontWeight: "700", letterSpacing: 0.5 },
+  zoneHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  iconBubble: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.dangerSoft, alignItems: "center", justifyContent: "center" },
+  zoneTitle: { ...typography.name },
   zoneHint: { ...typography.caption, color: colors.textMuted },
+  // Action destructive volontairement discrète : bouton contour, pas plein.
+  deleteBtn: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 190,
+    height: 46,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.danger,
+    backgroundColor: "transparent",
+  },
+  deleteBtnBusy: { opacity: 0.6 },
+  deleteText: { ...typography.body, color: colors.danger, fontWeight: "700" },
 });

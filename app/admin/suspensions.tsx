@@ -132,7 +132,7 @@ export default function AdminSuspensions() {
                   {s.reason ? <Text style={styles.meta}>{s.reason}</Text> : null}
                   <Text style={styles.meta}>Depuis le {new Date(s.starts_at).toLocaleDateString("fr-FR")}</Text>
                 </View>
-                <Badge label={s.is_active ? "Active" : "Levée"} tone={s.is_active ? "danger" : "neutral"} />
+                <Badge label={s.is_active ? "Active" : "Levée"} tone={s.is_active ? "danger" : "neutral"} soft />
               </View>
               {s.is_active && (
                 <Pressable onPress={() => lift(s)} style={styles.liftBtn}>

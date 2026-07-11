@@ -6,8 +6,6 @@ import { MenuRow } from "@/components/MenuRow";
 import { FadeInView } from "@/components/FadeInView";
 import { spacing } from "@/theme";
 
-const STEP = 55;
-
 // Regroupe les réglages du compte (les écrans cibles existent déjà, inchangés).
 export default function SettingsScreen() {
   const router = useRouter();

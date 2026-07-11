@@ -35,12 +35,9 @@ export function notificationRoute(data: NotifData, type: string | null): Href | 
       return data?.doctorId ? { pathname: "/(user)/appointments/chat", params: { doctorId: data.doctorId } } : null;
     case "doctor_chat":
       return data?.patientId ? { pathname: "/doctor/chat", params: { patientId: data.patientId } } : null;
-    case "premium":
-      return "/(user)/premium";
   }
   const t = type ?? "";
   if (t.startsWith("cycle_")) return "/(user)/cycle/calendar";
-  if (t.startsWith("premium_")) return "/(user)/premium";
   return null;
 }
 

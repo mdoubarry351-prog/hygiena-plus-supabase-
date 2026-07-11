@@ -128,12 +128,15 @@ export const authService = {
   },
 
   /**
-   * Connexion par téléphone (OTP SMS) — méthode ALTERNATIVE à l'email.
-   * 1) Envoie le code par SMS. Crée le compte si le numéro est nouveau.
-   *    (Nécessite un fournisseur SMS configuré dans Supabase → Auth → Phone.)
+   * Connexion par téléphone (OTP SMS) — méthode ALTERNATIVE à l'email, réservée
+   * aux comptes EXISTANTS. `shouldCreateUser: false` : le SMS ne crée jamais de
+   * compte → l'inscription (et donc le CONSENTEMENT légal obligatoire) passe
+   * toujours par l'e-mail (register.tsx). Sans ce garde-fou, un nouveau numéro
+   * créait un compte sans consentement (données de santé sensibles).
+   * (Nécessite un fournisseur SMS configuré dans Supabase → Auth → Phone.)
    */
   async signInWithPhone(phone: string) {
-    const { error } = await supabase.auth.signInWithOtp({ phone });
+    const { error } = await supabase.auth.signInWithOtp({ phone, options: { shouldCreateUser: false } });
     if (error) throw mapAuthError(error);
   },
 

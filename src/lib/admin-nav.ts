@@ -33,7 +33,6 @@ export const ADMIN_TABS: AdminTab[] = [
       { label: "Modération", href: "/admin/community", seg: "community" },
       { label: "Signalements", href: "/admin/reports", seg: "reports" },
       { label: "Mots interdits", href: "/admin/banned-words", seg: "banned-words" },
-      { label: "Articles", href: "/admin/articles", seg: "articles" },
       { label: "Diffusion", href: "/admin/broadcast", seg: "broadcast" },
     ],
   },

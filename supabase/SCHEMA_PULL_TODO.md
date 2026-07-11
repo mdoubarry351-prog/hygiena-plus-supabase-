@@ -36,7 +36,7 @@ Vérifier que le fichier généré contient bien :
 ```bash
 supabase functions download admin-user-actions
 supabase functions download consultation-room
-# (premium-subscribe et payment-webhook sont DÉJÀ dans le dépôt : supabase/functions/)
+# (payment-webhook est DÉJÀ dans le dépôt : supabase/functions/)
 ```
 
 Commiter le résultat.
@@ -70,12 +70,12 @@ La protection est correcte. Remarque mineure (P2) : `Access-Control-Allow-Origin
 
 **Migrations** (`supabase/migrations/`) — à appliquer dans l'ordre :
 - `20260705000001_p0-1_server_side_privileges_and_payments.sql` — triggers +
-  RLS is_premium/role/subscription_payments/marketplace_orders.
+  RLS role/marketplace_orders (le Premium a été supprimé ensuite par
+  `20260706000010_remove_premium.sql`).
 - `20260705000002_payment_webhook_events.sql` — table anti-rejeu paiements.
 - `20260705000003_legal_consents.sql` — consentement juridique append-only.
 
 **Edge Functions** (`supabase/functions/`) :
-- `premium-subscribe/` — activation Premium de confiance.
 - `payment-webhook/` — webhook Orange/MTN (vérif HMAC, anti-rejeu).
 
 **Scripts SQL historiques** (déjà présents) : `setup.sql`, `admin-rls.sql`,

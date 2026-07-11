@@ -124,4 +124,18 @@ export const phase = {
   neutral: "#ECE8F4", // Reste du cycle → gris violet clair
 } as const;
 
-export const theme = { colors, spacing, radius, shadows, durations, layout, typography, fonts, phase };
+// Rail d'administration « Le Cockpit » — menu latéral (desktop) et drawer
+// (mobile) en violet profond sur contenu clair. Repère l'espace back-office
+// d'un coup d'œil sans nuire à la lisibilité des données (qui restent au clair).
+export const adminRail = {
+  bg: "#2A1D4D", // Violet profond — fond du rail
+  brand: "#FFFFFF", // « Hygiena » en tête
+  text: "#CDBEF5", // Libellé au repos (violet clair lisible sur fond sombre)
+  textMuted: "#A99FD0", // Sous-onglets / méta au repos
+  textActive: "#FFFFFF", // Libellé de l'onglet actif
+  itemActiveBg: "rgba(255,255,255,0.14)", // Fond de l'onglet actif
+  subActiveBg: "rgba(255,255,255,0.08)", // Fond du sous-onglet actif
+  border: "rgba(255,255,255,0.10)", // Séparateurs internes
+} as const;
+
+export const theme = { colors, spacing, radius, shadows, durations, layout, typography, fonts, phase, adminRail };

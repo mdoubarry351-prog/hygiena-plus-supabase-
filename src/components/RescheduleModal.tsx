@@ -8,8 +8,8 @@ import {
   appointmentsService,
   dayKeyForDate,
   dayAvailability,
+  daySlots,
   hasAnyAvailability,
-  generateSlots,
   formatAppointmentTime,
   isSlotConflict,
   type DoctorWithProfile,
@@ -88,9 +88,7 @@ export function RescheduleModal({
 
   const selectedSlots = useMemo(() => {
     if (!selectedDate || !doctor) return [];
-    const avail = dayAvailability(doctor.availability, dayKeyForDate(selectedDate));
-    if (!avail) return [];
-    let slots = generateSlots(avail.start, avail.end).filter((t) => !bookedSet.has(`${selectedDate}|${t}`));
+    let slots = daySlots(doctor.availability, dayKeyForDate(selectedDate)).filter((t) => !bookedSet.has(`${selectedDate}|${t}`));
     if (selectedDate === todayISO) {
       const now = new Date();
       const nowMin = now.getHours() * 60 + now.getMinutes();

@@ -3,6 +3,7 @@ import type {
   CommunityPost,
   CommunityPostSafe,
   CommunityComment,
+  CommunityCommentSafe,
   Profile,
   TablesInsert,
   TablesUpdate,
@@ -159,7 +160,7 @@ async function fetchAuthors(ids: (string | null)[]): Promise<Map<string, PostAut
 }
 
 // Commentaire enrichi avec son auteur + statut médecin vérifié + like de l'utilisatrice.
-export type CommunityCommentWithAuthor = CommunityComment & {
+export type CommunityCommentWithAuthor = CommunityCommentSafe & {
   author: Pick<Profile, "full_name" | "avatar_url"> | null;
   isVerifiedDoctor: boolean;
   doctorSpecialty?: string;
@@ -215,32 +216,30 @@ async function enrichSafePosts(rows: CommunityPostSafe[]): Promise<CommunityPost
 async function attachFirstComments(posts: CommunityPostWithAuthor[]): Promise<void> {
   const ids = posts.filter((p) => (p.comments_count ?? 0) > 0).map((p) => p.id);
   if (ids.length === 0) return;
+  // Vue SÉCURISÉE : user_id NULL pour un commentaire anonyme d'autrui → jamais
+  // de résolution d'identité pour l'aperçu du fil.
   const { data, error } = await supabase
-    .from("community_comments")
-    .select("post_id, content, is_anonymous, user_id, likes_count, created_at, author:profiles(full_name)")
+    .from("community_comments_safe")
+    .select("post_id, content, is_anonymous, user_id, likes_count, created_at")
     .in("post_id", ids)
     .is("parent_comment_id", null)
     .order("likes_count", { ascending: false })
     .order("created_at", { ascending: true });
   if (error) return; // aperçu best-effort : ne bloque jamais le fil
-  const rows = (data ?? []) as {
-    post_id: string;
-    content: string;
-    is_anonymous: boolean;
-    user_id: string;
-    likes_count: number;
-    created_at: string;
-    author: { full_name: string | null } | null;
-  }[];
-  // Badge médecin pour les auteurs de ces commentaires (une requête).
-  const verified = await fetchVerifiedDoctors(rows.filter((r) => !r.is_anonymous).map((r) => r.user_id));
+  const rows = (data ?? []) as Pick<
+    CommunityCommentSafe,
+    "post_id" | "content" | "is_anonymous" | "user_id" | "likes_count" | "created_at"
+  >[];
+  // Auteurs (nom + badge médecin) résolus séparément par user_id non anonyme.
+  const authors = await fetchAuthors(rows.map((r) => r.user_id));
   const best = new Map<string, CommentPreview>();
   for (const r of rows) {
     if (best.has(r.post_id)) continue; // déjà le meilleur (tri SQL)
+    const author = r.user_id ? authors.get(r.user_id) ?? null : null;
     best.set(r.post_id, {
-      name: r.is_anonymous ? "Anonyme" : r.author?.full_name?.trim() || "Utilisatrice",
+      name: r.is_anonymous ? "Anonyme" : author?.full_name?.trim() || "Utilisatrice",
       content: r.content,
-      isVerifiedDoctor: !r.is_anonymous && verified.has(r.user_id),
+      isVerifiedDoctor: !r.is_anonymous && !!author?.isVerifiedDoctor,
     });
   }
   for (const p of posts) p.firstComment = best.get(p.id) ?? null;
@@ -276,10 +275,12 @@ export const communityService = {
   // Fil d'actualité : lecture via la vue sécurisée community_posts_safe
   // (anonymat garanti côté SQL), puis fusion des auteurs côté JS.
   async getPosts(): Promise<CommunityPostWithAuthor[]> {
+    // Borné : la modération admin ne charge jamais toute la table d'un coup.
     const { data, error } = await supabase
       .from("community_posts_safe")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (error) throw error;
     return enrichSafePosts(data ?? []);
   },
@@ -355,7 +356,8 @@ export const communityService = {
     const { data, error } = await supabase
       .from("doctors")
       .select("id, specialty, profile:profiles!doctors_user_id_fkey(full_name, avatar_url)")
-      .eq("is_validated", true);
+      .eq("is_validated", true)
+      .limit(200); // plafond de sécurité (le filtre par nom est fait ensuite côté client)
     if (error) throw error;
     const rows = (data ?? []) as {
       id: string;
@@ -478,7 +480,8 @@ export const communityService = {
       .from("community_posts")
       .select("*")
       .eq("user_id", me)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (error) throw error;
     return data ?? [];
   },
@@ -491,7 +494,8 @@ export const communityService = {
       .from("community_comments")
       .select("*")
       .eq("user_id", me)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (error) throw error;
     const rows = (data ?? []) as CommunityComment[];
     const postIds = Array.from(new Set(rows.map((r) => r.post_id)));
@@ -511,7 +515,8 @@ export const communityService = {
       .from("community_likes")
       .select("post_id, created_at")
       .eq("user_id", me)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (error) throw error;
     const ids = (likes ?? []).map((l) => l.post_id);
     if (ids.length === 0) return [];
@@ -537,15 +542,17 @@ export const communityService = {
   // Commentaires d'une publication, les plus anciens en premier (ordre de lecture).
   // Renvoie aussi parent_comment_id, likes_count et likedByMe (likes de l'utilisatrice).
   async getComments(postId: string): Promise<CommunityCommentWithAuthor[]> {
+    // Lecture via la vue SÉCURISÉE : user_id est NULL pour un commentaire
+    // anonyme d'autrui (l'identité réelle ne quitte jamais le serveur). On
+    // résout donc les auteurs séparément (jamais de jointure sur les anonymes).
     const { data, error } = await supabase
-      .from("community_comments")
-      .select("*, author:profiles(full_name, avatar_url)")
+      .from("community_comments_safe")
+      .select("*")
       .eq("post_id", postId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .limit(500); // borne de sécurité sur un fil très commenté
     if (error) throw error;
-    const rows = (data ?? []) as (CommunityComment & {
-      author: Pick<Profile, "full_name" | "avatar_url"> | null;
-    })[];
+    const rows = (data ?? []) as CommunityCommentSafe[];
     // Likes de l'utilisatrice sur ces commentaires (requête séparée).
     const me = await currentUserId();
     let likedSet = new Set<string>();
@@ -557,19 +564,24 @@ export const communityService = {
         .in("comment_id", rows.map((r) => r.id));
       likedSet = new Set((likes ?? []).map((l) => l.comment_id));
     }
-    // Badge « médecin vérifié » + exclusion des commentaires d'auteurs bloqués.
-    const [verified, blocked] = await Promise.all([
-      fetchVerifiedDoctors(rows.map((r) => r.user_id)),
+    // Résolution des auteurs (profils + badge médecin) par user_id NON anonyme,
+    // + exclusion des commentaires d'auteurs bloqués.
+    const [authors, blocked] = await Promise.all([
+      fetchAuthors(rows.map((r) => r.user_id)),
       fetchBlockedIds(),
     ]);
     return rows
       .filter((r) => !(r.user_id && blocked.has(r.user_id)))
-      .map((r) => ({
-        ...r,
-        isVerifiedDoctor: r.user_id ? verified.has(r.user_id) : false,
-        doctorSpecialty: r.user_id ? verified.get(r.user_id) ?? undefined : undefined,
-        likedByMe: likedSet.has(r.id),
-      }));
+      .map((r) => {
+        const author = r.user_id ? authors.get(r.user_id) ?? null : null;
+        return {
+          ...r,
+          author: author ? { full_name: author.full_name, avatar_url: author.avatar_url } : null,
+          isVerifiedDoctor: author?.isVerifiedDoctor ?? false,
+          doctorSpecialty: author?.doctorSpecialty,
+          likedByMe: likedSet.has(r.id),
+        };
+      });
   },
 
   // Ajoute un commentaire (ou une réponse si parentCommentId est fourni).
@@ -661,7 +673,10 @@ export const communityService = {
 
   // Signale un commentaire. Pas de colonne comment_id → on rattache au post
   // (post_id = comment.post_id) et on préfixe la raison « Commentaire : … ».
-  async reportComment(comment: CommunityComment, reason: string): Promise<void> {
+  async reportComment(
+    comment: Pick<CommunityComment, "post_id" | "is_anonymous"> & { user_id: string | null },
+    reason: string
+  ): Promise<void> {
     const me = await currentUserId();
     if (!me) throw new Error("Vous devez être connectée.");
     if (comment.user_id && comment.user_id === me) {

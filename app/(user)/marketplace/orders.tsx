@@ -24,15 +24,18 @@ export default function Orders() {
   const router = useRouter();
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    if (!session?.user) return;
+    if (!session?.user) { setLoading(false); return; }
     setLoading(true);
+    setError(false);
     try {
       const data = await marketplaceService.getOrders(session.user.id);
       setOrders(data);
     } catch {
+      setError(true);
       setOrders([]);
     } finally {
       setLoading(false);
@@ -59,7 +62,15 @@ export default function Orders() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
 
-        {orders.length === 0 ? (
+        {error && orders.length === 0 ? (
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Connexion impossible"
+            message="Impossible de charger tes commandes. Vérifie ta connexion, puis réessaie."
+            actionLabel="Réessayer"
+            onAction={load}
+          />
+        ) : orders.length === 0 ? (
           <EmptyState
             icon="receipt-outline"
             title="Aucune commande"

@@ -109,10 +109,17 @@ export function useCommunity(filters: CommunityFilters = {}) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "community_posts" },
         (payload) => {
-          const row = payload.new as { id?: string; user_id?: string };
+          const row = payload.new as { id?: string; user_id?: string; category?: string | null; is_anonymous?: boolean };
           if (!row?.id) return;
           if (knownIdsRef.current.has(row.id)) return;
           if (meId && row.user_id === meId) return;
+          // Ne compter que les publications qui MATCHERAIENT le fil courant
+          // (sinon la pastille annonce des posts qui n'apparaîtront pas au tap).
+          const f = filtersRef.current;
+          if (f.search?.trim()) return;                 // recherche : match non fiable côté client
+          if (f.category && row.category !== f.category) return;
+          if (f.doctorsOnly || f.followedOnly) return;  // statut médecin / suivi : non vérifiable ici
+          if (f.doctorsOnly && row.is_anonymous) return;
           knownIdsRef.current.add(row.id);
           setNewPostsCount((n) => n + 1);
         }
