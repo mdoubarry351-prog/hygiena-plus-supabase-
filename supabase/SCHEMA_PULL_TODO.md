@@ -1,5 +1,17 @@
 # P0-6 — Versionner la sécurité serveur existante (action propriétaire)
 
+> ✅ **2026-07-06 — Schéma live archivé.** Un snapshot complet du schéma
+> `public` a été généré par **introspection lecture seule** de la base live et
+> versionné dans
+> [`supabase/schema/full_schema_snapshot_2026-07-06.sql`](schema/full_schema_snapshot_2026-07-06.sql) :
+> 4 types ENUM, 29 tables, 43 fonctions (dont `public.is_admin()`), 37 triggers
+> (dont `handle_new_user` / `on_auth_user_created`), 96 politiques RLS, 84 index.
+> Toute la sécurité serveur préexistante est donc désormais dans Git.
+>
+> Le `supabase db pull` via la CLI (ci-dessous) reste **optionnel** : il ne sert
+> plus qu'à obtenir un format *migration native* rejouable ; le snapshot couvre
+> déjà l'archivage/audit exigé.
+
 L'audit exige que **toute** la sécurité serveur soit dans Git. Une partie a été
 créée dans ce dépôt (voir plus bas). Mais le **schéma préexistant** (tables,
 triggers historiques, `public.is_admin()`, politiques RLS créées jadis via le
