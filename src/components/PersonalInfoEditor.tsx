@@ -78,6 +78,8 @@ export function PersonalInfoEditor({
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      // iOS : transcode les HEIC en JPEG dès la sélection (formats du bucket).
+      preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.9,

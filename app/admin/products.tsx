@@ -270,6 +270,8 @@ function ProductForm({ product, onDone, onCancel }: { product: MarketplaceProduc
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      // iOS : transcode les HEIC en JPEG dès la sélection (formats du bucket).
+      preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
       allowsMultipleSelection: true,
       selectionLimit: remaining,
       allowsEditing: false,

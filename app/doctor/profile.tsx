@@ -60,6 +60,8 @@ export default function DoctorProfile() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      // iOS : transcode les HEIC en JPEG dès la sélection (formats du bucket).
+      preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.9,
@@ -157,6 +159,8 @@ export default function DoctorProfile() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      // iOS : transcode les HEIC en JPEG dès la sélection (formats du bucket).
+      preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
       allowsEditing: false,
       quality: 1,
       base64: true,
