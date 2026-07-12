@@ -28,6 +28,25 @@ function decodeCheckedJpeg(base64: string, maxBytes: number): ArrayBuffer {
   return buf;
 }
 
+// Session courante, exigée pour tout upload. Les buckets ont des policies RLS
+// `TO authenticated` : sans jeton, la requête part en rôle `anon` et Storage la
+// rejette. Or supabase-js résout le jeton via getSession() AU MOMENT de la
+// requête et retombe SILENCIEUSEMENT sur la clé anon si la session n'est pas
+// (encore) résolue → upload anonyme → violation RLS. On lit donc la session
+// nous-mêmes AVANT l'upload et on échoue explicitement si elle manque.
+async function requireUploadSession(action: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error(`Vous devez être connectée pour ${action}.`);
+  return session;
+}
+
+// En-tête d'auth à joindre EXPLICITEMENT à chaque .upload() : `fetchWithAuth`
+// (supabase-js) ne pose l'Authorization que s'il est absent, donc en le
+// fournissant on garantit le jeton utilisateur (jamais le fallback anon).
+function bearer(accessToken: string): Record<string, string> {
+  return { Authorization: `Bearer ${accessToken}` };
+}
+
 /**
  * Uploade une image de produit dans le bucket public `product-images` et
  * renvoie son URL publique (à stocker dans marketplace_products.image_url).
@@ -39,10 +58,11 @@ function decodeCheckedJpeg(base64: string, maxBytes: number): ArrayBuffer {
  * d'origine conservée car allowsEditing:false).
  */
 export async function uploadProductImage(base64: string): Promise<string> {
+  const session = await requireUploadSession("ajouter une image");
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, decodeCheckedJpeg(base64, MAX_IMAGE_BYTES), { contentType: "image/jpeg", upsert: true });
+    .upload(path, decodeCheckedJpeg(base64, MAX_IMAGE_BYTES), { contentType: "image/jpeg", upsert: true, headers: bearer(session.access_token) });
   if (error) throw error;
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
@@ -52,10 +72,11 @@ export async function uploadProductImage(base64: string): Promise<string> {
  * public `avatars` et renvoie son URL publique (ex. photo d'un médecin).
  */
 export async function uploadAvatar(base64: string): Promise<string> {
+  const session = await requireUploadSession("ajouter une photo");
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
   const { error } = await supabase.storage
     .from(AVATAR_BUCKET)
-    .upload(path, decodeCheckedJpeg(base64, MAX_IMAGE_BYTES), { contentType: "image/jpeg", upsert: true });
+    .upload(path, decodeCheckedJpeg(base64, MAX_IMAGE_BYTES), { contentType: "image/jpeg", upsert: true, headers: bearer(session.access_token) });
   if (error) throw error;
   return supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path).data.publicUrl;
 }
@@ -65,16 +86,15 @@ export async function uploadAvatar(base64: string): Promise<string> {
  * le bucket public `community-images` et renvoie son URL publique.
  *
  * RLS : l'upload est réservé au dossier de l'utilisatrice → on range le fichier
- * sous `${userId}/...`. On récupère l'userId via supabase.auth.getUser().
+ * sous `${userId}/...` (userId = id de la session, égal à auth.uid()).
  */
 export async function uploadCommunityImage(base64: string): Promise<string> {
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
-  if (!userId) throw new Error("Vous devez être connectée pour ajouter une photo.");
+  const session = await requireUploadSession("ajouter une photo");
+  const userId = session.user.id;
   const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
   const { error } = await supabase.storage
     .from(COMMUNITY_BUCKET)
-    .upload(path, decodeCheckedJpeg(base64, MAX_IMAGE_BYTES), { contentType: "image/jpeg", upsert: true });
+    .upload(path, decodeCheckedJpeg(base64, MAX_IMAGE_BYTES), { contentType: "image/jpeg", upsert: true, headers: bearer(session.access_token) });
   if (error) throw error;
   return supabase.storage.from(COMMUNITY_BUCKET).getPublicUrl(path).data.publicUrl;
 }
@@ -88,13 +108,12 @@ export async function uploadCommunityImage(base64: string): Promise<string> {
  * une URL signée (createSignedUrl) côté admin/médecin.
  */
 export async function uploadKycDocument(base64: string): Promise<string> {
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
-  if (!userId) throw new Error("Vous devez être connecté pour téléverser un document.");
+  const session = await requireUploadSession("téléverser un document");
+  const userId = session.user.id;
   const path = `${userId}/license-${Date.now()}.jpg`;
   const { error } = await supabase.storage
     .from(KYC_BUCKET)
-    .upload(path, decodeCheckedJpeg(base64, MAX_KYC_BYTES), { contentType: "image/jpeg", upsert: true });
+    .upload(path, decodeCheckedJpeg(base64, MAX_KYC_BYTES), { contentType: "image/jpeg", upsert: true, headers: bearer(session.access_token) });
   if (error) throw error;
   return path;
 }
