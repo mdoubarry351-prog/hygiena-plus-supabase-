@@ -7,6 +7,7 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "channel": "development",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://iideovxddiytiqxdlwlt.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_8cnXaUx2x4ZeRMlv8K8ReA_yXiwFk2w"
@@ -14,6 +15,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
       "android": {
         "buildType": "apk"
       },
@@ -24,6 +26,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "channel": "production",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://iideovxddiytiqxdlwlt.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_8cnXaUx2x4ZeRMlv8K8ReA_yXiwFk2w"

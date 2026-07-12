@@ -7,6 +7,12 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/3157f361-c33a-4c57-8d52-9f3aab919f4f"
+    },
     "icon": "./assets/logo/hygiena-icon-ios.png",
     "splash": {
       "image": "./assets/logo/hygiena-icon-drop.png",
@@ -21,7 +27,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.hygiena.plus",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Hygiena+ accède à vos photos pour définir votre photo de profil et ajouter des images à vos publications et produits.",
