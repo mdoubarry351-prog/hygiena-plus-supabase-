@@ -91,7 +91,6 @@ export default function Profile() {
             <MenuRow icon="medkit" tint={colors.secondary} title="Espace professionnel" sub="Tableau de bord, rendez-vous, disponibilité, fiche médecin" onPress={() => router.push("/doctor")} />
           ) : null}
           <MenuRow icon="person-outline" title="Modifier mes informations" sub="Nom, téléphone, email, mot de passe, suppression du compte" onPress={() => router.push("/(user)/account")} />
-          <MenuRow icon="heart-circle-outline" title="Informations de santé" sub="Âge, mesures, groupe sanguin, allergies — privé" onPress={() => router.push("/(user)/health")} />
           <MenuRow icon="settings-outline" title="Réglages" sub="Notifications, verrouillage, comptes bloqués" onPress={() => router.push("/(user)/settings")} />
           <MenuRow icon="help-circle-outline" title="Aide & à propos" sub="FAQ, confidentialité, conditions, inviter un ami" onPress={() => router.push("/(user)/about")} />
         </FadeInView>
