@@ -69,6 +69,9 @@ export default function PostDetail() {
   const [savingEdit, setSavingEdit] = useState(false);
   // Fils de réponses repliés (par id du commentaire racine).
   const [collapsedThreads, setCollapsedThreads] = useState<Set<string>>(new Set());
+  // Tri des commentaires (façon Facebook) : pertinence (médecins puis + aimés)
+  // ou chronologique inversé.
+  const [sortMode, setSortMode] = useState<"pertinents" | "recents">("pertinents");
 
   function toggleThread(rootId: string) {
     hapticLight();
@@ -262,6 +265,17 @@ export default function PostDetail() {
     }
   }
 
+  // Sélecteur de tri des commentaires (feuille d'actions).
+  function sortMenu() {
+    setSheet({
+      title: "Trier les commentaires",
+      options: [
+        { label: "Plus pertinents", icon: "sparkles-outline", onPress: () => setSortMode("pertinents") },
+        { label: "Plus récents", icon: "time-outline", onPress: () => setSortMode("recents") },
+      ],
+    });
+  }
+
   // ---- Signalement (contenu des autres) ----
   // Feuille d'actions multiplateforme (web-safe) au lieu d'un Alert à boutons
   // multiples : liste des motifs de signalement.
@@ -312,6 +326,12 @@ export default function PostDetail() {
   if (loading) return <Loading />;
   if (!post) return null;
 
+  // Id de l'auteur du post (null si le post est anonyme → pas de badge « Auteure »
+  // pour préserver l'anonymat). Sert à taguer ses propres commentaires.
+  const postAuthorId = post.is_anonymous ? null : post.user_id;
+  const isAuthorComment = (c: CommunityCommentWithAuthor) =>
+    !c.is_anonymous && !!c.user_id && c.user_id === postAuthorId;
+
   // Threading : commentaires de premier niveau + réponses regroupées sous leur
   // fil racine (une réponse à une réponse rattache au même fil parent).
   const byId = new Map(comments.map((c) => [c.id, c]));
@@ -329,7 +349,18 @@ export default function PostDetail() {
   // de chaque groupe (partition stable).
   const isDoctorComment = (c: CommunityCommentWithAuthor) => !c.is_anonymous && c.isVerifiedDoctor;
   const rawTops = comments.filter((c) => !c.parent_comment_id);
-  const topComments = [...rawTops.filter(isDoctorComment), ...rawTops.filter((c) => !isDoctorComment(c))];
+  // « Plus récents » : chronologique inversé. « Plus pertinents » : médecins
+  // vérifiés en tête, puis les plus aimés, puis chronologique.
+  const topComments =
+    sortMode === "recents"
+      ? [...rawTops].sort((a, b) => b.created_at.localeCompare(a.created_at))
+      : [...rawTops].sort((a, b) => {
+          const da = isDoctorComment(a) ? 1 : 0;
+          const db = isDoctorComment(b) ? 1 : 0;
+          if (da !== db) return db - da;
+          if (b.likes_count !== a.likes_count) return b.likes_count - a.likes_count;
+          return a.created_at.localeCompare(b.created_at);
+        });
   const repliesByRoot = new Map<string, CommunityCommentWithAuthor[]>();
   for (const c of comments) {
     if (!c.parent_comment_id) continue;
@@ -384,6 +415,9 @@ export default function PostDetail() {
                 <View style={[styles.bubble, isReply && styles.bubbleReply, highlighted && styles.bubbleDoctor]}>
                   <View style={styles.bubbleAuthorRow}>
                     <Text style={styles.bubbleAuthor}>{displayName(c)}</Text>
+                    {isAuthorComment(c) ? (
+                      <View style={styles.authorBadge}><Text style={styles.authorBadgeText}>Auteure</Text></View>
+                    ) : null}
                     {!c.is_anonymous && c.isVerifiedDoctor ? <VerifiedDoctorBadge specialty={c.doctorSpecialty} /> : null}
                   </View>
                   <Text style={styles.bubbleText}>{c.content}</Text>
@@ -454,6 +488,21 @@ export default function PostDetail() {
 
             <PostImages imageUrls={post.image_urls} imageUrl={post.image_url} />
 
+            {/* Ligne de synthèse (façon Facebook) : réactions ❤ + nb de commentaires. */}
+            {post.likes_count > 0 || comments.length > 0 ? (
+              <View style={styles.summaryRow}>
+                {post.likes_count > 0 ? (
+                  <View style={styles.summaryLike}>
+                    <View style={styles.summaryHeart}><Ionicons name="heart" size={11} color={colors.white} /></View>
+                    <Text style={styles.summaryCount}>{post.likes_count}</Text>
+                  </View>
+                ) : <View />}
+                {comments.length > 0 ? (
+                  <Text style={styles.summaryCount}>{comments.length} commentaire{comments.length > 1 ? "s" : ""}</Text>
+                ) : null}
+              </View>
+            ) : null}
+
             <View style={styles.postFoot}>
               <Pressable onPress={handleLike} hitSlop={8} style={({ pressed }) => [styles.likeBtn, pressed && styles.footPressed]} accessibilityRole="button" accessibilityLabel={liked ? "Je n'aime plus cette publication" : "J'aime cette publication"}>
                 <HeartButton active={liked} size={22} />
@@ -482,9 +531,17 @@ export default function PostDetail() {
               }
             }}
           >
-            <Text style={[typography.h3, styles.sectionTitle]}>
-              Commentaires ({comments.length})
-            </Text>
+            <View style={styles.commentsHeader}>
+              <Text style={[typography.h3, styles.sectionTitle]}>
+                Commentaires ({comments.length})
+              </Text>
+              {topComments.length > 1 ? (
+                <Pressable onPress={sortMenu} hitSlop={8} style={styles.sortBtn} accessibilityRole="button" accessibilityLabel="Trier les commentaires">
+                  <Text style={styles.sortText}>{sortMode === "pertinents" ? "Plus pertinents" : "Plus récents"}</Text>
+                  <Ionicons name="chevron-down" size={14} color={colors.text} />
+                </Pressable>
+              ) : null}
+            </View>
           </View>
 
           {comments.length === 0 ? (
@@ -595,6 +652,22 @@ const styles = StyleSheet.create({
   likeCount: { ...typography.caption, color: colors.textMuted, fontWeight: "600" },
   likeCountActive: { color: colors.primary },
   sectionTitle: { marginTop: spacing.sm },
+  // Ligne de synthèse (façon Facebook) : réactions à gauche, nb commentaires à droite.
+  summaryRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    borderTopWidth: 1, borderTopColor: colors.border, borderBottomWidth: 1, borderBottomColor: colors.border,
+    paddingVertical: spacing.sm, marginTop: spacing.xs,
+  },
+  summaryLike: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  summaryHeart: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" },
+  summaryCount: { ...typography.caption, color: colors.textMuted, fontWeight: "700" },
+  // En-tête des commentaires : titre + sélecteur de tri.
+  commentsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sortBtn: { flexDirection: "row", alignItems: "center", gap: 2, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.sm, backgroundColor: colors.surface },
+  sortText: { ...typography.caption, color: colors.text, fontWeight: "800" },
+  // Badge « Auteure » sur les commentaires de l'autrice du post.
+  authorBadge: { backgroundColor: colors.successSoft, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 1 },
+  authorBadgeText: { ...typography.caption, color: colors.success, fontWeight: "800", fontSize: 11 },
   muted: { color: colors.textMuted },
   thread: { gap: spacing.md },
   // Bascule repli/expansion d'un fil, alignée sur l'indentation des réponses.
