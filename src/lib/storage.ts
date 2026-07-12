@@ -53,23 +53,43 @@ function decodeCheckedImage(base64: string, maxBytes: number): { data: ArrayBuff
   return { data: buf, contentType };
 }
 
-// Session courante, exigée pour tout upload. Les buckets ont des policies RLS
-// `TO authenticated` : sans jeton, la requête part en rôle `anon` et Storage la
-// rejette. Or supabase-js résout le jeton via getSession() AU MOMENT de la
-// requête et retombe SILENCIEUSEMENT sur la clé anon si la session n'est pas
-// (encore) résolue → upload anonyme → violation RLS. On lit donc la session
-// nous-mêmes AVANT l'upload et on échoue explicitement si elle manque.
-async function requireUploadSession(action: string) {
+// Session fraîche, exigée avant toute signature d'upload. Échoue clairement si
+// aucune session, et rafraîchit le jeton s'il expire dans moins de 60 s (la
+// signature `createSignedUploadUrl` est une requête AUTHENTIFIÉE : un jeton
+// périmé la ferait échouer).
+async function requireFreshSession(action: string) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error(`Vous devez être connectée pour ${action}.`);
+  if (session.expires_at && session.expires_at * 1000 - Date.now() < 60_000) {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (!error && data.session) return data.session;
+  }
   return session;
 }
 
-// En-tête d'auth à joindre EXPLICITEMENT à chaque .upload() : `fetchWithAuth`
-// (supabase-js) ne pose l'Authorization que s'il est absent, donc en le
-// fournissant on garantit le jeton utilisateur (jamais le fallback anon).
-function bearer(accessToken: string): Record<string, string> {
-  return { Authorization: `Bearer ${accessToken}` };
+// Upload FIABILISÉ via URL signée. Pourquoi : en React Native, l'en-tête
+// Authorization ne survit pas de façon fiable sur la requête d'upload à corps
+// binaire (ArrayBuffer) → Storage voit le rôle `anon` et rejette (RLS
+// `TO authenticated`). Le flux signé découple l'auth du gros transfert :
+//   1) createSignedUploadUrl : petite requête JSON authentifiée (même chemin
+//      que les lectures) ; la RLS est vérifiée ICI, à la signature (le chemin
+//      `<uid>/...` doit satisfaire foldername[1] = auth.uid()).
+//   2) uploadToSignedUrl : le PUT est autorisé par le TOKEN de l'URL, pas par
+//      le JWT de la requête → insensible à la perte d'en-tête.
+async function uploadViaSignedUrl(
+  bucket: string,
+  path: string,
+  data: ArrayBuffer,
+  contentType: string
+): Promise<void> {
+  const { data: signed, error: signError } = await supabase.storage
+    .from(bucket)
+    .createSignedUploadUrl(path);
+  if (signError || !signed) throw signError ?? new Error("Signature d'upload impossible.");
+  const { error: uploadError } = await supabase.storage
+    .from(bucket)
+    .uploadToSignedUrl(signed.path, signed.token, data, { contentType });
+  if (uploadError) throw uploadError;
 }
 
 /**
@@ -82,13 +102,10 @@ function bearer(accessToken: string): Record<string, string> {
  * Le format (jpeg/png/webp) est détecté et déclaré à Storage.
  */
 export async function uploadProductImage(base64: string): Promise<string> {
-  const session = await requireUploadSession("ajouter une image");
+  await requireFreshSession("ajouter une image");
   const { data, contentType } = decodeCheckedImage(base64, MAX_IMAGE_BYTES);
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extForMime(contentType)}`;
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, data, { contentType, upsert: true, headers: bearer(session.access_token) });
-  if (error) throw error;
+  await uploadViaSignedUrl(BUCKET, path, data, contentType);
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
@@ -97,13 +114,10 @@ export async function uploadProductImage(base64: string): Promise<string> {
  * `avatars` et renvoie son URL publique (ex. photo d'un médecin).
  */
 export async function uploadAvatar(base64: string): Promise<string> {
-  const session = await requireUploadSession("ajouter une photo");
+  await requireFreshSession("ajouter une photo");
   const { data, contentType } = decodeCheckedImage(base64, MAX_IMAGE_BYTES);
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extForMime(contentType)}`;
-  const { error } = await supabase.storage
-    .from(AVATAR_BUCKET)
-    .upload(path, data, { contentType, upsert: true, headers: bearer(session.access_token) });
-  if (error) throw error;
+  await uploadViaSignedUrl(AVATAR_BUCKET, path, data, contentType);
   return supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
@@ -115,14 +129,11 @@ export async function uploadAvatar(base64: string): Promise<string> {
  * sous `${userId}/...` (userId = id de la session, égal à auth.uid()).
  */
 export async function uploadCommunityImage(base64: string): Promise<string> {
-  const session = await requireUploadSession("ajouter une photo");
+  const session = await requireFreshSession("ajouter une photo");
   const userId = session.user.id;
   const { data, contentType } = decodeCheckedImage(base64, MAX_IMAGE_BYTES);
   const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extForMime(contentType)}`;
-  const { error } = await supabase.storage
-    .from(COMMUNITY_BUCKET)
-    .upload(path, data, { contentType, upsert: true, headers: bearer(session.access_token) });
-  if (error) throw error;
+  await uploadViaSignedUrl(COMMUNITY_BUCKET, path, data, contentType);
   return supabase.storage.from(COMMUNITY_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
@@ -135,13 +146,10 @@ export async function uploadCommunityImage(base64: string): Promise<string> {
  * une URL signée (createSignedUrl) côté admin/médecin.
  */
 export async function uploadKycDocument(base64: string): Promise<string> {
-  const session = await requireUploadSession("téléverser un document");
+  const session = await requireFreshSession("téléverser un document");
   const userId = session.user.id;
   const { data, contentType } = decodeCheckedImage(base64, MAX_KYC_BYTES);
   const path = `${userId}/license-${Date.now()}.${extForMime(contentType)}`;
-  const { error } = await supabase.storage
-    .from(KYC_BUCKET)
-    .upload(path, data, { contentType, upsert: true, headers: bearer(session.access_token) });
-  if (error) throw error;
+  await uploadViaSignedUrl(KYC_BUCKET, path, data, contentType);
   return path;
 }
