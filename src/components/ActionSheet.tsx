@@ -35,6 +35,12 @@ export function ActionSheet({
   const [mounted, setMounted] = useState(visible);
   const translateY = useRef(new Animated.Value(SHEET_OFFSET)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
+  // Action choisie, exécutée SEULEMENT après démontage de la modale : sur iOS on
+  // ne peut présenter qu'une modale à la fois. Si `opt.onPress` ouvre une autre
+  // modale (ex. confirmation de suppression) pendant que cette feuille est encore
+  // présentée, la 2ᵉ modale est ignorée. On diffère donc l'action à la fin de
+  // l'animation de sortie (callback `.start()`, après `setMounted(false)`).
+  const pending = useRef<null | (() => void)>(null);
 
   useEffect(() => {
     if (visible) {
@@ -50,7 +56,12 @@ export function ActionSheet({
       Animated.parallel([
         Animated.timing(translateY, { toValue: SHEET_OFFSET, duration: durations.fast, useNativeDriver: NATIVE_ANIM }),
         Animated.timing(backdrop, { toValue: 0, duration: durations.fast, useNativeDriver: NATIVE_ANIM }),
-      ]).start(() => setMounted(false));
+      ]).start(() => {
+        setMounted(false);
+        const run = pending.current;
+        pending.current = null;
+        run?.();
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
@@ -70,7 +81,7 @@ export function ActionSheet({
               {options.map((opt, i) => (
                 <Pressable
                   key={`${opt.label}-${i}`}
-                  onPress={() => { onClose(); opt.onPress(); }}
+                  onPress={() => { pending.current = opt.onPress; onClose(); }}
                   style={({ pressed }) => [styles.option, pressed && styles.optionPressed]}
                   accessibilityRole="button"
                   accessibilityLabel={opt.label}

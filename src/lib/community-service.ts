@@ -458,8 +458,12 @@ export const communityService = {
   // Supprime SA propre publication (RLS own_or_admin). Les likes, commentaires,
   // réponses et signets sont supprimés automatiquement (ON DELETE CASCADE).
   async deletePost(id: string): Promise<void> {
-    const { error } = await supabase.from("community_posts").delete().eq("id", id);
+    // `.select()` renvoie les lignes réellement supprimées : si la RLS
+    // (own_or_admin) ne matche rien, aucune erreur n'est levée mais 0 ligne part
+    // → on le détecte pour ne pas faire croire à un succès.
+    const { data, error } = await supabase.from("community_posts").delete().eq("id", id).select("id");
     if (error) throw error;
+    if (!data?.length) throw new Error("Suppression impossible (droits insuffisants ou publication déjà supprimée).");
   },
 
   // Identifiants des publications déjà aimées par l'utilisateur.
@@ -648,8 +652,9 @@ export const communityService = {
   // Supprime SON propre commentaire (RLS own_or_admin). Ses likes et ses
   // réponses partent automatiquement (ON DELETE CASCADE).
   async deleteComment(id: string): Promise<void> {
-    const { error } = await supabase.from("community_comments").delete().eq("id", id);
+    const { data, error } = await supabase.from("community_comments").delete().eq("id", id).select("id");
     if (error) throw error;
+    if (!data?.length) throw new Error("Suppression impossible (droits insuffisants ou commentaire déjà supprimé).");
   },
 
   // ---------------- Signalements (modération) ----------------
